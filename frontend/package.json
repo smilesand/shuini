@@ -1,0 +1,44 @@
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:web": "vite build --mode production",
+    "build:desktop": "vite build --mode desktop",
+    "build:prod": "vite build --mode production",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "lint": "eslint . --ext .ts,.vue,.js --max-warnings=0",
+    "format": "prettier --write \"src/**/*.{ts,vue,css}\" \"*.{js,json,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,vue,css}\" \"*.{js,json,md}\""
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "axios": "^1.16.1",
+    "element-plus": "^2.14.0",
+    "katex": "^0.17.0",
+    "pinia": "^3.0.4",
+    "typescript": "^6.0.3",
+    "unplugin-auto-import": "^21.0.0",
+    "unplugin-vue-components": "^32.1.0",
+    "vue": "^3.5.34",
+    "vue-router": "^4.6.4",
+    "vue-tsc": "^3.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/katex": "^0.16.8",
+    "@vitejs/plugin-vue": "^6.0.6",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.5.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2",
+    "typescript-eslint": "^8.46.4",
+    "vite": "^8.0.12"
+    ,"vue-eslint-parser": "^10.2.0"
+  }
+}

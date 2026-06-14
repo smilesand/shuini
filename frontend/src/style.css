@@ -1,0 +1,27 @@
+/* ── Element Plus 主题颜色覆盖 ── */
+:root {
+  --el-color-primary:         #2a5298;
+  --el-color-primary-dark-2:  #1e3c72;
+  --el-color-primary-light-3: #4a73b8;
+  --el-color-primary-light-5: #8ea8d0;
+  --el-color-primary-light-7: #c4d3e8;
+  --el-color-primary-light-8: #d9e3f0;
+  --el-color-primary-light-9: #ecf0f8;
+}
+
+/* ── 全局基础样式 ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: #f0f2f5;
+  color: #333;
+  min-height: 100vh;
+}
+
+#app {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}

@@ -1,0 +1,307 @@
+/*
+ * ────────────────────────────────────────────────────────────────
+ *  Shared design system for all Calc & Trial tab components
+ *  (HPC / UHPC / HPC-Trial / UHPC-Trial)
+ * ────────────────────────────────────────────────────────────────
+ */
+
+/* ── Design tokens ─────────────────────────────────────────────── */
+:root {
+  --cs-primary: #1e3c72;
+  --cs-primary-light: #2a5298;
+  --cs-border: #dbe5f1;
+  --cs-bg-header: #f8faff;
+  --cs-bg-body: #ffffff;
+  --cs-text-heading: #1e3c72;
+  --cs-text-label: #606266;
+  --cs-text-muted: #909399;
+  --cs-radius: 12px;
+  --cs-input-font: 14px;
+  --cs-label-font: 13px;
+}
+
+/* ── Section card wrapper ──────────────────────────────────────── */
+.cs-section {
+  background: var(--cs-bg-body);
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.cs-section + .cs-section {
+  margin-top: 0;
+}
+
+/* ── Section card header ───────────────────────────────────────── */
+.cs-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--cs-bg-header);
+  border-bottom: 1px solid #eef3fb;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cs-text-heading);
+  user-select: none;
+}
+
+.cs-section-head .el-icon {
+  font-size: 15px;
+  color: var(--cs-primary-light);
+  flex-shrink: 0;
+}
+
+/* ── Section card body ─────────────────────────────────────────── */
+.cs-section-body {
+  padding: 16px;
+}
+
+/* ── Tab page title (big heading at top) ───────────────────────── */
+.tab-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--cs-text-heading);
+  margin-bottom: 4px;
+}
+
+.tab-title .el-icon {
+  font-size: 18px;
+}
+
+.tab-sub {
+  font-size: 12px;
+  color: var(--cs-text-muted);
+  margin: 0 0 16px;
+}
+
+/* ── el-form global label override ────────────────────────────── */
+.cs-section-body .el-form-item__label,
+.cs-tab-form .el-form-item__label {
+  font-size: var(--cs-label-font) !important;
+  color: var(--cs-text-label) !important;
+  font-weight: 600 !important;
+  padding-bottom: 4px !important;
+}
+
+/* ── Input number / input box unified size ─────────────────────── */
+.cs-section-body .el-input-number,
+.cs-section-body .el-input {
+  font-size: var(--cs-input-font);
+}
+
+/* ── Unit suffix label ─────────────────────────────────────────── */
+.unit-suffix {
+  font-size: 12px;
+  color: var(--cs-text-muted);
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+/* ── Auto-computed (readonly) input — gradient yellow ──────────── */
+.computed-input .el-input__wrapper,
+.is-computed .el-input__wrapper,
+.trial-readonly-input .el-input__wrapper,
+.calc-inp .el-input__wrapper {
+  background: linear-gradient(135deg, #fffef5, #fff7c0) !important;
+  border-color: #e0c040 !important;
+  box-shadow: none !important;
+}
+
+.computed-input .el-input__inner,
+.is-computed .el-input__inner,
+.trial-readonly-input .el-input__inner,
+.calc-inp .el-input__inner {
+  color: #6e5200;
+  font-weight: 700;
+}
+
+/* ── Trial mix computed input — sky blue ─────────────────────────*/
+.trial-computed .el-input__wrapper {
+  background: linear-gradient(135deg, #e8f4ff, #c8e4fa) !important;
+  border-color: #2a8ad4 !important;
+  box-shadow: none !important;
+}
+
+.trial-computed .el-input__inner {
+  color: #0a4d8a;
+  font-weight: 700;
+}
+
+/* ── Inherited values (descriptions box) ──────────────────────── */
+.inherited-desc .el-descriptions__label {
+  background: #eef4fb;
+  color: #1e3c72;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.inherited-val {
+  font-weight: 700;
+  color: #2a5298;
+  font-size: 13px;
+}
+
+/* ── Highlight / cross cells in reference tables ──────────────── */
+.cell-highlight {
+  background: #e8f0fb !important;
+  color: #1e3c72;
+  font-weight: 600;
+}
+
+.cell-cross {
+  background: linear-gradient(135deg, #d3e3f8, #c0d5f5) !important;
+  color: #1e3c72;
+  font-weight: 700;
+}
+
+/* ── Guide table (UHPC style selector) ────────────────────────── */
+.guide-table {
+  border: 1px solid var(--cs-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.guide-table__header,
+.guide-table__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+}
+
+.guide-table__header {
+  background: #eef4fb;
+  color: #52606d;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 16px;
+}
+
+.guide-table__row {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid #eef3fb;
+  padding: 12px 16px;
+  background: #fff;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.guide-table__row:hover {
+  background: #f4f8ff;
+}
+
+.guide-table__row--active {
+  background: linear-gradient(135deg, #e8f0fb, #d8e6f8);
+  color: #1e3c72;
+  font-weight: 700;
+}
+
+/* ── Section subtitle (plain text sub-heading) ─────────────────── */
+.section-subtitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4a5e78;
+  margin: 0 0 10px;
+}
+
+/* ── Footer action bar (bottom-right buttons) ──────────────────── */
+.footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #eef3fb;
+}
+
+/* ── el-table row selected state ───────────────────────────────── */
+.el-table .is-selected-row td {
+  background: #e8f0fb !important;
+}
+
+/* ── Math token helpers ─────────────────────────────────────────── */
+.math-token { font-style: italic; }
+.math-sub { font-size: 0.8em; vertical-align: sub; }
+
+/* ── Mix grid (shared by UHPC/HPC trial tabs) ──────────────────── */
+.mix-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+.unit-tag {
+  font-size: 11px;
+  font-weight: 400;
+  color: #9ca3af;
+}
+
+.mix-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #e5e9f2;
+}
+
+.mix-cell {
+  border-right: 1px solid #e5e9f2;
+}
+.mix-cell:last-child { border-right: none; }
+
+.mix-cell__head {
+  background: #f0f4fa;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  text-align: center;
+  padding: 6px 2px;
+  border-bottom: 1px solid #e5e9f2;
+}
+
+.mix-cell__val {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  padding: 9px 4px;
+  background: #fff;
+  color: #374151;
+}
+
+.mix-cell--sm .mix-cell__head { font-size: 11px; padding: 4px 2px; }
+.mix-cell--sm .mix-cell__val  { font-size: 12px; padding: 6px 2px; }
+
+.mix-grid--calc .mix-cell__val {
+  background: linear-gradient(180deg, #fff8ec, #ffedcc);
+  color: #7a4300;
+}
+
+.mix-grid--trial .mix-cell__val {
+  background: linear-gradient(180deg, #f0f5ff, #dce8ff);
+  color: #1e3c72;
+}
+
+.mix-grid--variant .mix-cell__val {
+  background: linear-gradient(180deg, #fffdf5, #fff8e1);
+  color: #5a3e00;
+}
+
+.mix-grid--corrected .mix-cell__val {
+  background: linear-gradient(180deg, #eef0ff, #dde3ff);
+  color: #1a1e80;
+}
+
+.mix-cell--total .mix-cell__head {
+  background: #e8eef6;
+  font-weight: 800;
+}
+.mix-cell--total .mix-cell__val {
+  font-weight: 900;
+}

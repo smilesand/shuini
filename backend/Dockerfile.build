@@ -1,0 +1,41 @@
+# ── Debian 环境下用 PyInstaller 打包成独立二进制 ──
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# 安装构建依赖（scipy 编译需要 gcc/gfortran）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc g++ gfortran \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装 Python 依赖 + PyInstaller
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt pyinstaller==6.8.0
+
+# 复制项目源码
+COPY . .
+
+# PyInstaller 打包
+# --onefile: 单文件输出
+# --hidden-import: 补充动态导入的模块
+RUN pyinstaller \
+    --onefile \
+    --name wtcmd-platform-backend \
+    --add-data "models:models" \
+    --add-data "routers:routers" \
+    --add-data "services:services" \
+    --hidden-import=uvicorn.logging \
+    --hidden-import=uvicorn.loops.auto \
+    --hidden-import=uvicorn.protocols.http.auto \
+    --hidden-import=uvicorn.protocols.websockets.auto \
+    --hidden-import=uvicorn.lifespan.on \
+    --hidden-import=scipy.special._ufuncs \
+    --hidden-import=scipy.special._ufuncs_cxx \
+    --hidden-import=scipy.linalg._fblas \
+    --hidden-import=scipy.linalg._flapack \
+    --hidden-import=scipy.sparse._csparsetools \
+    --hidden-import=scipy.optimize._minpack \
+    main.py
+
+# 输出产物信息
+RUN echo "=== Build complete ===" && ls -lh /app/dist/

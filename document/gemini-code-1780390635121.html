@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>风电混塔用高性能/超高性能混凝土配合比设计软件</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        /* 遵循PDF规范：白色为输入框，橘色为软件自行计算框 */
+        .input-white { background-color: #ffffff; border: 1px solid #d1d5db; }
+        .calc-orange { background-color: #ffedd5; border: 1px solid #fed7aa; color: #9a3412; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800">
+
+<div id="app" class="flex h-screen overflow-hidden">
+    
+    <div class="w-64 bg-slate-800 text-white flex flex-col justify-between">
+        <div>
+            <div class="p-6 bg-slate-900 border-b border-slate-700 flex flex-col items-center">
+                <span class="text-2xl font-bold tracking-wider text-red-500">CRRC</span>
+                <span class="text-xs text-gray-400 mt-1">中国中车配合比设计系统</span>
+            </div>
+            <nav class="mt-6 px-4 space-y-2">
+                <button @click="currentTab = 'dashboard'" :class="['w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center space-x-3', currentTab === 'dashboard' ? 'bg-orange-600 text-white font-semibold' : 'text-gray-300 hover:bg-slate-700']">
+                    <span>🏠 主界面</span>
+                </button>
+                <button @click="currentTab = 'calculate'" :class="['w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center space-x-3', currentTab === 'calculate' ? 'bg-orange-600 text-white font-semibold' : 'text-gray-300 hover:bg-slate-700']">
+                    <span>📊 配合比计算</span>
+                </button>
+                <button @click="currentTab = 'adjust'" :class="['w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center space-x-3', currentTab === 'adjust' ? 'bg-orange-600 text-white font-semibold' : 'text-gray-300 hover:bg-slate-700']">
+                    <span>⚖️ 试配调整和确定</span>
+                </button>
+                <button @click="currentTab = 'report'" :class="['w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center space-x-3', currentTab === 'report' ? 'bg-orange-600 text-white font-semibold' : 'text-gray-300 hover:bg-slate-700']">
+                    <span>📋 计算书管理</span>
+                </button>
+            </nav>
+        </div>
+        <div class="p-4 text-center text-xs text-gray-500 border-t border-slate-700">
+            风电混塔UHPC设计系统 V1.0
+        </div>
+    </div>
+
+    <div class="flex-1 flex flex-col overflow-hidden">
+        
+        <header class="bg-white shadow-sm px-8 py-4 flex justify-between items-center z-10">
+            <h1 class="text-xl font-bold text-gray-800">
+                {{ tabTitles[currentTab] }}
+            </h1>
+            <div class="flex items-center space-y-0 space-x-4">
+                <span class="text-sm bg-gray-100 text-gray-600 px-3 py-1 rounded-full">当前强度目标: {{ form.strengthGrade }}</span>
+                <span class="text-xs text-gray-400">所有橘色区域均为系统自动实时计算</span>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-8">
+            
+            <div v-if="currentTab === 'dashboard'" class="space-y-6">
+                <div class="bg-gradient-to-r from-orange-500 to-amber-600 p-8 rounded-2xl text-white shadow-lg">
+                    <h2 class="text-3xl font-bold">风电混塔用高性能/超高性能混凝土配合比设计软件</h2>
+                    <p class="mt-2 opacity-90">基于紧密堆积模型的高校配合比理论计算与试验全流程校正管理系统。</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="text-lg font-bold border-b pb-3 mb-4 text-slate-700">基础设计指标</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">抗压强度等级 (f_cu,k)</label>
+                                <select v-model="form.strengthGrade" @change="handleStrengthChange" class="w-full p-2.5 input-white rounded-lg focus:ring-2 focus:ring-orange-500">
+                                    <option value="UC130">UC130 (高性能/超高性能混凝土)</option>
+                                    <option value="UC150">UC150 (超高性能混凝土)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">配制强度 (f_cu,0) [MPa]</label>
+                                <input type="text" :value="calcFcu0" readonly class="w-full p-2.5 calc-orange rounded-lg font-bold">
+                                <span class="text-xs text-gray-400 mt-1 block">注：配制强度等于强度等级的1.1倍</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="text-lg font-bold border-b pb-3 mb-4 text-slate-700">设计规范推荐值参考</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left text-gray-500">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                    <tr>
+                                        <th class="py-3 px-4">强度等级</th>
+                                        <th class="py-3 px-4">推荐水胶比 (W/B)</th>
+                                        <th class="py-3 px-4">推荐砂胶比 (S/B)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="bg-white border-b" :class="{'bg-orange-50 font-semibold': form.strengthGrade === 'UC130'}">
+                                        <td class="py-3 px-4 text-gray-900">UC130</td>
+                                        <td class="py-3 px-4">0.19 ± 0.01</td>
+                                        <td class="py-3 px-4">1.1 ~ 1.4</td>
+                                    </tr>
+                                    <tr class="bg-white border-b" :class="{'bg-orange-50 font-semibold': form.strengthGrade === 'UC150'}">
+                                        <td class="py-3 px-4 text-gray-900">UC150</td>
+                                        <td class="py-3 px-4">0.17 ± 0.01</td>
+                                        <td class="py-3 px-4">1.0 ~ 1.3</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="currentTab === 'calculate'" class="space-y-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-bold border-b pb-3 mb-6 text-slate-700">第一步：基准工艺参数与密度录入</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">水胶比 (W/B)</label>
+                            <input type="number" step="0.01" v-model.number="form.wb" class="w-full p-2 input-white rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">砂胶比 (S/B)</label>
+                            <input type="number" step="0.1" v-model.number="form.sb" class="w-full p-2 input-white rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">外加剂掺量 (%)</label>
+                            <input type="number" step="0.1" v-model.number="form.waterReducerPct" class="w-full p-2 input-white rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">钢纤维体积掺量 (%)</label>
+                            <input type="number" step="0.1" v-model.number="form.steelFiberVolPct" class="w-full p-2 input-white rounded">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">水泥密度 (kg/m³)</label>
+                            <input type="number" v-model.number="form.rho_ce" class="w-full p-2 input-white rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">粉煤灰密度 (kg/m³)</label>
+                            <input type="number" v-model.number="form.rho_fa" class="w-full p-2 input-white rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">微珠密度 (kg/m³)</label>
+                            <input type="number" v-model.number="form.rho_cm" class="w-full p-2 input-white rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">硅灰密度 (kg/m³)</label>
+                            <input type="number" v-model.number="form.rho_sf" class="w-full p-2 input-white rounded">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-bold border-b pb-3 mb-6 text-slate-700">第二步：紧密堆积级配参数 (基于密实骨架理论)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">体系最大粒径 D_L (μm)</label>
+                            <input type="number" v-model.number="form.Dl" class="w-full p-2 input-white rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">体系最小粒径 D_S (μm)</label>
+                            <input type="number" v-model.number="form.Ds" class="w-full p-2 input-white rounded" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">分布指数 (q)</label>
+                            <input type="number" step="0.01" v-model.number="form.q" class="w-full p-2 input-white rounded" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">微粉系数 (I_m)</label>
+                            <input type="number" step="0.1" v-model.number="form.Im" class="w-full p-2 input-white rounded">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">粉煤灰峰值粒径 D^p_fa (μm)</label>
+                            <input type="number" v-model.number="form.Dp_fa" class="w-full p-2 input-white rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">粉煤灰堆积粒径 I_fa (μm)</label>
+                            <input type="number" v-model.number="form.Ifa" class="w-full p-2 input-white rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">微珠峰值粒径 D^p_m (μm)</label>
+                            <input type="number" v-model.number="form.Dp_m" class="w-full p-2 input-white rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">微珠占硅灰微粉比 I_ce</label>
+                            <input type="number" step="0.1" v-model.number="form.Ice" class="w-full p-2 input-white rounded">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                        <h3 class="text-md font-bold border-b pb-2 mb-4 text-slate-700">第三步(A)：粉体绝对体积与质量占比级配推导</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span>粉煤灰体积比例 (V¹_fa):</span><span class="font-mono font-bold text-orange-600">{{ calcModel.V1_fa }} %</span></div>
+                            <div class="flex justify-between"><span>微珠体积比例 (V¹_cm):</span><span class="font-mono font-bold text-orange-600">{{ calcModel.V1_cm }} %</span></div>
+                            <div class="flex justify-between"><span>硅灰体积比例 (V¹_sf):</span><span class="font-mono font-bold text-orange-600">{{ calcModel.V1_sf }} %</span></div>
+                            <div class="flex justify-between border-b pb-2"><span>水泥体积比例 (V¹_ce):</span><span class="font-mono font-bold text-orange-600">{{ calcModel.V1_ce }} %</span></div>
+                            
+                            <div class="flex justify-between mt-2"><span>水泥质量比例 (M_ce):</span><span class="font-mono">{{ calcModel.M1_ce }} %</span></div>
+                            <div class="flex justify-between"><span>硅灰质量比例 (M_sf):</span><span class="font-mono">{{ calcModel.M1_sf }} %</span></div>
+                            <div class="flex justify-between"><span>微珠质量比例 (M_cm):</span><span class="font-mono">{{ calcModel.M1_cm }} %</span></div>
+                            <div class="flex justify-between border-b pb-2"><span>粉煤灰质量比例 (M_fa):</span><span class="font-mono">{{ calcModel.M1_fa }} %</span></div>
+
+                            <div class="flex justify-between mt-2 font-semibold"><span>★ 水泥修正质量比 (M²_ce):</span><span class="font-mono text-amber-700">{{ calcModel.M2_ce }} %</span></div>
+                            <div class="flex justify-between font-semibold"><span>★ 硅灰修正质量比 (M²_sf):</span><span class="font-mono text-amber-700">{{ calcModel.M2_sf }} %</span></div>
+                            <div class="flex justify-between font-semibold"><span>★ 微珠修正质量比 (M²_cm):</span><span class="font-mono text-amber-700">{{ calcModel.M2_cm }} %</span></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="text-md font-bold border-b pb-2 mb-4 text-slate-700">第三步(B)：单方理论计算配合比结果 (1 m³)</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="p-2 calc-orange rounded">
+                                <span class="text-xs text-gray-500 block">水泥用量 (m_ce)</span>
+                                <span class="text-xl font-bold font-mono">{{ mixProportions.m_ce }} kg</span>
+                            </div>
+                            <div class="p-2 calc-orange rounded">
+                                <span class="text-xs text-gray-500 block">粉煤灰用量 (m_fa)</span>
+                                <span class="text-xl font-bold font-mono">{{ mixProportions.m_fa }} kg</span>
+                            </div>
+                            <div class="p-2 calc-orange rounded">
+                                <span class="text-xs text-gray-500 block">微珠用量 (m_cm)</span>
+                                <span class="text-xl font-bold font-mono">{{ mixProportions.m_cm }} kg</span>
+                            </div>
+                            <div class="p-2 calc-orange rounded">
+                                <span class="text-xs text-gray-500 block">硅灰用量 (m_sf)</span>
+                                <span class="text-xl font-bold font-mono">{{ mixProportions.m_sf }} kg</span>
+                            </div>
+                            <div class="p-2 calc-orange rounded">
+                                <span class="text-xs text-gray-500 block">细骨料砂 (m_s)</span>
+                                <span class="text-xl font-bold font-mono">{{ mixProportions.m_s }} kg</span>
+                            </div>
+                            <div class="p-2 calc-orange rounded">
+                                <span class="text-xs text-gray-500 block">钢纤维 (m_f)</span>
+                                <span class="text-xl font-bold font-mono">{{ mixProportions.m_f }} kg</span>
+                            </div>
+                            <div class="p-2 calc-orange rounded">
+                                <span class="text-xs text-gray-500 block">拌合水 (m_w)</span>
+                                <span class="text-xl font-bold font-mono">{{ mixProportions.m_w }} kg</span>
+                            </div>
+                            <div class="p-2 calc-orange rounded">
+                                <span class="text-xs text-gray-500 block">外加剂 (m_a)</span>
+                                <span class="text-xl font-bold font-mono">{{ mixProportions.m_a }} kg</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 p-2 bg-slate-100 rounded text-center text-sm font-semibold text-slate-700">
+                            假定单方总质量总和 (m_cp)：{{ mixProportions.totalMass }} kg / m³
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="currentTab === 'adjust'" class="space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-bold border-b pb-3 mb-4 text-slate-700">实验室试拌拌合物密度校正系数</h3>
+                    <p class="text-sm text-gray-500 mb-4">根据试拌实测表观密度，对理论理论计算值实施容重调整系数修约。</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">拌合物表观密度计算值 (kg/m³)</label>
+                            <input type="text" :value="mixProportions.totalMass" readonly class="w-full p-2.5 calc-orange rounded font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">拌合物表观密度实测值 (kg/m³)</label>
+                            <input type="number" v-model.number="adjustForm.measuredDensity" class="w-full p-2.5 input-white rounded font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">校正系数 (实测值/计算值)</label>
+                            <input type="text" :value="calcCorrectionFactor" readonly class="w-full p-2.5 calc-orange rounded font-bold font-mono text-lg">
+                        </div>
+                    </div>
+                    <div class="mt-4 text-xs text-amber-700 bg-amber-50 p-3 rounded border border-amber-200">
+                        提示：当实测值与计算值差的绝对值不超过计算值的 2% 时，维持原调整配合比不变；若超过 2%，实验室最终生产配合比需全面乘以该校正系数。
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-bold border-b pb-3 mb-4 text-slate-700">最终施工/实验室生产配合比表</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-600">
+                            <thead class="text-xs text-gray-700 uppercase bg-slate-100">
+                                <tr>
+                                    <th class="py-3 px-4">原材料明细</th>
+                                    <th class="py-3 px-4">水泥</th>
+                                    <th class="py-3 px-4">粉煤灰</th>
+                                    <th class="py-3 px-4">微珠</th>
+                                    <th class="py-3 px-4">硅灰</th>
+                                    <th class="py-3 px-4">细砂</th>
+                                    <th class="py-3 px-4">钢纤维</th>
+                                    <th class="py-3 px-4">拌合水</th>
+                                    <th class="py-3 px-4">外加剂</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="bg-white border-b font-mono text-sm text-gray-900 font-bold">
+                                    <td class="py-3 px-4 bg-slate-50 font-sans font-medium">施工配比 (kg/m³)</td>
+                                    <td class="py-3 px-4 text-orange-700">{{ finalMixProportions.m_ce }}</td>
+                                    <td class="py-3 px-4 text-orange-700">{{ finalMixProportions.m_fa }}</td>
+                                    <td class="py-3 px-4 text-orange-700">{{ finalMixProportions.m_cm }}</td>
+                                    <td class="py-3 px-4 text-orange-700">{{ finalMixProportions.m_sf }}</td>
+                                    <td class="py-3 px-4 text-orange-700">{{ finalMixProportions.m_s }}</td>
+                                    <td class="py-3 px-4 text-orange-700">{{ finalMixProportions.m_f }}</td>
+                                    <td class="py-3 px-4 text-orange-700">{{ finalMixProportions.m_w }}</td>
+                                    <td class="py-3 px-4 text-orange-700">{{ finalMixProportions.m_a }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="currentTab === 'report'" class="space-y-6">
+                <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-200 text-center space-y-4">
+                    <div class="text-5xl">📄</div>
+                    <h3 class="text-xl font-bold text-gray-800">配合比技术计算书生成中心</h3>
+                    <p class="text-sm text-gray-500 max-w-md mx-auto">点击下方导出按钮，系统将汇总当前配置的参数、堆积模型收敛数据及最终密度修约成果，一键导出完整计算书。</p>
+                    <div class="flex justify-center space-y-0 space-x-4 pt-4">
+                        <button @click="printReport" class="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium shadow transition-colors">
+                            🖨️ 打印 / 导出 PDF 计算书
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<script>
+    const { createApp, ref, reactive, computed } = Vue;
+
+    createApp({
+        setup() {
+            // 当前活跃的标签页
+            const currentTab = ref('dashboard');
+
+            // 标签页标题映射
+            const tabTitles = {
+                dashboard: '主界面 / 核心指标选定',
+                calculate: '基于紧密堆积模型的配合比理论计算',
+                adjust: '试配技术指标微调、校正与生产配合比确定',
+                report: '生产技术配合比计算书模板导出'
+            };
+
+            // 全局核心业务表单数据状态驱动
+            const form = reactive({
+                strengthGrade: ' ashes_UC150', // 默认超高性能等级
+                strengthGrade: 'UC150',
+                wb: 0.17,             // 水胶比 (W/B)
+                sb: 1.1,              // 砂胶比 (S/B)
+                waterReducerPct: 2.0, // 外加剂掺量 (%)
+                steelFiberVolPct: 2.0,// 钢纤维体积掺量 (%)
+                
+                // 材料表现密度配置项
+                rho_ce: 3100,         // 水泥密度 kg/m³
+                rho_fa: 2500,         // 粉煤灰密度 kg/m³
+                rho_cm: 2200,         // 微珠密度 kg/m³
+                rho_sf: 2200,         // 硅灰密度 kg/m³
+                rho_f: 7850,          // 钢纤维密度 kg/m³
+
+                // 级配模型固有常数
+                Dl: 1000,             // 体系最大粒径 (通常取水泥最大粒径)
+                Ds: 1,                // 体系最小粒径 (取定 1μm)
+                q: 0.22,              // 级配体系分布指数指数 (对于UHPC材料推荐取0.22)
+                Im: 0.9,              // 微粉修约系数
+
+                // 各细微粉体的粒径参数
+                Dp_fa: 8.0,           // 粉煤灰峰值粒径
+                Ifa: 6.0,             // 粉煤灰堆积粒径
+                Dp_m: 4.5,            // 微珠峰值粒径
+                Ice: 0.5              // 微珠占硅灰及微粉的总绝对体积系数
+            });
+
+            // 试验室拌合物参数状态
+            const adjustForm = reactive({
+                measuredDensity: 2510 // 默认实测容重密度值
+            });
+
+            // 联动：当修改强度等级时，系统自动更新水胶比默认参考值
+            const handleStrengthChange = () => {
+                if (form.strengthGrade === 'UC130') {
+                    form.wb = 0.19;
+                    form.sb = 1.2;
+                    form.Ifa = 8.0; // C130取6~10μm
+                    form.Im = 0.5;  // 对C130推荐取0.4~0.6
+                } else {
+                    form.wb = 0.17;
+                    form.sb = 1.1;
+                    form.Ifa = 4.5; // C150取2~7μm
+                    form.Im = 0.9;  // 对C150推荐取0.8~1.0
+                }
+            };
+
+            // 计算属性：配制强度 = 强度等级数字 * 1.1倍
+            const calcFcu0 = computed(() => {
+                const gradeNum = parseInt(form.strengthGrade.replace('UC', ''));
+                return (gradeNum * 1.1).toFixed(1);
+            });
+
+            // 核心计算属性：基于紧密堆积级配模型推导中间系数
+            const calcModel = computed(() => {
+                const q = form.q;
+                const denom = Math.pow(form.Dl, q) - Math.pow(form.Ds, q);
+                if (denom === 0) return {};
+
+                // 1. 公式 4.5.2 计算粉煤灰体积比例 V¹_fa
+                const part1 = Math.pow(form.Dp_fa + form.Ifa, q) - Math.pow(form.Ds, q);
+                const part2 = Math.pow(form.Dp_fa - form.Ifa, q) - Math.pow(form.Ds, q);
+                let V1_fa = ((part1 - part2) / denom) * 100;
+                if(V1_fa < 0 || isNaN(V1_fa)) V1_fa = 0;
+
+                // 2. 公式 4.5.3 计算微珠体积比例 V¹_cm
+                const partCm = Math.pow(form.Dp_m, q) - Math.pow(form.Ds, q);
+                let V1_cm = (partCm / denom) * 100 * form.Ice;
+
+                // 3. 公式 4.5.4 计算硅灰体积比例 V¹_sf
+                let V1_sf = (partCm / denom) * 100 * (1 - form.Ice);
+
+                // 4. 公式 4.5.5 水泥体积比例 V¹_ce
+                let V1_ce = 100 - V1_cm - V1_sf - V1_fa;
+
+                // 5. 公式 4.5.6 推导各材质原质量占比比率 M¹
+                const sumVolumeMass = (V1_ce * form.rho_ce) + (V1_fa * form.rho_fa) + (V1_cm * form.rho_cm) + (V1_sf * form.rho_sf);
+                
+                let M1_ce = sumVolumeMass ? ((V1_ce * form.rho_ce) / sumVolumeMass) * 100 : 0;
+                let M1_fa = sumVolumeMass ? ((V1_fa * form.rho_fa) / sumVolumeMass) * 100 : 0;
+                let M1_cm = sumVolumeMass ? ((V1_cm * form.rho_cm) / sumVolumeMass) * 100 : 0;
+                let M1_sf = sumVolumeMass ? ((V1_sf * form.rho_sf) / sumVolumeMass) * 100 : 0;
+
+                // 6. 公式 4.5.7 引入微粉系数进行质量比修约 M²
+                let M2_sf = M1_sf * form.Im;
+                let M2_cm = M1_cm * form.Im;
+                let M2_ce = M1_ce + M1_sf - M2_sf + M1_cm - M2_cm;
+
+                return {
+                    V1_fa: V1_fa.toFixed(2), V1_cm: V1_cm.toFixed(2), V1_sf: V1_sf.toFixed(2), V1_ce: V1_ce.toFixed(2),
+                    M1_ce: M1_ce.toFixed(2), M1_fa: M1_fa.toFixed(2), M1_cm: M1_cm.toFixed(2), M1_sf: M1_sf.toFixed(2),
+                    M2_sf: M2_sf.toFixed(2), M2_cm: M2_cm.toFixed(2), M2_ce: M2_ce.toFixed(2),
+                    raw: { M2_ce, M1_fa, M2_cm, M2_sf }
+                };
+            });
+
+            // 核心计算属性：基于假定绝对体积与质量占比总和推导单方配合比量
+            const mixProportions = computed(() => {
+                const m_cp = 2500; // 每立方米超高性能混凝土拌合物理论假定密度值
+                
+                // 计算单方体积体积里内涵的钢纤维总重
+                const m_f = (form.steelFiberVolPct / 100) * form.rho_f;
+                
+                // 根据公式4.7.1连立方程逆向求解单方胶凝材料总用量 mb
+                const alpha = form.waterReducerPct / 100;
+                const m_b = (m_cp - m_f) / (1 + form.sb + form.wb + alpha);
+
+                // 反解各粉体、砂、水的质量
+                const m_s = m_b * form.sb;
+                const m_w = m_b * form.wb;
+                const m_a = m_b * alpha;
+
+                const m_ce = m_b * (calcModel.value.raw.M2_ce / 100);
+                const m_fa = m_b * (calcModel.value.raw.M1_fa / 100);
+                const m_cm = m_b * (calcModel.value.raw.M2_cm / 100);
+                const m_sf = m_b * (calcModel.value.raw.M2_sf / 100);
+
+                const calculatedTotal = m_ce + m_fa + m_cm + m_sf + m_s + m_f + m_w + m_a;
+
+                return {
+                    m_ce: m_ce.toFixed(1), m_fa: m_fa.toFixed(1), m_cm: m_cm.toFixed(1), m_sf: m_sf.toFixed(1),
+                    m_s: m_s.toFixed(1), m_f: m_f.toFixed(1), m_w: m_w.toFixed(1), m_a: m_a.toFixed(1),
+                    totalMass: calculatedTotal.toFixed(0),
+                    raw: { m_ce, m_fa, m_cm, m_sf, m_s, m_f, m_w, m_a, calculatedTotal }
+                };
+            });
+
+            // 计算属性：密度校正系数
+            const calcCorrectionFactor = computed(() => {
+                const calcDense = parseFloat(mixProportions.value.totalMass);
+                if (!calcDense) return "1.000";
+                return (adjustForm.measuredDensity / calcDense).toFixed(3);
+            });
+
+            // 最终决定配合比：若差值绝对值 > 2% 则乘以校正系数，否则维持原理论值
+            const finalMixProportions = computed(() => {
+                const factor = parseFloat(calcCorrectionFactor.bold ? calcCorrectionFactor.value : 1);
+                const calcDense = parseFloat(mixProportions.value.totalMass);
+                const diffPct = Math.abs(adjustForm.measuredDensity - calcDense) / calcDense;
+                
+                const useFactor = diffPct > 0.02 ? factor : 1;
+
+                return {
+                    m_ce: (mixProportions.value.raw.m_ce * useFactor).toFixed(1),
+                    m_fa: (mixProportions.value.raw.m_fa * useFactor).toFixed(1),
+                    m_cm: (mixProportions.value.raw.m_cm * useFactor).toFixed(1),
+                    m_sf: (mixProportions.value.raw.m_sf * useFactor).toFixed(1),
+                    m_s: (mixProportions.value.raw.m_s * useFactor).toFixed(1),
+                    m_f: (mixProportions.value.raw.m_f * useFactor).toFixed(1),
+                    m_w: (mixProportions.value.raw.m_w * useFactor).toFixed(1),
+                    m_a: (mixProportions.value.raw.m_a * useFactor).toFixed(1)
+                };
+            });
+
+            // 唤醒系统自带打印界面生成简易简易报告
+            const printReport = () => {
+                window.print();
+            };
+
+            return {
+                currentTab, tabTitles, form, adjustForm, handleStrengthChange,
+                calcFcu0, calcModel, mixProportions, calcCorrectionFactor,
+                finalMixProportions, printReport
+            };
+        }
+    }).mount('#app');
+</script>
+
+</body>
+</html>

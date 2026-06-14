@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>风电混塔用UHPC配合比设计软件</title>
+    <!-- 引入 Vue 3 和 Element Plus -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <script src="https://unpkg.com/element-plus"></script>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif; background-color: #f5f7fa; margin: 0; padding: 0; }
+        .app-container { display: flex; height: 100vh; }
+        
+        /* 侧边栏 */
+        .sidebar { width: 200px; background: #001529; color: #fff; padding-top: 20px; }
+        .sidebar h2 { text-align: center; font-size: 18px; color: #409EFF; margin-bottom: 30px; }
+        .menu-item { padding: 15px 20px; cursor: pointer; transition: 0.3s; border-left: 4px solid transparent; }
+        .menu-item:hover { background: #1890ff20; }
+        .menu-item.active { background: #1890ff40; border-left-color: #409EFF; font-weight: bold; }
+        
+        /* 主内容区 */
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .header-bar { background: #fff; padding: 15px 20px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* 核心UI规范：白底输入，橘底计算 */
+        .input-manual { background-color: #FFFFFF !important; }
+        .input-calc { 
+            background-color: #FAD02C !important; 
+            color: #333 !important; 
+            font-weight: bold;
+            border-color: #E6A23C !important;
+        }
+        
+        /* 提示框 */
+        .tips-box {
+            background-color: #f4f4f5;
+            border-left: 4px solid #909399;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #606266;
+            line-height: 1.6;
+        }
+        
+        .el-form-item { margin-bottom: 18px; }
+        .el-divider__text { font-weight: bold; color: #303133; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div class="app-container">
+        <!-- 侧边栏导航 -->
+        <div class="sidebar">
+            <h2>中国中车 CRRC</h2>
+            <div class="menu-item" :class="{active: activeMenu === 'home'}" @click="activeMenu = 'home'">主界面</div>
+            <div class="menu-item" :class="{active: activeMenu === 'calc'}" @click="activeMenu = 'calc'">计 算</div>
+            <div class="menu-item" :class="{active: activeMenu === 'trial'}" @click="activeMenu = 'trial'">试配调整和确定</div>
+            <div class="menu-item" :class="{active: activeMenu === 'report'}" @click="activeMenu = 'report'">计算书</div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 顶部状态栏 -->
+            <div class="header-bar">
+                <div>
+                    <el-radio-group v-model="concreteType" size="large">
+                        <el-radio-button label="HPC">高性能混凝土</el-radio-button>
+                        <el-radio-button label="UHPC">超高性能混凝土</el-radio-button>
+                    </el-radio-group>
+                </div>
+                <div style="font-size: 18px; font-weight: bold;">风电混塔用配合比设计软件</div>
+            </div>
+
+            <!-- 1. 主界面 -->
+            <div v-if="activeMenu === 'home'" class="content-card">
+                <el-card>
+                    <template #header><span>基本参数设定</span></template>
+                    <el-form label-width="150px">
+                        <el-row :gutter="20">
+                            <el-col :span="12">
+                                <el-form-item label="抗压强度等级">
+                                    <el-select v-model="grade" class="input-manual" style="width:100%">
+                                        <el-option label="UC130" value="UC130"></el-option>
+                                        <el-option label="UC150" value="UC150"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="抗拉强度等级">
+                                    <el-select v-model="tensileGrade" class="input-manual" style="width:100%">
+                                        <el-option label="JT05" value="JT05"></el-option>
+                                        <el-option label="JT07" value="JT07"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="配制强度 (MPa)">
+                                    <el-input v-model="fcu0" class="input-calc" disabled></el-input>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                    </el-form>
+                </el-card>
+            </div>
+
+            <!-- 2. 计算界面 (包含4个子Tab) -->
+            <div v-if="activeMenu === 'calc'">
+                <el-tabs v-model="calcTab" type="border-card">
+                    
+                    <!-- Tab 1: 水胶比 -->
+                    <el-tab-pane label="水胶比" name="wb">
+                        <el-form label-width="180px">
+                            <el-row :gutter="20">
+                                <el-col :span="12"><el-form-item label="水泥28d抗压强度(MPa)"><el-input v-model.number="mat.cementStr" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="硅灰活性(%)"><el-input v-model.number="mat.silicaAct" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="砂压碎值(%)"><el-input v-model.number="mat.sandCrush" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="推荐水胶比 (W/B)">
+                                    <el-input :value="wbFinal" class="input-calc" disabled></el-input>
+                                </el-form-item></el-col>
+                            </el-row>
+                        </el-form>
+                        <div class="tips-box">
+                            <p><b>注：</b></p>
+                            <p>1. 当原材料满足：水泥强度＜56MPa 或 硅灰活性＜110% 或 砂压碎值＞10% 时，水胶比取偏小值(-0.01)。</p>
+                            <p>2. 当原材料满足：水泥强度＞60MPa 或 硅灰活性＞115% 或 砂压碎值＜7% 时，水胶比取偏大值(+0.01)。</p>
+                        </div>
+                    </el-tab-pane>
+
+                    <!-- Tab 2: 砂胶比 -->
+                    <el-tab-pane label="砂胶比" name="sb">
+                        <el-form label-width="180px">
+                            <el-row :gutter="20">
+                                <el-col :span="12"><el-form-item label="是否有应变硬化需求">
+                                    <el-switch v-model="param.hasHardening" active-text="是" inactive-text="否"></el-switch>
+                                </el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="推荐砂胶比 (S/B)">
+                                    <el-input :value="sbFinal" class="input-calc" disabled></el-input>
+                                </el-form-item></el-col>
+                            </el-row>
+                        </el-form>
+                    </el-tab-pane>
+
+                    <!-- Tab 3: 钢纤维掺量 -->
+                    <el-tab-pane label="钢纤维掺量" name="fiber">
+                        <el-form label-width="180px">
+                            <el-row :gutter="20">
+                                <el-col :span="12"><el-form-item label="钢纤维表观密度(kg/m³)"><el-input v-model.number="mat.fiberDensity" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="钢纤维体积掺量(%)">
+                                    <el-input v-model.number="param.fiberVol" class="input-manual"></el-input>
+                                </el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="钢纤维质量用量(kg/m³)">
+                                    <el-input :value="fiberMass" class="input-calc" disabled></el-input>
+                                </el-form-item></el-col>
+                            </el-row>
+                        </el-form>
+                    </el-tab-pane>
+
+                    <!-- Tab 4: 胶凝材料比例 (核心堆积模型) -->
+                    <el-tab-pane label="胶凝材料比例" name="binder">
+                        <el-form label-width="220px">
+                            <el-divider content-position="left">体系粒径参数</el-divider>
+                            <el-row :gutter="20">
+                                <el-col :span="12"><el-form-item label="体系最大粒径 DL (μm)"><el-input v-model.number="param.dL" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="体系最小粒径 DS (μm)"><el-input v-model.number="param.dS" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="粒径分布指数 q"><el-input v-model.number="param.q" class="input-calc" disabled></el-input></el-form-item></el-col>
+                            </el-row>
+
+                            <el-divider content-position="left">各材料特征参数</el-divider>
+                            <el-row :gutter="20">
+                                <el-col :span="12"><el-form-item label="粉煤灰峰值粒径 Dpfa (μm)"><el-input v-model.number="param.dPfa" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="粉煤灰堆积粒径 Ifa (μm)"><el-input v-model.number="param.iFa" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="微珠峰值粒径 Dpm (μm)"><el-input v-model.number="param.dPm" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="微珠占硅灰微粉比例 Ice"><el-input v-model.number="param.iCe" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="硅灰峰值粒径 Dpsf (μm)"><el-input v-model.number="param.dPsF" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="微粉系数 Im (修正系数)"><el-input v-model.number="param.iM" class="input-manual"></el-input></el-form-item></el-col>
+                            </el-row>
+
+                            <el-divider content-position="left">表观密度 (kg/m³)</el-divider>
+                            <el-row :gutter="20">
+                                <el-col :span="12"><el-form-item label="水泥密度"><el-input v-model.number="mat.dCe" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="粉煤灰密度"><el-input v-model.number="mat.dFa" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="微珠密度"><el-input v-model.number="mat.dCm" class="input-manual"></el-input></el-form-item></el-col>
+                                <el-col :span="12"><el-form-item label="硅灰密度"><el-input v-model.number="mat.dSf" class="input-manual"></el-input></el-form-item></el-col>
+                            </el-row>
+
+                            <el-divider content-position="left">计算结果 (自动计算)</el-divider>
+                            <el-row :gutter="20">
+                                <el-col :span="6" v-for="(val, key) in volRatios" :key="key">
+                                    <el-form-item :label="volLabels[key] + ' (%)'">
+                                        <el-input :value="val" class="input-calc" disabled></el-input>
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="6" v-for="(val, key) in massRatiosFinal" :key="'m_'+key">
+                                    <el-form-item :label="massLabels[key] + ' (%)'">
+                                        <el-input :value="val" class="input-calc" disabled></el-input>
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                        </el-form>
+                    </el-tab-pane>
+                </el-tabs>
+            </div>
+
+            <!-- 3. 试配调整和确定 -->
+            <div v-if="activeMenu === 'trial'">
+                <el-card>
+                    <template #header><span>计算配合比与试拌调整</span></template>
+                    <el-form label-width="150px" inline>
+                        <el-form-item label="外加剂掺量 α (%)"><el-input v-model.number="param.spDosage" class="input-manual" style="width:120px"></el-input></el-form-item>
+                        <el-form-item label="假定表观密度 (kg/m³)"><el-input v-model.number="param.targetDensity" class="input-manual" style="width:120px"></el-input></el-form-item>
+                    </el-form>
+
+                    <el-divider>计算配合比 (kg/m³)</el-divider>
+                    <el-table :data="[calcMix]" border style="width: 100%">
+                        <el-table-column prop="cement" label="水泥"></el-table-column>
+                        <el-table-column prop="fa" label="粉煤灰"></el-table-column>
+                        <el-table-column prop="cm" label="微珠"></el-table-column>
+                        <el-table-column prop="sf" label="硅灰"></el-table-column>
+                        <el-table-column prop="sand" label="砂"></el-table-column>
+                        <el-table-column prop="fiber" label="钢纤维"></el-table-column>
+                        <el-table-column prop="water" label="水"></el-table-column>
+                        <el-table-column prop="sp" label="外加剂"></el-table-column>
+                    </el-table>
+
+                    <el-divider>配合比校正与确定</el-divider>
+                    <el-form label-width="200px" inline>
+                        <el-form-item label="拌合物表观密度计算值">
+                            <el-input :value="calcDensity" class="input-calc" disabled style="width:120px"></el-input>
+                        </el-form-item>
+                        <el-form-item label="拌合物表观密度实测值">
+                            <el-input v-model.number="trial.realDensity" class="input-manual" style="width:120px"></el-input>
+                        </el-form-item>
+                        <el-form-item label="校正系数">
+                            <el-input :value="trial.coefficient" class="input-calc" disabled style="width:120px"></el-input>
+                        </el-form-item>
+                    </el-form>
+
+                    <el-divider>实验室配合比 (kg/m³)</el-divider>
+                    <el-table :data="[labMix]" border style="width: 100%" :row-class-name="'table-success'">
+                        <el-table-column prop="cement" label="水泥"></el-table-column>
+                        <el-table-column prop="fa" label="粉煤灰"></el-table-column>
+                        <el-table-column prop="cm" label="微珠"></el-table-column>
+                        <el-table-column prop="sf" label="硅灰"></el-table-column>
+                        <el-table-column prop="sand" label="砂"></el-table-column>
+                        <el-table-column prop="fiber" label="钢纤维"></el-table-column>
+                        <el-table-column prop="water" label="水"></el-table-column>
+                        <el-table-column prop="sp" label="外加剂"></el-table-column>
+                    </el-table>
+                    <div class="tips-box">
+                        <p><b>注：</b>实测值与计算值差的绝对值不超过计算值的2%，则维持调整配合比不变；超过2%，需要乘以校正系数。</p>
+                    </div>
+                </el-card>
+            </div>
+
+            <!-- 4. 计算书 -->
+            <div v-if="activeMenu === 'report'">
+                <el-card>
+                    <template #header><span>配合比计算书</span></template>
+                    <div style="line-height: 2; font-size: 16px;">
+                        <p>1. 设计强度等级：{{ grade }}，配制强度：{{ fcu0 }} MPa</p>
+                        <p>2. 确定水胶比 (W/B)：{{ wbFinal }}</p>
+                        <p>3. 确定砂胶比 (S/B)：{{ sbFinal }}</p>
+                        <p>4. 钢纤维掺量：体积 {{ param.fiberVol }}%，质量 {{ fiberMass }} kg/m³</p>
+                        <p>5. 胶凝材料质量比例：水泥 {{ massRatiosFinal.ce }}%，粉煤灰 {{ massRatiosFinal.fa }}%，微珠 {{ massRatiosFinal.cm }}%，硅灰 {{ massRatiosFinal.sf }}%</p>
+                        <p>6. 实验室最终配合比 (kg/m³)：</p>
+                        <el-table :data="[labMix]" border>
+                            <el-table-column prop="cement" label="水泥"></el-table-column>
+                            <el-table-column prop="fa" label="粉煤灰"></el-table-column>
+                            <el-table-column prop="cm" label="微珠"></el-table-column>
+                            <el-table-column prop="sf" label="硅灰"></el-table-column>
+                            <el-table-column prop="sand" label="砂"></el-table-column>
+                            <el-table-column prop="fiber" label="钢纤维"></el-table-column>
+                            <el-table-column prop="water" label="水"></el-table-column>
+                            <el-table-column prop="sp" label="外加剂"></el-table-column>
+                        </el-table>
+                    </div>
+                    <div style="margin-top: 20px; text-align: center;">
+                        <el-button type="primary" size="large" @click="exportReport">导出计算书 (模拟)</el-button>
+                    </div>
+                </el-card>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const { createApp, ref, computed, reactive } = Vue;
+
+    const app = createApp({
+        setup() {
+            // --- 状态管理 ---
+            const activeMenu = ref('home');
+            const calcTab = ref('wb');
+            const concreteType = ref('UHPC');
+            const grade = ref('UC150');
+            const tensileGrade = ref('JT05');
+
+            // 原材料参数 (白底输入)
+            const mat = reactive({
+                cementStr: 52.5, silicaAct: 115, sandCrush: 8,
+                fiberDensity: 7850,
+                dCe: 3100, dFa: 2300, dCm: 2400, dSf: 2200
+            });
+
+            // 计算参数 (白底输入)
+            const param = reactive({
+                hasHardening: false,
+                fiberVol: 1.5,
+                dL: 300, dS: 1, q: 0.22,
+                dPfa: 15, iFa: 8, dPm: 10, iCe: 0.5, dPsF: 0.1, iM: 0.8,
+                spDosage: 2.0, targetDensity: 2500
+            });
+
+            // 试配参数
+            const trial = reactive({ realDensity: 2480 });
+
+            // --- 核心计算逻辑 (橘底输出) ---
+            
+            // 1. 配制强度
+            const fcu0 = computed(() => (parseFloat(grade.value.replace('UC', '')) * 1.1).toFixed(1));
+
+            // 2. 水胶比 W/B
+            const wbFinal = computed(() => {
+                let base = grade.value === 'UC130' ? 0.19 : 0.17;
+                let adj = 0;
+                if (mat.cementStr < 56 || mat.silicaAct < 110 || mat.sandCrush > 10) adj = -0.01;
+                else if (mat.cementStr > 60 || mat.silicaAct > 115 || mat.sandCrush < 7) adj = 0.01;
+                return (base + adj).toFixed(2);
+            });
+
+            // 3. 砂胶比 S/B
+            const sbFinal = computed(() => {
+                let base = grade.value === 'UC130' ? 1.25 : 1.15;
+                if (param.hasHardening || mat.sandCrush > 10) base -= 0.1;
+                return base.toFixed(2);
+            });
+
+            // 4. 钢纤维质量
+            const fiberMass = computed(() => (param.fiberVol / 100 * mat.fiberDensity).toFixed(1));
+
+            // 5. 胶凝材料体积比 (Andreasen模型)
+            const volRatios = computed(() => {
+                const dL = param.dL, dS = param.dS, q = param.q;
+                const den = Math.pow(dL, q) - Math.pow(dS, q);
+                if (den === 0) return { fa: 0, cm: 0, sf: 0, ce: 0 };
+                
+                const vFa = (Math.pow(param.dPfa, q) - Math.pow(dS, q)) / den * 100;
+                const vCm = (Math.pow(param.dPm, q) - Math.pow(dS, q)) / den * 100 * param.iCe;
+                const vSf = (Math.pow(param.dPsF, q) - Math.pow(dS, q)) / den * 100 * (1 - param.iCe);
+                const vCe = 100 - vFa - vCm - vSf;
+                
+                return { 
+                    fa: vFa.toFixed(2), cm: vCm.toFixed(2), 
+                    sf: vSf.toFixed(2), ce: Math.max(0, vCe).toFixed(2) 
+                };
+            });
+
+            // 6. 胶凝材料质量比及修正
+            const massRatiosFinal = computed(() => {
+                const v = volRatios.value;
+                const p = { ce: mat.dCe, fa: mat.dFa, cm: mat.dCm, sf: mat.dSf };
+                
+                // 原始质量比
+                const total = v.fa*p.fa + v.cm*p.cm + v.sf*p.sf + v.ce*p.ce;
+                let mFa = (v.fa * p.fa / total) * 100;
+                let mCm = (v.cm * p.cm / total) * 100;
+                let mSf = (v.sf * p.sf / total) * 100;
+                let mCe = (v.ce * p.ce / total) * 100;
+
+                // 修正微粉 (4.5.7)
+                mSf = mSf * param.iM;
+                mCm = mCm * param.iM;
+                mCe = 100 - mFa - mSf - mCm; // 保证总和100
+
+                return {
+                    fa: mFa.toFixed(2), cm: mCm.toFixed(2),
+                    sf: mSf.toFixed(2), ce: Math.max(0, mCe).toFixed(2)
+                };
+            });
+
+            // 7. 计算配合比 (4.7.1 联立方程求解)
+            const calcMix = computed(() => {
+                const wb = parseFloat(wbFinal.value);
+                const sb = parseFloat(sbFinal.value);
+                const vf = param.fiberVol / 100;
+                const mf = vf * mat.fiberDensity;
+                const sp = param.spDosage / 100;
+                
+                // mb + mb*sb + mb*wb + mb*sp + mf = targetDensity
+                const mb = (param.targetDensity - mf) / (1 + sb + wb + sp);
+                
+                const m = massRatiosFinal.value;
+                return {
+                    cement: (mb * m.ce / 100).toFixed(1),
+                    fa: (mb * m.fa / 100).toFixed(1),
+                    cm: (mb * m.cm / 100).toFixed(1),
+                    sf: (mb * m.sf / 100).toFixed(1),
+                    sand: (mb * sb).toFixed(1),
+                    water: (mb * wb).toFixed(1),
+                    sp: (mb * sp).toFixed(1),
+                    fiber: mf.toFixed(1)
+                };
+            });
+
+            // 8. 表观密度校正
+            const calcDensity = computed(() => {
+                const m = calcMix.value;
+                return Object.values(m).reduce((sum, val) => sum + parseFloat(val), 0).toFixed(1);
+            });
+
+            const labMix = computed(() => {
+                const calcD = parseFloat(calcDensity.value);
+                const realD = trial.realDensity;
+                const diffRatio = Math.abs(realD - calcD) / calcD;
+                
+                let k = 1;
+                if (diffRatio > 0.02) k = realD / calcD;
+                
+                trial.coefficient = k.toFixed(3);
+                
+                const m = calcMix.value;
+                const lab = {};
+                for (let key in m) {
+                    lab[key] = (parseFloat(m[key]) * k).toFixed(1);
+                }
+                return lab;
+            });
+
+            // UI 辅助
+            const volLabels = { fa: '粉煤灰体积', cm: '微珠体积', sf: '硅灰体积', ce: '水泥体积' };
+            const massLabels = { fa: '粉煤灰质量', cm: '微珠质量', sf: '硅灰质量', ce: '水泥质量' };
+
+            const exportReport = () => {
+                ElementPlus.ElMessage.success('计算书已生成，实际项目中可对接后端导出Word/PDF');
+            };
+
+            return {
+                activeMenu, calcTab, concreteType, grade, tensileGrade, fcu0,
+                mat, param, trial,
+                wbFinal, sbFinal, fiberMass, volRatios, massRatiosFinal,
+                calcMix, calcDensity, labMix,
+                volLabels, massLabels, exportReport
+            };
+        }
+    });
+
+    app.use(ElementPlus);
+    app.mount('#app');
+</script>
+</body>
+</html>
