@@ -2,7 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getRecordObject, getRecordNumber, listRecords, type RecordItem } from '../api/records'
+import { listRecords, type RecordItem } from '../api/records'
+import RecordTable from '../components/RecordTable.vue'
 import { listProjects } from '../api/projects'
 import { useCalcStore } from '../stores/calcStore'
 import { useUhpcStore } from '../stores/uhpcStore'
@@ -18,85 +19,6 @@ const search = ref('')
 const category = ref<'all' | 'hpc' | 'uhpc'>('all')
 const page = ref(1)
 const pageSize = ref(10)
-
-function fmtDate(value: string) {
-  return value ? value.replace('T', ' ').slice(0, 16) : '—'
-}
-
-function extractTrialValue(record: RecordItem, key: string): number | null {
-  const trialData = getRecordObject(record, 'trial_data')
-  if (!trialData) {
-    return null
-  }
-
-  const inputs = trialData.inputs as Record<string, unknown> | undefined
-  const val = inputs ? inputs[key] : trialData[key]
-  if (typeof val === 'number' && Number.isFinite(val)) {
-    return val
-  }
-  return null
-}
-
-function strength28dDisplay(record: RecordItem): string {
-  const trialVal = extractTrialValue(record, 'evalStrength28d')
-  if (trialVal !== null) {
-    return `${trialVal.toFixed(1)} MPa`
-  }
-
-  const fcu0 = getRecordNumber(record, 'fcu0')
-  return fcu0 !== null ? `${fcu0.toFixed(1)} MPa` : '—'
-}
-
-function slumpDisplay(record: RecordItem): string {
-  const evalSlump = extractTrialValue(record, 'evalSlump')
-  if (evalSlump !== null) {
-    return `${evalSlump.toFixed(0)} mm`
-  }
-
-  const slumpMeasured = extractTrialValue(record, 'slumpMeasured')
-  if (slumpMeasured !== null) {
-    return `${slumpMeasured.toFixed(0)} mm`
-  }
-
-  return '—'
-}
-
-function spreadDisplay(record: RecordItem): string {
-  const evalSpread = extractTrialValue(record, 'evalSpread')
-  if (evalSpread !== null) {
-    return `${evalSpread.toFixed(0)} mm`
-  }
-
-  const spreadMeasured = extractTrialValue(record, 'spreadMeasured')
-  if (spreadMeasured !== null) {
-    return `${spreadMeasured.toFixed(0)} mm`
-  }
-
-  return '—'
-}
-
-function wbDisplay(record: RecordItem): string {
-  const wb = getRecordNumber(record, 'wb')
-  return wb !== null ? wb.toFixed(4) : '—'
-}
-
-function sandRatioDisplay(record: RecordItem): string {
-  const sr = getRecordNumber(record, 'sand_ratio')
-  return sr !== null ? `${sr.toFixed(1)} %` : '—'
-}
-
-function totalMassDisplay(record: RecordItem): string {
-  const total = getRecordNumber(record, 'total_mass')
-  return total !== null ? total.toFixed(0) : '—'
-}
-
-function categoryTag(value: string): 'primary' | 'warning' {
-  return value === 'uhpc' ? 'warning' : 'primary'
-}
-
-function categoryLabel(value: string) {
-  return value === 'uhpc' ? 'UHPC' : 'HPC'
-}
 
 function getProjectName(record: RecordItem) {
   if (typeof record.project_id === 'number' && projectNames.value[record.project_id]) {
@@ -215,52 +137,21 @@ onMounted(() => {
         </el-select>
       </div>
 
-      <el-table v-if="filteredRecords.length" :data="pagedRecords" stripe size="small" class="records-table">
-        <el-table-column label="项目名称" min-width="180" show-overflow-tooltip>
-          <template #default="{ row }">
-            {{ getProjectName(row) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="name" label="配比名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="category" label="类别" width="90" align="center">
-          <template #default="{ row }">
-            <el-tag :type="categoryTag(row.category)" size="small">{{ categoryLabel(row.category) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="28d抗压强度" width="130" align="center">
-          <template #default="{ row }">{{ strength28dDisplay(row) }}</template>
-        </el-table-column>
-        <el-table-column label="实测坍落度" width="110" align="center">
-          <template #default="{ row }">{{ slumpDisplay(row) }}</template>
-        </el-table-column>
-        <el-table-column label="实测扩展度" width="110" align="center">
-          <template #default="{ row }">{{ spreadDisplay(row) }}</template>
-        </el-table-column>
-        <el-table-column label="水胶比" width="100" align="center">
-          <template #default="{ row }">{{ wbDisplay(row) }}</template>
-        </el-table-column>
-        <el-table-column label="砂率" width="90" align="center">
-          <template #default="{ row }">{{ sandRatioDisplay(row) }}</template>
-        </el-table-column>
-        <el-table-column label="总量" width="90" align="center">
-          <template #default="{ row }">{{ totalMassDisplay(row) }}</template>
-        </el-table-column>
-        <el-table-column prop="created_by" label="创建人" width="110" align="center" />
-        <el-table-column label="时间" width="170" align="center">
-          <template #default="{ row }">{{ fmtDate(row.created_at) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="80" fixed="right" align="center">
-          <template #default="{ row }">
-            <el-tooltip content="载入" :show-after="300">
-              <el-button size="small" text type="primary" @click="loadRecord(row)">
-                <el-icon><Right /></el-icon>
-              </el-button>
-            </el-tooltip>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <el-empty v-else description="暂无配合记录" :image-size="88" />
+      <RecordTable
+        :records="pagedRecords"
+        :loading="loading"
+        show-project-name
+        :get-project-name="getProjectName"
+        class="records-table"
+      >
+        <template #actions="{ row }">
+          <el-tooltip content="载入" :show-after="300">
+            <el-button size="small" text type="primary" @click="loadRecord(row)">
+              <el-icon><Right /></el-icon>
+            </el-button>
+          </el-tooltip>
+        </template>
+      </RecordTable>
 
       <div v-if="filteredRecords.length" class="records-pagination">
         <el-pagination

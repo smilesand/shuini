@@ -2,19 +2,13 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { deleteRecord, getRecordData, getRecordNumber } from '../api/records'
+import { deleteRecord } from '../api/records'
 import type { RecordItem } from '../api/records'
 import { getProject, updateProject, listProjectRecords } from '../api/projects'
 import type { Project } from '../api/projects'
 import { useCalcStore } from '../stores/calcStore'
 import { useUhpcStore } from '../stores/uhpcStore'
-
-interface RecordColumnDefinition {
-  key: string
-  label: string
-  digits: number
-  width: number
-}
+import RecordTable from '../components/RecordTable.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,85 +25,10 @@ const saving = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
 
-const materialColumns: RecordColumnDefinition[] = [
-  { key: 'mc', label: '水泥', digits: 1, width: 96 },
-  { key: 'm1', label: '粉煤灰', digits: 1, width: 96 },
-  { key: 'm2', label: '矿粉', digits: 1, width: 96 },
-  { key: 'm3', label: '微珠', digits: 1, width: 96 },
-  { key: 'm4', label: '硅灰', digits: 1, width: 96 },
-  { key: 'ms', label: '细骨料', digits: 1, width: 104 },
-  { key: 'mg', label: '粗骨料', digits: 1, width: 104 },
-  { key: 'mw', label: '水', digits: 1, width: 96 },
-  { key: 'ma', label: '外加剂', digits: 1, width: 96 },
-  { key: 'steel_fiber', label: '钢纤维', digits: 1, width: 104 },
-]
-
-const parameterColumns: RecordColumnDefinition[] = [
-  { key: 'mb', label: '胶材总量', digits: 1, width: 108 },
-  { key: 'wb', label: '水胶比', digits: 4, width: 104 },
-  { key: 'sand_ratio', label: '砂率', digits: 1, width: 96 },
-  { key: 'total_mass', label: '总量', digits: 1, width: 104 },
-]
-
 const pagedRecords = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   return records.value.slice(start, start + pageSize.value)
 })
-
-function fmtDate(value: string) {
-  return value ? value.replace('T', ' ').slice(0, 16) : '—'
-}
-
-function isRecordObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
-function toFiniteNumber(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-  if (typeof value === 'string' && value.trim() !== '') {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : null
-  }
-  return null
-}
-
-function getSteelFiberValue(record: RecordItem): number | null {
-  const flatValue = toFiniteNumber(record.steel_fiber)
-  if (flatValue !== null) {
-    return flatValue
-  }
-
-  const recordData = getRecordData(record)
-  const directValue = toFiniteNumber(recordData.steel_fiber)
-  if (directValue !== null) {
-    return directValue
-  }
-
-  const designData = isRecordObject(recordData.design_data) ? recordData.design_data : null
-  const calculated = designData && isRecordObject(designData.calculated) ? designData.calculated : null
-  const materialMasses = calculated && isRecordObject(calculated.materialMasses) ? calculated.materialMasses : null
-  return materialMasses ? toFiniteNumber(materialMasses.steelFiber) : null
-}
-
-function getRecordCellNumber(record: RecordItem, key: string): number | null {
-  if (key === 'steel_fiber') {
-    return getSteelFiberValue(record)
-  }
-
-  const storedValue = getRecordNumber(record, key)
-  if (storedValue !== null) {
-    return storedValue
-  }
-
-  return toFiniteNumber(record[key])
-}
-
-function formatRecordCell(record: RecordItem, key: string, digits = 1) {
-  const value = getRecordCellNumber(record, key)
-  return value !== null ? value.toFixed(digits) : '-'
-}
 
 function ensureCurrentPageInRange() {
   const maxPage = Math.max(1, Math.ceil(records.value.length / pageSize.value))
@@ -247,57 +166,26 @@ onMounted(loadProject)
           <el-icon><List /></el-icon> 配比记录（{{ records.length }}）
         </span>
       </template>
-      <el-table v-if="records.length" :data="pagedRecords" stripe size="small" class="records-table">
-        <el-table-column prop="name" label="配比名称" min-width="180" fixed="left" show-overflow-tooltip />
-        <el-table-column prop="category" label="类别" width="90" align="center" fixed="left">
-          <template #default="{ row }">
-            <el-tag :type="row.category === 'uhpc' ? 'warning' : undefined" size="small">{{ row.category.toUpperCase() }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="配合比材料" align="center">
-          <el-table-column
-            v-for="column in materialColumns"
-            :key="column.key"
-            :label="column.label"
-            :width="column.width"
-            align="center"
-          >
-            <template #default="{ row }">{{ formatRecordCell(row, column.key, column.digits) }}</template>
-          </el-table-column>
-        </el-table-column>
-        <el-table-column label="关键参数" align="center">
-          <el-table-column
-            v-for="column in parameterColumns"
-            :key="column.key"
-            :label="column.label"
-            :width="column.width"
-            align="center"
-          >
-            <template #default="{ row }">{{ formatRecordCell(row, column.key, column.digits) }}</template>
-          </el-table-column>
-        </el-table-column>
-        <el-table-column prop="created_by" label="创建人" width="100" align="center" fixed="right" />
-        <el-table-column label="创建时间" width="170" align="center" fixed="right">
-          <template #default="{ row }">{{ fmtDate(row.created_at) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right" align="center">
-          <template #default="{ row }">
-            <div class="action-group">
-              <el-tooltip content="载入" :show-after="300">
-                <el-button size="small" text type="primary" @click="openRecord(row)">
-                  <el-icon><Right /></el-icon>
-                </el-button>
-              </el-tooltip>
-              <el-tooltip content="删除" :show-after="300">
-                <el-button size="small" text type="danger" @click="handleDeleteRecord(row)">
-                  <el-icon><Delete /></el-icon>
-                </el-button>
-              </el-tooltip>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-empty v-else description="暂无配比记录" :image-size="80" />
+      <RecordTable
+        :records="pagedRecords"
+        :loading="loading"
+        class="records-table"
+      >
+        <template #actions="{ row }">
+          <div class="action-group">
+            <el-tooltip content="载入" :show-after="300">
+              <el-button size="small" text type="primary" @click="openRecord(row)">
+                <el-icon><Right /></el-icon>
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="删除" :show-after="300">
+              <el-button size="small" text type="danger" @click="handleDeleteRecord(row)">
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </el-tooltip>
+          </div>
+        </template>
+      </RecordTable>
 
       <div v-if="records.length" class="records-pagination">
         <el-pagination

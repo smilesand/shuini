@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listProjects, listProjectRecords, type Project } from '../api/projects'
 import { type RecordItem } from '../api/records'
+import RecordTable from '../components/RecordTable.vue'
 
 const projects = ref<Project[]>([])
 const loadingProjects = ref(false)
@@ -42,13 +43,6 @@ function categoryLabel(cat: string) {
   if (cat === 'hpc_trial') return 'HPC试配'
   if (cat === 'uhpc_trial') return 'UHPC试配'
   return cat
-}
-
-function categoryTagType(cat: string): 'primary' | 'warning' | 'success' | 'info' {
-  if (cat === 'uhpc') return 'warning'
-  if (cat === 'uhpc_trial') return 'warning'
-  if (cat === 'hpc_trial') return 'success'
-  return 'primary'
 }
 
 function fmtDate(value: string) {
@@ -461,62 +455,24 @@ onMounted(fetchProjects)
             配合比记录
             <span class="record-count-badge">共 {{ records.length }} 条</span>
           </div>
-          <div class="cs-section-body">
+          <div class="cs-section-body report-records-body">
             <div v-if="loadingRecords" style="text-align:center; padding: 30px">
               <el-icon class="is-loading" :size="24"><Loading /></el-icon>
             </div>
             <el-empty v-else-if="records.length === 0" description="该项目暂无配合比记录" />
-            <el-table
-              v-else
-              :data="records"
+            <RecordTable
+              :records="records"
+              :loading="loadingRecords"
               border
-              size="small"
-              style="width: 100%"
             >
-              <el-table-column label="编号" width="70" align="center">
-                <template #default="{ $index }">{{ $index + 1 }}</template>
-              </el-table-column>
-              <el-table-column prop="name" label="记录名称" min-width="180" show-overflow-tooltip />
-              <el-table-column label="类别" width="90" align="center">
-                <template #default="{ row }">
-                  <el-tag :type="categoryTagType(row.category)" size="small">
-                    {{ categoryLabel(row.category) }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="created_by" label="创建人" width="90" align="center" />
-              <el-table-column label="强度(28d)" width="90" align="center">
-                <template #default="{ row }">
-                  {{ extractEval(row, 'evalStrength28d') }}
-                </template>
-              </el-table-column>
-              <el-table-column label="实测坍落度" width="100" align="center">
-                <template #default="{ row }">
-                  {{ extractEval(row, 'evalSlump') || extractEval(row, 'slumpMeasured') }}
-                </template>
-              </el-table-column>
-              <el-table-column label="实测扩展度" width="100" align="center">
-                <template #default="{ row }">
-                  {{ extractEval(row, 'evalSpread') || extractEval(row, 'spreadMeasured') }}
-                </template>
-              </el-table-column>
-              <el-table-column label="工作性描述" min-width="120" show-overflow-tooltip>
-                <template #default="{ row }">
-                  {{ extractEval(row, 'evalWorkabilityDesc') || extractEval(row, 'workabilityNote') }}
-                </template>
-              </el-table-column>
-              <el-table-column label="创建时间" width="140" align="center">
-                <template #default="{ row }">{{ fmtDate(row.created_at) }}</template>
-              </el-table-column>
-              <el-table-column label="操作" width="120" align="center" fixed="right">
-                <template #default="{ row }">
-                  <el-button type="primary" size="small" @click="exportReport(row)">
+              <template #actions="{ row }">
+                <el-tooltip content="导出报告" :show-after="300">
+                  <el-button size="small" text type="primary" @click="exportReport(row)">
                     <el-icon><Printer /></el-icon>
-                    导出配合比记录
                   </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
+                </el-tooltip>
+              </template>
+            </RecordTable>
           </div>
         </div>
       </template>
@@ -600,7 +556,13 @@ onMounted(fetchProjects)
 }
 
 .report-right {
+  min-width: 0;
+  overflow: hidden;
   min-height: 300px;
+}
+
+.report-records-body {
+  overflow: hidden;
 }
 
 .report-empty {

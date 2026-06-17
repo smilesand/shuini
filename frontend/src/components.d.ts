@@ -70,6 +70,7 @@ declare module 'vue' {
     HpcTrialSummary: typeof import('./components/hpc-trial/HpcTrialSummary.vue')['default']
     HpcTrialWorkabilityTab: typeof import('./components/hpc-trial/HpcTrialWorkabilityTab.vue')['default']
     NavBar: typeof import('./components/NavBar.vue')['default']
+    RecordTable: typeof import('./components/RecordTable.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SidebarLayout: typeof import('./components/SidebarLayout.vue')['default']
