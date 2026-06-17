@@ -93,11 +93,19 @@ onMounted(fetchProjects)
         <el-table-column prop="created_by" label="创建人" width="100" />
         <el-table-column prop="record_count" label="配比数" width="80" align="center" />
         <el-table-column prop="created_at" label="创建时间" width="170" />
-        <el-table-column label="操作" width="230" fixed="right" align="center">
+        <el-table-column label="操作" width="120" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-group">
-              <el-button size="small" text type="primary" @click="goDetail(row.id)">详情</el-button>
-              <el-button size="small" text type="danger" @click="handleDelete(row.id, row.project_name)">删除</el-button>
+              <el-tooltip content="详情" :show-after="300">
+                <el-button size="small" text type="primary" @click="goDetail(row.id)">
+                  <el-icon><InfoFilled /></el-icon>
+                </el-button>
+              </el-tooltip>
+              <el-tooltip content="删除" :show-after="300">
+                <el-button size="small" text type="danger" @click="handleDelete(row.id, row.project_name)">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </el-tooltip>
             </div>
           </template>
         </el-table-column>

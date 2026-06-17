@@ -32,3 +32,7 @@ desktop
 desktop/node_modules/
 desktop/resources/backend/wtcmd-platform-backend.exe
 build/
+
+backend/data.db
+backend/logs/app.log
+backend/logs/error.log

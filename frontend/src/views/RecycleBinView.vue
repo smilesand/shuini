@@ -213,11 +213,19 @@ onMounted(fetchItems)
         <el-table-column label="删除时间" width="170" align="center">
           <template #default="{ row }">{{ fmtDate(row.deleted_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right" align="center">
+        <el-table-column label="操作" width="120" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-group">
-              <el-button size="small" text type="primary" @click="handleRestore(row)">恢复</el-button>
-              <el-button size="small" text type="danger" @click="handlePurge(row)">彻底删除</el-button>
+              <el-tooltip content="恢复" :show-after="300">
+                <el-button size="small" text type="primary" @click="handleRestore(row)">
+                  <el-icon><RefreshRight /></el-icon>
+                </el-button>
+              </el-tooltip>
+              <el-tooltip content="彻底删除" :show-after="300">
+                <el-button size="small" text type="danger" @click="handlePurge(row)">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </el-tooltip>
             </div>
           </template>
         </el-table-column>

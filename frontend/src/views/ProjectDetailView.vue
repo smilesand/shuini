@@ -280,11 +280,19 @@ onMounted(loadProject)
         <el-table-column label="创建时间" width="170" align="center" fixed="right">
           <template #default="{ row }">{{ fmtDate(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right" align="center">
+        <el-table-column label="操作" width="100" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-group">
-              <el-button size="small" text type="primary" @click="openRecord(row)">载入</el-button>
-              <el-button size="small" text type="danger" @click="handleDeleteRecord(row)">删除</el-button>
+              <el-tooltip content="载入" :show-after="300">
+                <el-button size="small" text type="primary" @click="openRecord(row)">
+                  <el-icon><Right /></el-icon>
+                </el-button>
+              </el-tooltip>
+              <el-tooltip content="删除" :show-after="300">
+                <el-button size="small" text type="danger" @click="handleDeleteRecord(row)">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </el-tooltip>
             </div>
           </template>
         </el-table-column>

@@ -249,9 +249,13 @@ onMounted(() => {
         <el-table-column label="时间" width="170" align="center">
           <template #default="{ row }">{{ fmtDate(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right" align="center">
+        <el-table-column label="操作" width="80" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button size="small" text type="primary" @click="loadRecord(row)">载入</el-button>
+            <el-tooltip content="载入" :show-after="300">
+              <el-button size="small" text type="primary" @click="loadRecord(row)">
+                <el-icon><Right /></el-icon>
+              </el-button>
+            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>
