@@ -224,6 +224,7 @@ const labMixRows = computed(() => ([{
                   >
                     <template #suffix><span class="unit-suffix">MPa</span></template>
                   </el-input-number>
+                  <div class="input-hint">参考值 65 MPa（与设计强度相关）</div>
                 </el-form-item>
               </el-col>
               <el-col :span="8">
@@ -239,6 +240,7 @@ const labMixRows = computed(() => ([{
                   >
                     <template #suffix><span class="unit-suffix">mm</span></template>
                   </el-input-number>
+                  <div class="input-hint">参考值 180 mm</div>
                 </el-form-item>
               </el-col>
               <el-col :span="8">
@@ -254,6 +256,7 @@ const labMixRows = computed(() => ([{
                   >
                     <template #suffix><span class="unit-suffix">mm</span></template>
                   </el-input-number>
+                  <div class="input-hint">参考值 650 mm</div>
                 </el-form-item>
               </el-col>
             </el-row>

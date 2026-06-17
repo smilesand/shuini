@@ -120,6 +120,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                 >
                   <template #suffix><span class="unit-suffix">m³</span></template>
                 </el-input-number>
+                <div class="input-hint">参考选值 {{ vgPlaceholder }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -134,6 +135,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                 >
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
+                <div class="input-hint">参考值 2700 kg/m³</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -148,6 +150,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                 >
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
+                <div class="input-hint">参考值 2650 kg/m³</div>
               </el-form-item>
             </el-col>
           </el-row>

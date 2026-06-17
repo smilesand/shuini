@@ -72,6 +72,7 @@ function handleGuideSelect(grade: number) {
                   :placeholder="UHPC_INPUT_PLACEHOLDERS.sandBinderRatio"
                   style="width:100%"
                 />
+                <div class="input-hint">参考值 {{ UHPC_INPUT_PLACEHOLDERS.sandBinderRatio }}</div>
               </el-form-item>
             </el-col>
           </el-row>

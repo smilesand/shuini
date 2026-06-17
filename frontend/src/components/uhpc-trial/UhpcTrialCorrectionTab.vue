@@ -162,6 +162,7 @@ const strengthEvaluation = computed(() => {
                 style="width: 100%"
               />
               <div class="density-field__unit">kg/m³</div>
+              <div class="input-hint">参考值 2510 kg/m³</div>
             </div>
           </el-col>
           <el-col :span="8">
@@ -259,6 +260,7 @@ const strengthEvaluation = computed(() => {
                 style="width: 100%"
               />
               <div class="density-field__unit">MPa</div>
+              <div class="input-hint">参考值 135 MPa</div>
             </div>
           </el-col>
           <el-col :span="8">
@@ -272,6 +274,7 @@ const strengthEvaluation = computed(() => {
                 style="width: 100%"
               />
               <div class="density-field__unit">mm</div>
+              <div class="input-hint">参考值 260 mm</div>
             </div>
           </el-col>
           <el-col :span="8">
@@ -285,6 +288,7 @@ const strengthEvaluation = computed(() => {
                 style="width: 100%"
               />
               <div class="density-field__unit">mm</div>
+              <div class="input-hint">参考值 650 mm</div>
             </div>
           </el-col>
         </el-row>

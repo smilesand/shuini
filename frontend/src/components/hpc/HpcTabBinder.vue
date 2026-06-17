@@ -81,6 +81,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.rho1)" @update:model-value="v => store.rho1 = v ?? null" :step="50" :precision="0" placeholder="如 2200" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
+                <div class="input-hint">参考值 2200 kg/m³</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -89,6 +90,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.b1p)" @update:model-value="v => store.b1p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="如 0" style="width:100%">
                   <template #suffix><span class="unit-suffix">%</span></template>
                 </el-input-number>
+                <div class="input-hint">不掺时填 0</div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -99,6 +101,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.rho2)" @update:model-value="v => store.rho2 = v ?? null" :step="50" :precision="0" placeholder="如 2900" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
+                <div class="input-hint">参考值 2900 kg/m³</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -107,6 +110,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.b2p)" @update:model-value="v => store.b2p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="如 0" style="width:100%">
                   <template #suffix><span class="unit-suffix">%</span></template>
                 </el-input-number>
+                <div class="input-hint">不掺时填 0</div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -117,6 +121,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.rho3)" @update:model-value="v => store.rho3 = v ?? null" :step="50" :precision="0" placeholder="如 2600" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
+                <div class="input-hint">参考值 2600 kg/m³</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -125,6 +130,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.b3p)" @update:model-value="v => store.b3p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="如 0" style="width:100%">
                   <template #suffix><span class="unit-suffix">%</span></template>
                 </el-input-number>
+                <div class="input-hint">不掺时填 0</div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -135,6 +141,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.rho4)" @update:model-value="v => store.rho4 = v ?? null" :step="50" :precision="0" placeholder="如 2200" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
+                <div class="input-hint">参考值 2200 kg/m³</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -143,6 +150,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.b4p)" @update:model-value="v => store.b4p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="如 0" style="width:100%">
                   <template #suffix><span class="unit-suffix">%</span></template>
                 </el-input-number>
+                <div class="input-hint">不掺时填 0</div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -153,6 +161,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.rhoc)" @update:model-value="v => store.rhoc = v ?? null" :step="50" :precision="0" placeholder="如 3100" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
+                <div class="input-hint">参考值 3100 kg/m³</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -161,6 +170,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.va)" @update:model-value="v => store.va = v ?? null" :min="0" :step="0.001" :precision="3" placeholder="如 0.010" style="width:100%">
                   <template #suffix><span class="unit-suffix">m³</span></template>
                 </el-input-number>
+                <div class="input-hint">非引气混凝土参考 0.010</div>
               </el-form-item>
             </el-col>
           </el-row>

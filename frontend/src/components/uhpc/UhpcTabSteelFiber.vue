@@ -86,6 +86,7 @@ const steelFiberMassPreview = computed(() => {
                 >
                   <template #suffix><span class="unit-suffix">%</span></template>
                 </el-input-number>
+                <div class="input-hint">参考值 {{ UHPC_INPUT_PLACEHOLDERS.steelFiberVolumeRatio }} %</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">

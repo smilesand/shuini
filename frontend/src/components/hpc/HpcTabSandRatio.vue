@@ -121,6 +121,7 @@ function getRange(): string | null {
                 >
                   <template #suffix><span class="unit-suffix">%</span></template>
                 </el-input-number>
+                <div class="input-hint">参考范围 {{ getRange() }} %</div>
               </el-form-item>
             </el-col>
           </el-row>

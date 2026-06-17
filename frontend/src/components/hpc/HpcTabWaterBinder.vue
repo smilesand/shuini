@@ -80,6 +80,7 @@ async function onFileChange(file: UploadFile) {
                 >
                   <template #suffix><span class="unit-suffix">MPa</span></template>
                 </el-input-number>
+                <div class="input-hint">参考值 80 MPa</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -111,6 +112,7 @@ async function onFileChange(file: UploadFile) {
                 >
                   <template #suffix><span class="unit-suffix">MPa</span></template>
                 </el-input-number>
+                <div v-if="store.fbCalcMode === 'input'" class="input-hint">参考值 48 MPa</div>
                 <el-input
                   v-else
                   :value="computedFb ? computedFb.toFixed(2) : ''"

@@ -57,6 +57,7 @@ function handleGuideSelect(grade: number) {
                 >
                   <template #suffix><span class="unit-suffix">MPa</span></template>
                 </el-input-number>
+                <div class="input-hint">参考值 {{ UHPC_INPUT_PLACEHOLDERS.strengthGrade }} MPa</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -107,6 +108,7 @@ function handleGuideSelect(grade: number) {
                   :placeholder="waterBinderPlaceholder"
                   style="width:100%"
                 />
+                <div class="input-hint">参考值 {{ waterBinderPlaceholder }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -120,6 +122,7 @@ function handleGuideSelect(grade: number) {
                 >
                   <template #suffix><span class="unit-suffix">%</span></template>
                 </el-input-number>
+                <div class="input-hint">参考掺量 {{ UHPC_INPUT_PLACEHOLDERS.admixtureRatio }} %</div>
               </el-form-item>
             </el-col>
           </el-row>
