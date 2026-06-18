@@ -73,7 +73,9 @@ async function handleNext() {
       </div>
       <div class="cs-section-body">
         <el-form label-position="top">
-          <p style="font-size:12px;color:#909399;margin-bottom:12px">胶凝材料（质量分数 β，密度 ρ）</p>
+          <p style="font-size:12px;color:#909399;margin-bottom:12px">
+            质量分数 β 请在 <b>水胶比页 → 28d强度推算参数</b> 中输入；密度 ρ 可在此直接修改。
+          </p>
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item >
@@ -87,10 +89,10 @@ async function handleNext() {
             <el-col :span="12">
               <el-form-item >
 <template #label>粉煤灰质量分数 β<sub>1</sub></template>
-                <el-input-number :model-value="n(store.b1p)" @update:model-value="v => store.b1p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="如 0" style="width:100%">
+                <el-input :value="store.b1p != null ? store.b1p.toFixed(1) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">%</span></template>
-                </el-input-number>
-                <div class="input-hint">不掺时填 0</div>
+                </el-input>
+                <div class="input-hint">在水胶比页 28d 推算参数中输入</div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -107,10 +109,10 @@ async function handleNext() {
             <el-col :span="12">
               <el-form-item >
 <template #label>矿粉质量分数 β<sub>2</sub></template>
-                <el-input-number :model-value="n(store.b2p)" @update:model-value="v => store.b2p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="如 0" style="width:100%">
+                <el-input :value="store.b2p != null ? store.b2p.toFixed(1) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">%</span></template>
-                </el-input-number>
-                <div class="input-hint">不掺时填 0</div>
+                </el-input>
+                <div class="input-hint">在水胶比页 28d 推算参数中输入</div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -127,10 +129,10 @@ async function handleNext() {
             <el-col :span="12">
               <el-form-item >
 <template #label>微珠质量分数 β<sub>3</sub></template>
-                <el-input-number :model-value="n(store.b3p)" @update:model-value="v => store.b3p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="如 0" style="width:100%">
+                <el-input :value="store.b3p != null ? store.b3p.toFixed(1) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">%</span></template>
-                </el-input-number>
-                <div class="input-hint">不掺时填 0</div>
+                </el-input>
+                <div class="input-hint">在水胶比页 28d 推算参数中输入</div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -147,10 +149,10 @@ async function handleNext() {
             <el-col :span="12">
               <el-form-item >
 <template #label>硅灰质量分数 β<sub>4</sub></template>
-                <el-input-number :model-value="n(store.b4p)" @update:model-value="v => store.b4p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="如 0" style="width:100%">
+                <el-input :value="store.b4p != null ? store.b4p.toFixed(1) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">%</span></template>
-                </el-input-number>
-                <div class="input-hint">不掺时填 0</div>
+                </el-input>
+                <div class="input-hint">在水胶比页 28d 推算参数中输入</div>
               </el-form-item>
             </el-col>
           </el-row>

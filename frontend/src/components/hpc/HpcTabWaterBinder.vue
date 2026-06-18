@@ -24,6 +24,58 @@ const gammaCHint = computed(() =>
   store.fceG === 42.5 ? '42.5 水泥：1.05 ~ 1.16' : '52.5 水泥：1.05 ~ 1.10'
 )
 
+// ── Mass fraction ↔ coefficient recommendation ──────────────────
+// Reference tables (掺量% → 系数范围 [low, high])
+const COEFF_TABLE: Record<string, [number, [number, number]][]> = {
+  gammaF: [[0, [1.00, 1.00]], [10, [0.90, 1.00]], [20, [0.80, 0.90]], [30, [0.70, 0.80]], [40, [0.60, 0.70]]],
+  gammaS: [[0, [1.00, 1.00]], [10, [1.00, 1.00]], [20, [0.95, 1.00]], [30, [0.90, 1.00]], [40, [0.80, 0.90]]],
+  gammaB: [[0, [1.00, 1.00]], [10, [0.95, 1.05]], [20, [0.90, 1.00]], [30, [0.85, 0.95]], [40, [0.80, 0.90]]],
+  gammaSF: [[0, [1.00, 1.00]], [5, [1.05, 1.15]], [10, [1.10, 1.25]]],
+}
+
+/** Recommend coefficient midpoint for a given mass fraction % */
+function recommendCoeff(pct: number | null, tableKey: string): number | null {
+  if (pct === null || pct < 0) return null
+  const table = COEFF_TABLE[tableKey]
+  if (!table) return null
+  // Find the bracket: last entry where pct >= bracket threshold
+  let best = table[0]
+  for (const entry of table) {
+    if (pct >= entry[0]) best = entry
+  }
+  const [lo, hi] = best[1]
+  return parseFloat(((lo + hi) / 2).toFixed(2))
+}
+
+// Watch mass fractions → auto-recommend coefficients
+watch(
+  () => [store.b1p, store.b2p, store.b3p, store.b4p] as const,
+  ([b1, b2, b3, b4]) => {
+    const recF = recommendCoeff(b1, 'gammaF')
+    if (recF !== null) store.gammaF = recF
+    const recS = recommendCoeff(b2, 'gammaS')
+    if (recS !== null) store.gammaS = recS
+    const recB = recommendCoeff(b3, 'gammaB')
+    if (recB !== null) store.gammaB = recB
+    const recSF = recommendCoeff(b4, 'gammaSF')
+    if (recSF !== null) store.gammaSF = recSF
+  },
+)
+
+// Cement mass fraction = 100% - sum of other four (in %)
+const cementPct = computed(() => {
+  const sum = (store.b1p ?? 0) + (store.b2p ?? 0) + (store.b3p ?? 0) + (store.b4p ?? 0)
+  const result = 100 - sum
+  return result >= 0 ? result : 0
+})
+
+// Sync cement mass fraction to store.bc (as decimal)
+watch(cementPct, (val) => {
+  store.bc = val / 100
+}, { immediate: true })
+
+const n = (v: number | null) => (v ?? undefined) as number | undefined
+
 watch(
   () => [store.fbCalcMode, computedFb.value] as const,
   ([mode, val]) => {
@@ -130,7 +182,9 @@ async function onFileChange(file: UploadFile) {
               28d 强度推算参数
               <span class="estimation-panel__formula">f<sub>b</sub> = γ<sub>f</sub> × γ<sub>s</sub> × γ<sub>b</sub> × γ<sub>SF</sub> × (γ<sub>c</sub> × f<sub>ce,g</sub>)</span>
             </div>
-            <el-row :gutter="16">
+
+            <!-- Top bar: fce,g | γc | βc -->
+            <el-row :gutter="16" style="margin-bottom:14px">
               <el-col :span="8">
                 <el-form-item label="水泥强度等级 fce,g" class="small-label">
                   <el-select v-model="store.fceG" style="width:100%">
@@ -140,65 +194,119 @@ async function onFileChange(file: UploadFile) {
                 </el-form-item>
               </el-col>
               <el-col :span="8">
-                <el-form-item  class="small-label">
-<template #label>水泥富余系数 γ<sub>c</sub></template>
+                <el-form-item class="small-label">
+                  <template #label>水泥富余系数 γ<sub>c</sub></template>
                   <el-input-number v-model="store.gammaC" :step="0.01" :min="1.0" :max="1.5" style="width:100%" />
                   <div class="param-hint">{{ gammaCHint }}</div>
                 </el-form-item>
               </el-col>
               <el-col :span="8">
-                <el-form-item  class="small-label">
-<template #label>粉煤灰影响系数 γ<sub>f</sub></template>
-                  <el-input-number v-model="store.gammaF" :step="0.01" :min="0.5" :max="1.2" style="width:100%" />
-                  <dl class="param-table">
-                    <div><dt>0%</dt><dd>1.00</dd></div>
-                    <div><dt>10%</dt><dd>0.90 ~ 1.00</dd></div>
-                    <div><dt>20%</dt><dd>0.80 ~ 0.90</dd></div>
-                    <div><dt>30%</dt><dd>0.70 ~ 0.80</dd></div>
-                    <div><dt>40%</dt><dd>0.60 ~ 0.70</dd></div>
-                  </dl>
+                <el-form-item class="small-label">
+                  <template #label>水泥质量分数 β<sub>c</sub></template>
+                  <el-input :value="cementPct.toFixed(1)" readonly class="computed-input">
+                    <template #suffix><span class="unit-suffix">%</span></template>
+                  </el-input>
+                  <div class="param-hint">= 100% − Σ(其他四组分)</div>
                 </el-form-item>
               </el-col>
             </el-row>
-            <el-row :gutter="16" style="margin-top:12px">
-              <el-col :span="8">
-                <el-form-item  class="small-label">
-<template #label>矿粉影响系数 γ<sub>s</sub></template>
-                  <el-input-number v-model="store.gammaS" :step="0.01" :min="0.5" :max="1.2" style="width:100%" />
-                  <dl class="param-table">
-                    <div><dt>0%</dt><dd>1.00</dd></div>
-                    <div><dt>10%</dt><dd>1.00</dd></div>
-                    <div><dt>20%</dt><dd>0.95 ~ 1.00</dd></div>
-                    <div><dt>30%</dt><dd>0.90 ~ 1.00</dd></div>
-                    <div><dt>40%</dt><dd>0.80 ~ 0.90</dd></div>
-                  </dl>
-                </el-form-item>
-              </el-col>
-              <el-col :span="8">
-                <el-form-item  class="small-label">
-<template #label>微珠影响系数 γ<sub>b</sub></template>
-                  <el-input-number v-model="store.gammaB" :step="0.01" :min="0.5" :max="1.2" style="width:100%" />
-                  <dl class="param-table">
-                    <div><dt>0%</dt><dd>1.00</dd></div>
-                    <div><dt>10%</dt><dd>0.95 ~ 1.05</dd></div>
-                    <div><dt>20%</dt><dd>0.90 ~ 1.00</dd></div>
-                    <div><dt>30%</dt><dd>0.85 ~ 0.95</dd></div>
-                    <div><dt>40%</dt><dd>0.80 ~ 0.90</dd></div>
-                  </dl>
-                </el-form-item>
-              </el-col>
-              <el-col :span="8">
-                <el-form-item  class="small-label">
-<template #label>硅灰影响系数 γ<sub>SF</sub></template>
-                  <el-input-number v-model="store.gammaSF" :step="0.01" :min="0.5" :max="1.5" style="width:100%" />
-                  <dl class="param-table">
-                    <div><dt>0%</dt><dd>1.00</dd></div>
-                    <div><dt>5%</dt><dd>1.05 ~ 1.15</dd></div>
-                    <div><dt>10%</dt><dd>1.10 ~ 1.25</dd></div>
-                  </dl>
-                </el-form-item>
-              </el-col>
-            </el-row>
+
+            <!-- 4 material cards grid -->
+            <div class="material-cards">
+              <!-- 粉煤灰 -->
+              <div class="material-card">
+                <div class="material-card__head">粉煤灰</div>
+                <div class="material-card__inputs">
+                  <div class="mc-input">
+                    <span class="mc-input__label">β<sub>1</sub></span>
+                    <el-input-number :model-value="n(store.b1p)" @update:model-value="v => store.b1p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" size="small" style="width:100%">
+                      <template #suffix><span class="unit-suffix">%</span></template>
+                    </el-input-number>
+                  </div>
+                  <div class="mc-input">
+                    <span class="mc-input__label">γ<sub>f</sub></span>
+                    <el-input-number v-model="store.gammaF" :step="0.01" :min="0.5" :max="1.2" size="small" style="width:100%" />
+                  </div>
+                </div>
+                <dl class="ref-table">
+                  <div><dt>0%</dt><dd>1.00</dd></div>
+                  <div><dt>10%</dt><dd>0.90~1.00</dd></div>
+                  <div><dt>20%</dt><dd>0.80~0.90</dd></div>
+                  <div><dt>30%</dt><dd>0.70~0.80</dd></div>
+                  <div><dt>40%</dt><dd>0.60~0.70</dd></div>
+                </dl>
+              </div>
+
+              <!-- 矿粉 -->
+              <div class="material-card">
+                <div class="material-card__head">矿粉</div>
+                <div class="material-card__inputs">
+                  <div class="mc-input">
+                    <span class="mc-input__label">β<sub>2</sub></span>
+                    <el-input-number :model-value="n(store.b2p)" @update:model-value="v => store.b2p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" size="small" style="width:100%">
+                      <template #suffix><span class="unit-suffix">%</span></template>
+                    </el-input-number>
+                  </div>
+                  <div class="mc-input">
+                    <span class="mc-input__label">γ<sub>s</sub></span>
+                    <el-input-number v-model="store.gammaS" :step="0.01" :min="0.5" :max="1.2" size="small" style="width:100%" />
+                  </div>
+                </div>
+                <dl class="ref-table">
+                  <div><dt>0%</dt><dd>1.00</dd></div>
+                  <div><dt>10%</dt><dd>1.00</dd></div>
+                  <div><dt>20%</dt><dd>0.95~1.00</dd></div>
+                  <div><dt>30%</dt><dd>0.90~1.00</dd></div>
+                  <div><dt>40%</dt><dd>0.80~0.90</dd></div>
+                </dl>
+              </div>
+
+              <!-- 微珠 -->
+              <div class="material-card">
+                <div class="material-card__head">微珠</div>
+                <div class="material-card__inputs">
+                  <div class="mc-input">
+                    <span class="mc-input__label">β<sub>3</sub></span>
+                    <el-input-number :model-value="n(store.b3p)" @update:model-value="v => store.b3p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" size="small" style="width:100%">
+                      <template #suffix><span class="unit-suffix">%</span></template>
+                    </el-input-number>
+                  </div>
+                  <div class="mc-input">
+                    <span class="mc-input__label">γ<sub>b</sub></span>
+                    <el-input-number v-model="store.gammaB" :step="0.01" :min="0.5" :max="1.2" size="small" style="width:100%" />
+                  </div>
+                </div>
+                <dl class="ref-table">
+                  <div><dt>0%</dt><dd>1.00</dd></div>
+                  <div><dt>10%</dt><dd>0.95~1.05</dd></div>
+                  <div><dt>20%</dt><dd>0.90~1.00</dd></div>
+                  <div><dt>30%</dt><dd>0.85~0.95</dd></div>
+                  <div><dt>40%</dt><dd>0.80~0.90</dd></div>
+                </dl>
+              </div>
+
+              <!-- 硅灰 -->
+              <div class="material-card">
+                <div class="material-card__head">硅灰</div>
+                <div class="material-card__inputs">
+                  <div class="mc-input">
+                    <span class="mc-input__label">β<sub>4</sub></span>
+                    <el-input-number :model-value="n(store.b4p)" @update:model-value="v => store.b4p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" size="small" style="width:100%">
+                      <template #suffix><span class="unit-suffix">%</span></template>
+                    </el-input-number>
+                  </div>
+                  <div class="mc-input">
+                    <span class="mc-input__label">γ<sub>SF</sub></span>
+                    <el-input-number v-model="store.gammaSF" :step="0.01" :min="0.5" :max="1.5" size="small" style="width:100%" />
+                  </div>
+                </div>
+                <dl class="ref-table">
+                  <div><dt>0%</dt><dd>1.00</dd></div>
+                  <div><dt>5%</dt><dd>1.05~1.15</dd></div>
+                  <div><dt>10%</dt><dd>1.10~1.25</dd></div>
+                </dl>
+              </div>
+            </div>
           </div>
         </el-form>
       </div>
@@ -366,5 +474,78 @@ async function onFileChange(file: UploadFile) {
   margin: 0;
   text-align: right;
   font-family: var(--el-font-family);
+}
+
+/* ── 4-card material grid ────────────────────────────────── */
+.material-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.material-card {
+  border: 1px solid #dbe5f1;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.material-card__head {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e3c72;
+  padding: 8px 12px;
+  background: #f4f7fc;
+  border-bottom: 1px solid #e5e9f2;
+  text-align: center;
+}
+
+.material-card__inputs {
+  display: flex;
+  gap: 8px;
+  padding: 10px 10px 6px;
+}
+
+.mc-input {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mc-input__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5b6472;
+}
+
+.ref-table {
+  margin: 0;
+  padding: 4px 10px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.ref-table div {
+  font-size: 10px;
+  background: #f8f9fc;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border-bottom: none;
+  display: inline-flex;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.ref-table dt {
+  font-weight: 600;
+  color: #1e3c72;
+}
+
+.ref-table dd {
+  margin: 0;
+  color: #6b7280;
+  text-align: left;
 }
 </style>
