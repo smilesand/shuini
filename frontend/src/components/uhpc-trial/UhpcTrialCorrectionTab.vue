@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { UhpcTrialMixRowRes } from '../../api/calc'
+import StrengthEvalCard from '../StrengthEvalCard.vue'
+import type { StrengthGroup } from '../../composables/useStrengthEval'
+import { computeGroupValue } from '../../composables/useStrengthEval'
 import '../../style/calc-tabs.css'
 
 const props = defineProps<{
@@ -16,7 +19,8 @@ const props = defineProps<{
   needsCorr: boolean
   labMix: UhpcTrialMixRowRes | null
   designStr: number
-  evalStrength28d: number | null
+  strengthGrade: number | null
+  strengthGroups: StrengthGroup[]
   evalSlump: number | null
   evalSpread: number | null
   evalWorkabilityDesc: string
@@ -25,7 +29,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:corrBase', v: 'trial' | 'wbRec' | 'sfRec'): void
   (e: 'update:measuredDensity', v: number | null): void
-  (e: 'update:evalStrength28d', v: number | null): void
+  (e: 'update:strengthGroups', v: StrengthGroup[]): void
   (e: 'update:evalSlump', v: number | null): void
   (e: 'update:evalSpread', v: number | null): void
   (e: 'update:evalWorkabilityDesc', v: string): void
@@ -35,9 +39,32 @@ function fmt(v: number | null | undefined, d = 1): string {
   return v != null ? v.toFixed(d) : '—'
 }
 
+// ── Group-based 28d strength evaluation ─────────────────────────
+const groupResults = computed(() =>
+  props.strengthGroups.map(g => computeGroupValue(g.values)),
+)
+
+const overallAvg = computed<number | null>(() => {
+  const vals = groupResults.value.map(r => r.value).filter((v): v is number => v !== null)
+  if (vals.length === 0) return null
+  return vals.reduce((s, v) => s + v, 0) / vals.length
+})
+
+const minGroupAvg = computed<number | null>(() => {
+  const vals = groupResults.value.map(r => r.value).filter((v): v is number => v !== null)
+  if (vals.length === 0) return null
+  return Math.min(...vals)
+})
+
+const allComplete = computed(() =>
+  groupResults.value.length >= 6 && groupResults.value.every(r => r.value !== null),
+)
+
 const strengthEvaluation = computed(() => {
-  const measured = props.evalStrength28d
   const target = props.designStr
+  const ov = overallAvg.value
+  const minG = minGroupAvg.value
+  const sg = props.strengthGrade
 
   if (target === null || !Number.isFinite(target)) {
     return {
@@ -48,24 +75,37 @@ const strengthEvaluation = computed(() => {
     }
   }
 
-  if (measured === null || !Number.isFinite(measured)) {
+  if (!allComplete.value || ov === null) {
     return {
       status: 'pending' as const,
       label: '待输入',
       tagType: 'info' as const,
-      detail: `配制强度为 ${target.toFixed(1)} MPa，请输入 28d 抗压强度。`,
+      detail: '请完成所有 6 组（每组 3 条）28d 抗压强度数据填写。',
     }
   }
 
-  const passed = measured >= target
+  const overallPass = ov >= target
+  const minThreshold = sg !== null && Number.isFinite(sg) ? sg * 0.95 : null
+  const minGroupPass = minThreshold !== null && minG !== null ? minG >= minThreshold : null
+  const allPass = overallPass && (minGroupPass !== false)
+
+  let detail = `总体平均值 ${ov.toFixed(1)} MPa`
+  detail += overallPass
+    ? ` ≥ 配制强度 ${target.toFixed(1)} MPa`
+    : ` < 配制强度 ${target.toFixed(1)} MPa，差值 ${(target - ov).toFixed(1)} MPa`
+
+  if (minThreshold !== null && minG !== null) {
+    detail += `；组均值最小值 ${minG.toFixed(1)} MPa`
+    detail += minGroupPass
+      ? ` ≥ 0.95×强度等级(${minThreshold.toFixed(1)} MPa)`
+      : ` < 0.95×强度等级(${minThreshold.toFixed(1)} MPa)`
+  }
 
   return {
-    status: passed ? ('pass' as const) : ('fail' as const),
-    label: passed ? '合格' : '不合格',
-    tagType: passed ? ('success' as const) : ('danger' as const),
-    detail: passed
-      ? `28d抗压强度 ${measured.toFixed(1)} MPa ≥ 配制强度 ${target.toFixed(1)} MPa`
-      : `28d抗压强度 ${measured.toFixed(1)} MPa < 配制强度 ${target.toFixed(1)} MPa，差值 ${(target - measured).toFixed(1)} MPa`,
+    status: allPass ? ('pass' as const) : ('fail' as const),
+    label: allPass ? '合格' : '不合格',
+    tagType: allPass ? ('success' as const) : ('danger' as const),
+    detail,
   }
 })
 </script>
@@ -248,22 +288,18 @@ const strengthEvaluation = computed(() => {
         混凝土性能及评价（实验室配合比）
       </div>
       <div class="cs-section-body">
+        <!-- 28d抗压强度分组试验数据 -->
+        <StrengthEvalCard
+          :groups="strengthGroups"
+          :target-strength="designStr"
+          :strength-grade="strengthGrade"
+          @update:groups="v => emit('update:strengthGroups', v)"
+        />
+
+        <el-divider style="margin: 20px 0" />
+
         <el-row :gutter="20" style="margin-bottom:12px">
-          <el-col :span="8">
-            <div class="density-field">
-              <div class="density-field__label">28d抗压强度</div>
-              <el-input-number
-                :model-value="evalStrength28d ?? undefined"
-                @update:model-value="v => emit('update:evalStrength28d', v ?? null)"
-                :min="0" :max="400" :step="1" :precision="1"
-                placeholder="例如: 135"
-                style="width: 100%"
-              />
-              <div class="density-field__unit">MPa</div>
-              <div class="input-hint">参考值 135 MPa</div>
-            </div>
-          </el-col>
-          <el-col :span="8">
+          <el-col :span="12">
             <div class="density-field">
               <div class="density-field__label">坍落度</div>
               <el-input-number
@@ -277,7 +313,7 @@ const strengthEvaluation = computed(() => {
               <div class="input-hint">参考值 260 mm</div>
             </div>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="12">
             <div class="density-field">
               <div class="density-field__label">扩展度</div>
               <el-input-number

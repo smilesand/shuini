@@ -62,7 +62,53 @@ function exportReport(record: RecordItem) {
   const project = selectedProject.value;
   const data = record.record_data ?? {};
   
-  const evalStrength = extractEval(record, 'evalStrength28d');
+  // ── Strength groups ─────────────────────────────────────────
+  const rawGroups = extractEval(record, 'strengthGroups');
+  let strengthGroups: { id: string; values: (number | null)[] }[] = [];
+  if (Array.isArray(rawGroups)) {
+    strengthGroups = (rawGroups as any[]).map((g: any) => ({
+      id: String(g.id ?? ''),
+      values: Array.isArray(g.values) ? g.values.slice(0, 3) : [null, null, null],
+    }));
+  }
+  // Fallback: legacy single evalStrength28d
+  if (strengthGroups.length === 0) {
+    const legacy = extractEval(record, 'evalStrength28d');
+    if (legacy) {
+      const vals: (number | null)[] = [Number(legacy) || null, null, null];
+      strengthGroups = [{ id: 'G01', values: vals }, { id: 'G02', values: [null, null, null] }, { id: 'G03', values: [null, null, null] }, { id: 'G04', values: [null, null, null] }, { id: 'G05', values: [null, null, null] }, { id: 'G06', values: [null, null, null] }];
+    }
+  }
+
+  // Compute group values with outlier trimming
+  function computeGroupVal(vals: (number | null)[]): { value: number | null; trimmed: boolean; trimmedIndices: number[] } {
+    const nums = vals.filter((v): v is number => v !== null && Number.isFinite(v));
+    if (nums.length < 3) return { value: null, trimmed: false, trimmedIndices: [] };
+    // Find original indices of min/max
+    let minIdx = -1, maxIdx = -1;
+    for (let i = 0; i < vals.length; i++) {
+      const v = vals[i];
+      if (v === null || !Number.isFinite(v)) continue;
+      if (minIdx === -1 || v < (vals[minIdx] as number)) minIdx = i;
+      if (maxIdx === -1 || v > (vals[maxIdx] as number)) maxIdx = i;
+    }
+    const sorted = [...nums].sort((a, b) => a - b);
+    const mean = (sorted[0] + sorted[1] + sorted[2]) / 3;
+    if (mean === 0) return { value: 0, trimmed: false, trimmedIndices: [] };
+    const maxDev = Math.abs((sorted[2] - mean) / mean);
+    const minDev = Math.abs((sorted[0] - mean) / mean);
+    if (maxDev > 0.15 || minDev > 0.15) {
+      return { value: sorted[1], trimmed: true, trimmedIndices: [minIdx, maxIdx] };
+    }
+    return { value: mean, trimmed: false, trimmedIndices: [] };
+  }
+
+  const groupEvals = strengthGroups.map(g => computeGroupVal(g.values));
+  const groupAvgs = groupEvals.map(e => e.value).filter((v): v is number => v !== null);
+  const strengthOverallAvg = groupAvgs.length > 0 ? groupAvgs.reduce((s, v) => s + v, 0) / groupAvgs.length : null;
+  const strengthMinGroupAvg = groupAvgs.length > 0 ? Math.min(...groupAvgs) : null;
+  
+  const evalStrength = extractEval(record, 'evalStrength28d'); // legacy
   const evalSlump = extractEval(record, 'evalSlump') || extractEval(record, 'slumpMeasured');
   const evalSpread = extractEval(record, 'evalSpread') || extractEval(record, 'spreadMeasured');
   const workDesc = extractEval(record, 'evalWorkabilityDesc') || extractEval(record, 'workabilityNote');
@@ -216,12 +262,15 @@ function exportReport(record: RecordItem) {
   if (typeof admix === 'number' && flatData.admixtureRatio === undefined && flatData.admixture_ratio === undefined && flatData.admixture_pct === undefined && admix < 1) admix = admix * 100;
   const sf_vol = flatData.steelFiberVolumeRatio ?? flatData.steel_fiber_volume_ratio ?? flatData.steelFiberVolume ?? '—';
 
-  // ── Compute strength pass/fail (needs flatData for target fallbacks) ──
+  // ── Compute strength pass/fail using group-based data ──────
   const targetForEval = sTargetStr || flatData.fcu0 || flatData.designStrength || flatData.design_strength;
-  const evalStrNum = Number(evalStrength);
-  const targetEvalNum = Number(targetForEval);
-  if (evalStrength && targetForEval && Number.isFinite(evalStrNum) && Number.isFinite(targetEvalNum)) {
-    strengthPass = evalStrNum >= targetEvalNum;
+  const strengthGradeNum = Number(flatData.fcuk || flatData.strengthGrade || flatData.strength_grade || NaN);
+  
+  if (strengthOverallAvg !== null && targetForEval && Number.isFinite(Number(targetForEval))) {
+    const overallOk = strengthOverallAvg >= Number(targetForEval);
+    const minThreshold = Number.isFinite(strengthGradeNum) ? strengthGradeNum * 0.95 : null;
+    const minGroupOk = minThreshold !== null && strengthMinGroupAvg !== null ? strengthMinGroupAvg >= minThreshold : null;
+    strengthPass = overallOk && (minGroupOk !== false);
   }
 
   // Lab Mix or Design Mix
@@ -376,21 +425,51 @@ ${table2Body2}</tbody>
   <div class="section-title">三、 混凝土性能</div>
   <table>
     <tbody>
-      <tr><td class="kv-key">28d抗压强度 <span class="unit">[MPa]</span></td><td class="kv-val">${evalStrength || '—'}</td></tr>
       <tr><td class="kv-key">实测坍落度 <span class="unit">[mm]</span></td><td class="kv-val">${evalSlump || '—'}</td></tr>
       <tr><td class="kv-key">实测扩展度 <span class="unit">[mm]</span></td><td class="kv-val">${evalSpread || '—'}</td></tr>
       <tr><td class="kv-key">工作性及表现</td><td class="kv-val">${workDesc || '—'}</td></tr>
     </tbody>
   </table>
-  <div class="section-title">四、 性能评价</div>
+  <div class="section-title">四、 28d抗压强度分组试验数据</div>
+  <p style="font-size:10pt;color:#555;margin:0 0 8px">每组 3 个试件，若最大值或最小值偏离组平均值超过 15%，则剔除极值，取中位值。</p>
+  <table>
+    <thead>
+      <tr><th>分组</th><th>试件 1 (MPa)</th><th>试件 2 (MPa)</th><th>试件 3 (MPa)</th><th>组代表值 (MPa)</th><th>取舍</th></tr>
+    </thead>
+    <tbody>
+      ${strengthGroups.map((g, i) => {
+        const ev = groupEvals[i];
+        const isTrimmed = (idx: number) => ev && ev.trimmedIndices.includes(idx);
+        const cellStyle = (idx: number) => isTrimmed(idx)
+          ? 'text-decoration:line-through;color:#c0392b;background:#fff0f0'
+          : '';
+        return `<tr${ev && ev.trimmed ? ' style="background:#fffbe6"' : ''}>
+          <td align="center">${g.id}</td>
+          <td align="center" style="${cellStyle(0)}">${g.values[0] !== null && Number.isFinite(g.values[0] as number) ? (g.values[0] as number).toFixed(1) : '—'}</td>
+          <td align="center" style="${cellStyle(1)}">${g.values[1] !== null && Number.isFinite(g.values[1] as number) ? (g.values[1] as number).toFixed(1) : '—'}</td>
+          <td align="center" style="${cellStyle(2)}">${g.values[2] !== null && Number.isFinite(g.values[2] as number) ? (g.values[2] as number).toFixed(1) : '—'}</td>
+          <td align="center" style="font-weight:700">${ev && ev.value !== null ? ev.value.toFixed(1) : '—'}</td>
+          <td align="center">${ev && ev.value !== null ? (ev.trimmed ? '已取舍' : '正常') : '—'}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>
+  <div class="summary-row" style="display:flex;gap:20px;flex-wrap:wrap;padding:10px 14px;background:#f8f9fc;border-radius:8px;margin:12px 0;font-size:10pt;">
+    <span><b>组数：</b>${strengthGroups.length}</span>
+    <span><b>总体平均值：</b>${strengthOverallAvg !== null ? strengthOverallAvg.toFixed(1) + ' MPa' : '—'}</span>
+    <span><b>组均值最小值：</b>${strengthMinGroupAvg !== null ? strengthMinGroupAvg.toFixed(1) + ' MPa' : '—'}</span>
+    <span><b>配制强度 (f<sub>cu,0</sub>)：</b>${targetForEval ? Number(targetForEval).toFixed(1) + ' MPa' : '—'}</span>
+    <span><b>0.95×强度等级：</b>${Number.isFinite(strengthGradeNum) ? (strengthGradeNum * 0.95).toFixed(1) + ' MPa' : '—'}</span>
+  </div>
+  <div class="section-title">五、 性能评价</div>
   <table>
     <thead>
       <tr><th style="width:40%">评价指标</th><th style="width:30%">实测值</th><th style="width:30%">评判结果</th></tr>
     </thead>
     <tbody>
       <tr>
-        <td class="kv-key">28d抗压强度</td>
-        <td class="kv-val">${evalStrength ? evalStrength + ' MPa' : '—'}</td>
+        <td class="kv-key">28d抗压强度<br><span style="font-size:9pt;color:#888">总体均值 ≥ f<sub>cu,0</sub> 且 组最小值 ≥ 0.95×强度等级</span></td>
+        <td class="kv-val">${strengthOverallAvg !== null ? strengthOverallAvg.toFixed(1) + ' MPa' : '—'}</td>
         <td class="kv-val">${passLabel(strengthPass)}</td>
       </tr>
       <tr>

@@ -98,6 +98,33 @@ function extractTrialValue(record: RecordItem, key: string): number | null {
 }
 
 function strength28dDisplay(record: RecordItem): string {
+  // Try group-based calculation first
+  const groups = getRecordObject(record, 'strengthGroups') || extractTrialValue(record, 'strengthGroups')
+  const rawGroups = (record.record_data as any)?.trial_data?.inputs?.strengthGroups
+    || (record.record_data as any)?.trial_data?.strengthGroups
+  if (Array.isArray(rawGroups) && rawGroups.length > 0) {
+    const avgs: number[] = []
+    for (const g of rawGroups) {
+      const vals = (Array.isArray(g.values) ? g.values : []).filter((v: unknown): v is number => typeof v === 'number' && Number.isFinite(v))
+      if (vals.length < 3) continue
+      const sorted = [...vals].sort((a: number, b: number) => a - b)
+      const mean = (sorted[0] + sorted[1] + sorted[2]) / 3
+      if (mean === 0) { avgs.push(0); continue }
+      const maxDev = Math.abs((sorted[2] - mean) / mean)
+      const minDev = Math.abs((sorted[0] - mean) / mean)
+      if (maxDev > 0.15 || minDev > 0.15) {
+        avgs.push(sorted[1])
+      } else {
+        avgs.push(mean)
+      }
+    }
+    if (avgs.length > 0) {
+      const overall = avgs.reduce((s, v) => s + v, 0) / avgs.length
+      return `${overall.toFixed(1)} MPa`
+    }
+  }
+
+  // Legacy fallback
   const trialVal = extractTrialValue(record, 'evalStrength28d')
   if (trialVal !== null) return `${trialVal.toFixed(1)} MPa`
 

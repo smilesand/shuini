@@ -11,6 +11,7 @@ import { debounce } from '../utils/debounce'
 import UhpcTrialWorkabilityTab from '../components/uhpc-trial/UhpcTrialWorkabilityTab.vue'
 import UhpcTrialStrengthTab from '../components/uhpc-trial/UhpcTrialStrengthTab.vue'
 import UhpcTrialCorrectionTab from '../components/uhpc-trial/UhpcTrialCorrectionTab.vue'
+import { type StrengthGroup } from '../composables/useStrengthEval'
 import '../style/calc-tabs.css'
 
 const route = useRoute()
@@ -44,7 +45,7 @@ const corrBase = ref<CorrBase>('trial')
 const measuredDensity = ref<number | null>(null)
 
 // ─── Workability Eval ──────────────────────────────────────────────
-const evalStrength28d = ref<number | null>(null)
+const strengthGroups = ref<StrengthGroup[]>(defaultUhpcStrengthGroups())
 const evalSlump = ref<number | null>(null)
 const evalSpread = ref<number | null>(null)
 const evalWorkabilityDesc = ref<string>('')
@@ -106,7 +107,7 @@ function buildTrialSnapshot() {
     aSfMinus: aSfMinus.value,
     measuredDensity: measuredDensity.value,
     corrBase: corrBase.value,
-    evalStrength28d: evalStrength28d.value,
+    strengthGroups: strengthGroups.value.map(g => ({ id: g.id, values: [...g.values] })),
     evalSlump: evalSlump.value,
     evalSpread: evalSpread.value,
     evalWorkabilityDesc: evalWorkabilityDesc.value,
@@ -158,6 +159,14 @@ function handlePersistTrial() {
 }
 
 // ─── Helpers: base store values ──────────────────────────────────
+function defaultUhpcStrengthGroups(): StrengthGroup[] {
+  let n = 1
+  return Array.from({ length: 6 }, () => ({
+    id: `G${String(n++).padStart(2, '0')}`,
+    values: [null, null, null] as (number | null)[],
+  }))
+}
+
 const wb = computed(() => store.waterBinderRatio ?? 0.19)
 const sb = computed(() => store.sandBinderRatio ?? 1.2)
 const alpha = computed(() => store.admixtureRatio ?? 1.8)
@@ -300,7 +309,15 @@ function applyTrialSnapshot(snapshot: unknown) {
   if (typeof s.corrBase === 'string' && ['trial', 'wbRec', 'sfRec'].includes(s.corrBase)) {
     corrBase.value = s.corrBase as CorrBase
   }
-  if (typeof s.evalStrength28d === 'number') evalStrength28d.value = s.evalStrength28d
+  if (Array.isArray(s.strengthGroups)) {
+    strengthGroups.value = (s.strengthGroups as StrengthGroup[]).map(g => ({
+      id: g.id,
+      values: Array.isArray(g.values) ? g.values.slice(0, 3) : [null, null, null],
+    }))
+  } else if (typeof s.evalStrength28d === 'number') {
+    // Backward compat
+    strengthGroups.value[0].values[0] = s.evalStrength28d
+  }
   if (typeof s.evalSlump === 'number') evalSlump.value = s.evalSlump
   if (typeof s.evalSpread === 'number') evalSpread.value = s.evalSpread
   if (typeof s.evalWorkabilityDesc === 'string') evalWorkabilityDesc.value = s.evalWorkabilityDesc
@@ -415,13 +432,14 @@ const variants = computed(() => [
                   :needs-corr="needsCorr"
                   :lab-mix="labMix"
                   :design-str="designStr"
-                  :eval-strength28d="evalStrength28d"
+                  :strength-grade="store.strengthGrade"
+                  :strength-groups="strengthGroups"
                   :eval-slump="evalSlump"
                   :eval-spread="evalSpread"
                   :eval-workability-desc="evalWorkabilityDesc"
                   @update:corr-base="v => corrBase = v"
                   @update:measured-density="v => measuredDensity = v"
-                  @update:eval-strength28d="v => evalStrength28d = v"
+                  @update:strength-groups="v => strengthGroups = v"
                   @update:eval-slump="v => evalSlump = v"
                   @update:eval-spread="v => evalSpread = v"
                   @update:eval-workability-desc="v => evalWorkabilityDesc = v"

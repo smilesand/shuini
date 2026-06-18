@@ -75,6 +75,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SidebarLayout: typeof import('./components/SidebarLayout.vue')['default']
     SidebarSummary: typeof import('./components/SidebarSummary.vue')['default']
+    StrengthEvalCard: typeof import('./components/StrengthEvalCard.vue')['default']
     UhpcSidebarSummary: typeof import('./components/uhpc/UhpcSidebarSummary.vue')['default']
     UhpcTabBinderRatios: typeof import('./components/uhpc/UhpcTabBinderRatios.vue')['default']
     UhpcTabSandBinder: typeof import('./components/uhpc/UhpcTabSandBinder.vue')['default']

@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import HpcTrialDataTable from './HpcTrialDataTable.vue'
+import StrengthEvalCard from '../StrengthEvalCard.vue'
 import { useHpcTrialContext } from '../../composables/context'
+import { useCalcStore } from '../../stores/calcStore'
 import { formatNullableNumber } from '../../utils/format'
 import '../../style/calc-tabs.css'
+
+const store = useCalcStore()
 
 const {
   hasData,
@@ -13,7 +17,8 @@ const {
   densityCorrectionFactor,
   labMix,
   resetCorrection,
-  evalStrength28d,
+  strengthGroups,
+  sTargetStrength,
   slumpMeasured,
   spreadMeasured,
   workabilityNote,
@@ -211,23 +216,18 @@ const labMixRows = computed(() => ([{
           混凝土性能及评价（实验室配合比）
         </div>
         <div class="cs-section-body">
+          <!-- 28d抗压强度分组试验数据 -->
+          <StrengthEvalCard
+            v-model:groups="strengthGroups"
+            :target-strength="sTargetStrength"
+            :strength-grade="store.fcuk"
+          />
+
+          <el-divider style="margin: 20px 0" />
+
           <el-form label-position="top" size="default">
             <el-row :gutter="20">
-              <el-col :span="8">
-                <el-form-item>
-                  <template #label>28d抗压强度</template>
-                  <el-input-number
-                    v-model="evalStrength28d"
-                    :min="0" :max="400" :step="1" :precision="1"
-                    placeholder="如 65"
-                    style="width: 100%"
-                  >
-                    <template #suffix><span class="unit-suffix">MPa</span></template>
-                  </el-input-number>
-                  <div class="input-hint">参考值 65 MPa（与设计强度相关）</div>
-                </el-form-item>
-              </el-col>
-              <el-col :span="8">
+              <el-col :span="12">
                 <el-form-item>
                   <template #label>实测坍落度</template>
                   <el-input-number
@@ -243,7 +243,7 @@ const labMixRows = computed(() => ([{
                   <div class="input-hint">参考值 180 mm</div>
                 </el-form-item>
               </el-col>
-              <el-col :span="8">
+              <el-col :span="12">
                 <el-form-item>
                   <template #label>实测扩展度</template>
                   <el-input-number

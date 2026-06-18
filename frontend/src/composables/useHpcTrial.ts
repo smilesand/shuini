@@ -3,6 +3,7 @@ import { ElMessage } from 'element-plus'
 import { calcHpcTrial, type HpcTrialReq, type HpcTrialRes } from '../api/calc'
 import { useCalcStore } from '../stores/calcStore'
 import { evaluateHpcWorkability, getHpcWorkabilityReference } from '../utils/hpcWorkability'
+import { type StrengthGroup, computeGroupValue } from './useStrengthEval'
 
 export type HpcTrialTab = 'workability' | 'strength' | 'correction'
 
@@ -236,6 +237,14 @@ function emptyLabMix(): LabMixRow {
   }
 }
 
+function defaultStrengthGroups(): StrengthGroup[] {
+  let n = 1
+  return Array.from({ length: 6 }, () => ({
+    id: `G${String(n++).padStart(2, '0')}`,
+    values: [null, null, null] as (number | null)[],
+  }))
+}
+
 function emptyTrialMatCols(): TrialMatCol[] {
   return [
     { key: 'mc', label: '水泥', trialVal: null },
@@ -380,7 +389,7 @@ export function useHpcTrial() {
   const sTargetStrength = ref<NullableNumber>(null)
 
   const measuredDensity = ref<NullableNumber>(null)
-  const evalStrength28d = ref<NullableNumber>(null)
+  const strengthGroups = ref<StrengthGroup[]>(defaultStrengthGroups())
   const evalSlump = ref<NullableNumber>(null)
   const evalSpread = ref<NullableNumber>(null)
   const evalWorkabilityDesc = ref<string>('')
@@ -410,9 +419,32 @@ export function useHpcTrial() {
   ))
   const workabilityOk = computed(() => workabilityEvaluation.value.status === 'pass')
 
+  // ── Group-based 28d strength evaluation ────────────────────
+  const groupResults = computed(() =>
+    strengthGroups.value.map(g => computeGroupValue(g.values)),
+  )
+
+  const strengthOverallAvg = computed<number | null>(() => {
+    const vals = groupResults.value.map(r => r.value).filter((v): v is number => v !== null)
+    if (vals.length === 0) return null
+    return vals.reduce((s, v) => s + v, 0) / vals.length
+  })
+
+  const strengthMinGroupAvg = computed<number | null>(() => {
+    const vals = groupResults.value.map(r => r.value).filter((v): v is number => v !== null)
+    if (vals.length === 0) return null
+    return Math.min(...vals)
+  })
+
+  const allGroupsComplete = computed(() =>
+    groupResults.value.length >= 6 && groupResults.value.every(r => r.value !== null),
+  )
+
   const strengthEvaluation = computed(() => {
-    const measured = evalStrength28d.value
     const target = sTargetStrength.value
+    const ov = strengthOverallAvg.value
+    const minG = strengthMinGroupAvg.value
+    const sg = store.fcuk !== null && Number.isFinite(store.fcuk) ? store.fcuk : null
 
     if (target === null) {
       return {
@@ -423,24 +455,37 @@ export function useHpcTrial() {
       }
     }
 
-    if (measured === null || !Number.isFinite(measured)) {
+    if (!allGroupsComplete.value || ov === null) {
       return {
         status: 'pending' as const,
         label: '待输入',
         tagType: 'info' as const,
-        detail: `配制强度为 ${target.toFixed(1)} MPa，请输入 28d 抗压强度。`,
+        detail: '请完成所有 6 组（每组 3 条）28d 抗压强度数据填写。',
       }
     }
 
-    const passed = measured >= target
+    const overallPass = ov >= target
+    const minThreshold = sg !== null && Number.isFinite(sg) ? sg * 0.95 : null
+    const minGroupPass = minThreshold !== null && minG !== null ? minG >= minThreshold : null
+    const allPass = overallPass && (minGroupPass !== false)
+
+    let detail = `总体平均值 ${ov.toFixed(1)} MPa`
+    detail += overallPass
+      ? ` ≥ 配制强度 ${target.toFixed(1)} MPa`
+      : ` < 配制强度 ${target.toFixed(1)} MPa，差值 ${(target - ov).toFixed(1)} MPa`
+
+    if (minThreshold !== null && minG !== null) {
+      detail += `；组均值最小值 ${minG.toFixed(1)} MPa`
+      detail += minGroupPass
+        ? ` ≥ 0.95×强度等级(${minThreshold.toFixed(1)} MPa)`
+        : ` < 0.95×强度等级(${minThreshold.toFixed(1)} MPa)`
+    }
 
     return {
-      status: passed ? ('pass' as const) : ('fail' as const),
-      label: passed ? '合格' : '不合格',
-      tagType: passed ? ('success' as const) : ('danger' as const),
-      detail: passed
-        ? `28d抗压强度 ${measured.toFixed(1)} MPa ≥ 配制强度 ${target.toFixed(1)} MPa`
-        : `28d抗压强度 ${measured.toFixed(1)} MPa < 配制强度 ${target.toFixed(1)} MPa，差值 ${(target - measured).toFixed(1)} MPa`,
+      status: allPass ? ('pass' as const) : ('fail' as const),
+      label: allPass ? '合格' : '不合格',
+      tagType: allPass ? ('success' as const) : ('danger' as const),
+      detail,
     }
   })
 
@@ -514,7 +559,7 @@ export function useHpcTrial() {
         sandRatioAdj: sandRatioAdj.value,
         alphaAdj: alphaAdj.value,
         measuredDensity: measuredDensity.value,
-        evalStrength28d: evalStrength28d.value,
+        strengthGroups: strengthGroups.value.map(g => ({ id: g.id, values: [...g.values] })),
         evalSlump: evalSlump.value,
         evalSpread: evalSpread.value,
         evalWorkabilityDesc: evalWorkabilityDesc.value,
@@ -549,7 +594,31 @@ export function useHpcTrial() {
     alphaAdj.value = toNullableNumber(inputs.alphaAdj)
     measuredDensity.value = toNullableNumber(inputs.measuredDensity)
 
-    evalStrength28d.value = toNullableNumber(inputs.evalStrength28d)
+    if (Array.isArray(inputs.strengthGroups)) {
+      strengthGroups.value = (inputs.strengthGroups as StrengthGroup[]).map(g => ({
+        id: g.id,
+        values: Array.isArray(g.values) ? g.values.slice(0, 3) : [null, null, null],
+      }))
+    } else {
+      // Backward compat: single evalStrength28d → first group
+      const legacy = toNullableNumber(inputs.evalStrength28d)
+      if (legacy !== null) {
+        strengthGroups.value = [{
+          id: 'G01',
+          values: [legacy, null, null],
+        }, {
+          id: 'G02', values: [null, null, null],
+        }, {
+          id: 'G03', values: [null, null, null],
+        }, {
+          id: 'G04', values: [null, null, null],
+        }, {
+          id: 'G05', values: [null, null, null],
+        }, {
+          id: 'G06', values: [null, null, null],
+        }]
+      }
+    }
     evalSlump.value = toNullableNumber(inputs.evalSlump)
     evalSpread.value = toNullableNumber(inputs.evalSpread)
     evalWorkabilityDesc.value = toStringValue(inputs.evalWorkabilityDesc, '')
@@ -778,7 +847,11 @@ export function useHpcTrial() {
     error,
     hasData,
     wbVal,
-    evalStrength28d,
+    strengthGroups,
+    strengthOverallAvg,
+    strengthMinGroupAvg,
+    allGroupsComplete,
+    groupResults,
     evalSlump,
     evalSpread,
     evalWorkabilityDesc,
