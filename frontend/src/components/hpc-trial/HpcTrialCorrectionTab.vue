@@ -235,7 +235,7 @@ const labMixRows = computed(() => ([{
                     :min="0"
                     :max="300"
                     :step="5"
-                    placeholder="如 180"
+                    placeholder=""
                     style="width: 100%"
                   >
                     <template #suffix><span class="unit-suffix">mm</span></template>
@@ -251,7 +251,7 @@ const labMixRows = computed(() => ([{
                     :min="0"
                     :max="900"
                     :step="5"
-                    placeholder="如 650"
+                    placeholder=""
                     style="width: 100%"
                   >
                     <template #suffix><span class="unit-suffix">mm</span></template>
@@ -269,7 +269,7 @@ const labMixRows = computed(() => ([{
                     v-model="workabilityNote"
                     type="textarea"
                     :rows="2"
-                    placeholder="如：拌合物粘聚性良好，无离析泌水现象..."
+                    placeholder=""
                   />
                 </el-form-item>
               </el-col>

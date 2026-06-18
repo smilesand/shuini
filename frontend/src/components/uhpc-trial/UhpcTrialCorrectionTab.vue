@@ -198,7 +198,7 @@ const strengthEvaluation = computed(() => {
                 :model-value="measuredDensity ?? undefined"
                 @update:model-value="v => emit('update:measuredDensity', v ?? null)"
                 :min="1500" :max="3500" :step="10" :precision="0"
-                placeholder="如 2510"
+                placeholder=""
                 style="width: 100%"
               />
               <div class="density-field__unit">kg/m³</div>
@@ -306,7 +306,7 @@ const strengthEvaluation = computed(() => {
                 :model-value="evalSlump ?? undefined"
                 @update:model-value="v => emit('update:evalSlump', v ?? null)"
                 :min="0" :max="300" :step="5" :precision="0"
-                placeholder="例如: 260"
+                placeholder=""
                 style="width: 100%"
               />
               <div class="density-field__unit">mm</div>
@@ -320,7 +320,7 @@ const strengthEvaluation = computed(() => {
                 :model-value="evalSpread ?? undefined"
                 @update:model-value="v => emit('update:evalSpread', v ?? null)"
                 :min="0" :max="900" :step="10" :precision="0"
-                placeholder="例如: 650"
+                placeholder=""
                 style="width: 100%"
               />
               <div class="density-field__unit">mm</div>
@@ -336,7 +336,7 @@ const strengthEvaluation = computed(() => {
             :rows="3"
             :model-value="evalWorkabilityDesc"
             @update:model-value="v => emit('update:evalWorkabilityDesc', v)"
-            placeholder="例如：拌合物粘聚性良好，流动性优异，无泌水、离析现象，钢纤维分散均匀..."
+            placeholder=""
           />
         </div>
 

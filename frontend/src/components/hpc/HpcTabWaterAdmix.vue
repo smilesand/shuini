@@ -118,7 +118,7 @@ async function persistRecord(name: string) {
                   :model-value="store.alpha ?? undefined"
                   @update:model-value="v => store.alpha = v ?? null"
                   :min="0" :step="0.1" :precision="2"
-                  placeholder="如 1.5"
+                  placeholder=""
                   style="width:100%"
                 >
                   <template #suffix><span class="unit-suffix">%</span></template>

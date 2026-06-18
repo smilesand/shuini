@@ -123,7 +123,7 @@ onMounted(fetchProjects)
     <el-dialog v-model="dialogVisible" title="新建项目" width="500px">
       <el-form :model="form" label-width="80px">
         <el-form-item label="项目编号" required>
-          <el-input v-model="form.project_code" placeholder="如 PRJ-2026-001" />
+          <el-input v-model="form.project_code" placeholder="" />
         </el-form-item>
         <el-form-item label="项目名称" required>
           <el-input v-model="form.project_name" placeholder="如 某某大桥C50混凝土" />

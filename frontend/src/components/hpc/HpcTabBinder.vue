@@ -80,7 +80,7 @@ async function handleNext() {
             <el-col :span="12">
               <el-form-item >
 <template #label>粉煤灰密度 ρ<sub>1</sub></template>
-                <el-input-number :model-value="n(store.rho1)" @update:model-value="v => store.rho1 = v ?? null" :step="50" :precision="0" placeholder="如 2200" style="width:100%">
+                <el-input-number :model-value="n(store.rho1)" @update:model-value="v => store.rho1 = v ?? null" :step="50" :precision="0" placeholder="" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 2200 kg/m³</div>
@@ -100,7 +100,7 @@ async function handleNext() {
             <el-col :span="12">
               <el-form-item >
 <template #label>矿粉密度 ρ<sub>2</sub></template>
-                <el-input-number :model-value="n(store.rho2)" @update:model-value="v => store.rho2 = v ?? null" :step="50" :precision="0" placeholder="如 2900" style="width:100%">
+                <el-input-number :model-value="n(store.rho2)" @update:model-value="v => store.rho2 = v ?? null" :step="50" :precision="0" placeholder="" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 2900 kg/m³</div>
@@ -120,7 +120,7 @@ async function handleNext() {
             <el-col :span="12">
               <el-form-item >
 <template #label>微珠密度 ρ<sub>3</sub></template>
-                <el-input-number :model-value="n(store.rho3)" @update:model-value="v => store.rho3 = v ?? null" :step="50" :precision="0" placeholder="如 2600" style="width:100%">
+                <el-input-number :model-value="n(store.rho3)" @update:model-value="v => store.rho3 = v ?? null" :step="50" :precision="0" placeholder="" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 2600 kg/m³</div>
@@ -140,7 +140,7 @@ async function handleNext() {
             <el-col :span="12">
               <el-form-item >
 <template #label>硅灰密度 ρ<sub>4</sub></template>
-                <el-input-number :model-value="n(store.rho4)" @update:model-value="v => store.rho4 = v ?? null" :step="50" :precision="0" placeholder="如 2200" style="width:100%">
+                <el-input-number :model-value="n(store.rho4)" @update:model-value="v => store.rho4 = v ?? null" :step="50" :precision="0" placeholder="" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 2200 kg/m³</div>
@@ -160,7 +160,7 @@ async function handleNext() {
             <el-col :span="8">
               <el-form-item >
 <template #label>水泥密度 ρ<sub>c</sub></template>
-                <el-input-number :model-value="n(store.rhoc)" @update:model-value="v => store.rhoc = v ?? null" :step="50" :precision="0" placeholder="如 3100" style="width:100%">
+                <el-input-number :model-value="n(store.rhoc)" @update:model-value="v => store.rhoc = v ?? null" :step="50" :precision="0" placeholder="" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 3100 kg/m³</div>
@@ -169,7 +169,7 @@ async function handleNext() {
             <el-col :span="8">
               <el-form-item >
 <template #label>含气量 V<sub>a</sub></template>
-                <el-input-number :model-value="n(store.va)" @update:model-value="v => store.va = v ?? null" :min="0" :step="0.001" :precision="3" placeholder="如 0.010" style="width:100%">
+                <el-input-number :model-value="n(store.va)" @update:model-value="v => store.va = v ?? null" :min="0" :step="0.001" :precision="3" placeholder="" style="width:100%">
                   <template #suffix><span class="unit-suffix">m³</span></template>
                 </el-input-number>
                 <div class="input-hint">非引气混凝土参考 0.010</div>

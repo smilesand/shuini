@@ -141,7 +141,7 @@ const strengthMixTableRows = computed(() =>
               max: 50,
               step: 0.1,
               precision: 2,
-              placeholder: String(computedMa !== null ? computedMa.toFixed(2) : ''),
+              placeholder: '',
             },
           } : createTableCell(mix.ma, 2),
           total: createTableCell(adjTotal, 2, { emphasized: true }),

@@ -115,7 +115,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                   :model-value="store.vg ?? undefined"
                   @update:model-value="v => store.vg = v ?? null"
                   :step="0.01" :precision="3"
-                  :placeholder="vgPlaceholder"
+                  placeholder=""
                   style="width:100%"
                 >
                   <template #suffix><span class="unit-suffix">m³</span></template>
@@ -130,7 +130,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                   :model-value="store.rhog ?? undefined"
                   @update:model-value="v => store.rhog = v ?? null"
                   :step="50" :precision="0"
-                  placeholder="如 2700"
+                  placeholder=""
                   style="width:100%"
                 >
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
@@ -145,7 +145,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                   :model-value="store.rhos ?? undefined"
                   @update:model-value="v => store.rhos = v ?? null"
                   :step="50" :precision="0"
-                  placeholder="如 2650"
+                  placeholder=""
                   style="width:100%"
                 >
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>

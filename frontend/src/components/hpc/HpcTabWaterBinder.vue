@@ -117,7 +117,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
                   :model-value="store.fcuk ?? undefined"
                   @update:model-value="(v: number | undefined) => store.fcuk = v ?? null"
                   :min="20" :step="5" :precision="0"
-                  placeholder="如 80"
+                  placeholder=""
                   style="width:100%"
                 >
                   <template #suffix><span class="unit-suffix">MPa</span></template>
@@ -163,7 +163,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
                   v-if="store.fbCalcMode === 'input'"
                   :model-value="store.fb ?? undefined"
                   @update:model-value="(v: number | undefined) => store.fb = v ?? null"
-                  :min="1" :step="1" placeholder="如 48"
+                  :min="1" :step="1" placeholder=""
                   style="width:100%"
                 >
                   <template #suffix><span class="unit-suffix">MPa</span></template>
