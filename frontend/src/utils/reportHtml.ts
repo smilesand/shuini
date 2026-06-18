@@ -1,6 +1,7 @@
 import { type RecordItem } from '../api/records'
 import { type Project } from '../api/projects'
 import { computeGroupValue } from '../composables/useStrengthEval'
+import { getHpcWorkabilityReference } from './hpcWorkability'
 
 // ── Types ────────────────────────────────────────────────────────
 export interface ReportData {
@@ -10,7 +11,7 @@ export interface ReportData {
   fmtDate: string
   // Key parameters
   strengthGrade: string
-  designStrength: string
+  designStrength: unknown
   totalBinder: unknown
   cementPct: unknown
   p1: unknown; p2: unknown; p3: unknown; p4: unknown
@@ -26,6 +27,7 @@ export interface ReportData {
   evalSlump: unknown; evalSpread: unknown; workDesc: unknown
   workabilityPass: boolean | null
   strengthPass: boolean | null
+  vgReferenceCode: string | null
   // Strength groups
   strengthGroups: { id: string; values: (number | null)[] }[]
   groupEvals: ReturnType<typeof computeGroupValue>[]
@@ -105,6 +107,8 @@ export function generateReportHtml(d: ReportData): string {
 
   const strengthDesc = '每组 3 个试件。当最大值或最小值中有一个与中间值的差值超过中间值的15%时，剔除最大及最小值取中间值；当最大值和最小值与中间值的差值均超过中间值的15%时，该组试验结果无效。'
 
+  const workabilityRef = getHpcWorkabilityReference(d.vgReferenceCode)
+
   return `<!DOCTYPE html><html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -130,6 +134,8 @@ export function generateReportHtml(d: ReportData): string {
   .kv-val { font-family: Consolas, monospace; font-size: 11pt; }
   .unit { font-size: 8pt; color: #666; margin-left: 4px; font-weight: normal; }
   .section-sub { background: #f9f9f9; }
+  .cat-cell { font-weight: bold; background: #f5f7fa; width: 70px; }
+  .eval-table td:nth-child(5), .eval-table th:nth-child(5) { width: 80px; }
   .footer { margin-top: 30px; font-size: 9pt; color: #777; text-align: center; border-top: 1px solid #ccc; padding-top: 10px; }
   @media print {
     body { font-size: 10pt; }
@@ -167,64 +173,40 @@ export function generateReportHtml(d: ReportData): string {
     <tbody>${table2.body1}
 ${table2.body2}</tbody>
   </table>
-  <div class="section-title">三、 混凝土性能</div>
-  <table>
-    <tbody>
-      <tr><td class="kv-key">实测坍落度 <span class="unit">[mm]</span></td><td class="kv-val">${d.evalSlump || '—'}</td></tr>
-      <tr><td class="kv-key">实测扩展度 <span class="unit">[mm]</span></td><td class="kv-val">${d.evalSpread || '—'}</td></tr>
-      <tr><td class="kv-key">工作性及表现</td><td class="kv-val">${d.workDesc || '—'}</td></tr>
-    </tbody>
-  </table>
-  <div class="section-title">四、 28d抗压强度分组试验数据</div>
-  <p style="font-size:10pt;color:#555;margin:0 0 8px">${strengthDesc}</p>
-  <table>
+  <div class="section-title">三、 混凝土性能评价</div>
+  <table class="eval-table">
     <thead>
-      <tr><th>分组</th><th>试件 1 (MPa)</th><th>试件 2 (MPa)</th><th>试件 3 (MPa)</th><th>组代表值 (MPa)</th><th>取舍</th></tr>
-    </thead>
-    <tbody>
-      ${d.strengthGroups.map((g, i) => {
-        const ev = d.groupEvals[i]
-        const isTrimmed = (idx: number) => ev && ev.trimmedIndices.includes(idx)
-        const cellStyle = (idx: number) => {
-          if (ev?.invalid) return 'color:#c0392b;background:#fff0f0'
-          if (isTrimmed(idx)) return 'text-decoration:line-through;color:#c0392b;background:#fff0f0'
-          return ''
-        }
-        const rowBg = ev?.invalid ? 'background:#fff0f0' : ev?.trimmed ? 'background:#fffbe6' : ''
-        const statusTag = ev?.invalid ? '无效' : ev?.value !== null ? (ev.trimmed ? '已取舍' : '正常') : '—'
-        return `<tr style="${rowBg}">
-          <td>${g.id}</td>
-          <td style="${cellStyle(0)}">${g.values[0] !== null && Number.isFinite(g.values[0] as number) ? (g.values[0] as number).toFixed(1) : '—'}</td>
-          <td style="${cellStyle(1)}">${g.values[1] !== null && Number.isFinite(g.values[1] as number) ? (g.values[1] as number).toFixed(1) : '—'}</td>
-          <td style="${cellStyle(2)}">${g.values[2] !== null && Number.isFinite(g.values[2] as number) ? (g.values[2] as number).toFixed(1) : '—'}</td>
-          <td style="font-weight:700">${ev?.invalid ? '无效' : ev && ev.value !== null ? ev.value.toFixed(1) : '—'}</td>
-          <td>${statusTag}</td>
-        </tr>`
-      }).join('')}
-    </tbody>
-  </table>
-  <div style="display:flex;gap:20px;flex-wrap:wrap;padding:10px 14px;background:#f8f9fc;border-radius:8px;margin:12px 0;font-size:10pt;">
-    <span><b>组数：</b>${d.strengthGroups.length}</span>
-    <span><b>总体平均值：</b>${d.strengthOverallAvg !== null ? d.strengthOverallAvg.toFixed(1) + ' MPa' : '—'}</span>
-    <span><b>组均值最小值：</b>${d.strengthMinGroupAvg !== null ? d.strengthMinGroupAvg.toFixed(1) + ' MPa' : '—'}</span>
-    <span><b>1.15×强度等级：</b>${Number.isFinite(d.strengthGradeNum) ? (d.strengthGradeNum * 1.15).toFixed(1) + ' MPa' : '—'}</span>
-    <span><b>0.95×强度等级：</b>${Number.isFinite(d.strengthGradeNum) ? (d.strengthGradeNum * 0.95).toFixed(1) + ' MPa' : '—'}</span>
-  </div>
-  <div class="section-title">五、 性能评价</div>
-  <table>
-    <thead>
-      <tr><th style="width:40%">评价指标</th><th style="width:30%">实测值</th><th style="width:30%">评判结果</th></tr>
+      <tr><th colspan="2">指标</th><th>实测值</th><th>要求</th><th>评价</th></tr>
     </thead>
     <tbody>
       <tr>
-        <td class="kv-key">28d抗压强度<br><span style="font-size:9pt;color:#888">总体均值 ≥ 1.15×强度等级 且 组最小值 ≥ 0.95×强度等级</span></td>
-        <td class="kv-val">${d.strengthOverallAvg !== null ? d.strengthOverallAvg.toFixed(1) + ' MPa' : '—'}</td>
-        <td class="kv-val">${passLabel(d.strengthPass)}</td>
+        <td class="cat-cell" rowspan="3">工作性能</td>
+        <td>坍落度/mm</td>
+        <td>${d.evalSlump || '—'}</td>
+        <td>${workabilityRef?.metric === 'slump' ? workabilityRef.desc : ''}</td>
+        <td rowspan="3">${passLabel(d.workabilityPass)}</td>
       </tr>
       <tr>
-        <td class="kv-key">工作性${d.evalSlump ? '（坍落度）' : d.evalSpread ? '（扩展度）' : ''}</td>
-        <td class="kv-val">${d.evalSlump ? d.evalSlump + ' mm' : d.evalSpread ? d.evalSpread + ' mm' : '—'}</td>
-        <td class="kv-val">${passLabel(d.workabilityPass)}</td>
+        <td>扩展度/mm</td>
+        <td>${d.evalSpread || '—'}</td>
+        <td>${workabilityRef?.metric === 'spread' ? workabilityRef.desc : ''}</td>
+      </tr>
+      <tr>
+        <td>综合性描述</td>
+        <td style="font-size:9pt">${d.workDesc || '—'}</td>
+        <td style="font-size:9pt;color:#555">和易性良好<br>不离析、不泌水</td>
+      </tr>
+      <tr>
+        <td class="cat-cell" rowspan="2">抗压强度</td>
+        <td>平均值/MPa</td>
+        <td>${d.strengthOverallAvg !== null ? d.strengthOverallAvg.toFixed(1) : '—'}</td>
+        <td style="font-size:9pt">≥ 1.15×强度等级${Number.isFinite(d.strengthGradeNum) ? '(' + (d.strengthGradeNum * 1.15).toFixed(1) + ' MPa)' : ''}</td>
+        <td rowspan="2">${passLabel(d.strengthPass)}</td>
+      </tr>
+      <tr>
+        <td>最小值/MPa</td>
+        <td>${d.strengthMinGroupAvg !== null ? d.strengthMinGroupAvg.toFixed(1) : '—'}</td>
+        <td style="font-size:9pt">≥ 0.95×强度等级${Number.isFinite(d.strengthGradeNum) ? '(' + (d.strengthGradeNum * 0.95).toFixed(1) + ' MPa)' : ''}</td>
       </tr>
     </tbody>
   </table>

@@ -138,6 +138,7 @@ function exportReport(record: RecordItem) {
   let admix = flatData.alphaAdj ?? flatData.alpha ?? flatData.admixtureRatio ?? flatData.admixture_ratio ?? flatData.admixture_pct ?? '—'
   if (typeof admix === 'number' && flatData.admixtureRatio === undefined && flatData.admixture_ratio === undefined && flatData.admixture_pct === undefined && admix < 1) admix = admix * 100
   const sf_vol = flatData.steelFiberVolumeRatio ?? flatData.steel_fiber_volume_ratio ?? flatData.steelFiberVolume ?? '—'
+  const vgReferenceCode = (flatData.vg_reference_code as string) ?? null
 
   // ── Strength pass/fail: 总体均值 ≥ 1.15×强度等级 且 组最小值 ≥ 0.95×强度等级
   const targetForEval = sTargetStr || flatData.fcu0 || flatData.designStrength || flatData.design_strength
@@ -188,7 +189,7 @@ function exportReport(record: RecordItem) {
     categoryLabel: categoryLabel(record.category),
     fmtDate: fmtDate(record.created_at),
     strengthGrade: String(strengthGrade),
-    designStrength: String(designStrength),
+    designStrength,
     totalBinder,
     cementPct,
     p1, p2, p3, p4,
@@ -200,6 +201,7 @@ function exportReport(record: RecordItem) {
     evalSlump, evalSpread, workDesc,
     workabilityPass,
     strengthPass,
+    vgReferenceCode,
     strengthGroups,
     groupEvals,
     strengthOverallAvg,

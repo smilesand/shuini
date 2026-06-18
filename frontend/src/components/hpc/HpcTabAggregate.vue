@@ -73,7 +73,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
     <div class="cs-section">
       <div class="cs-section-head">
         <el-icon><Grid /></el-icon>
-        Vg 参考范围
+        Vg 参考范围选取
       </div>
       <div class="cs-section-body">
         <el-table
@@ -83,6 +83,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
           style="margin-bottom:8px"
           :row-class-name="resolveWorkabilityRowClassName"
           @row-click="handleWorkabilityRowClick"
+          class="vg-ref-table"
         >
           <el-table-column prop="code"  label="工作性等级"        width="110"  align="center" />
           <el-table-column prop="desc"  label="坍落度/扩展度范围" align="center" />
@@ -93,6 +94,13 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
           v-if="selectedVgRange"
           :title="`当前选择的 Vg 参考范围：${selectedVgRange} m³`"
           type="success"
+          :closable="false"
+          show-icon
+        />
+        <el-alert
+          v-else
+          title="请在上方表格中点击选取 Vg 参考范围"
+          type="error"
           :closable="false"
           show-icon
         />
@@ -217,5 +225,9 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
 .el-table :deep(.is-selected-row td) {
   background: #e8f0fb !important;
   font-weight: 700;
+}
+
+.vg-ref-table :deep(tbody tr) {
+  cursor: pointer;
 }
 </style>
