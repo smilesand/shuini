@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
@@ -11,7 +11,6 @@ import '../../style/calc-tabs.css'
 const emit = defineEmits<{ (e: 'next-step'): void }>()
 const store = useCalcStore()
 
-// 防抖 + 节流：500ms 内多次变化只计算最后一次
 const debouncedCalc = debounce(() => store.calcWaterBinder(), 500)
 
 const computedFb = computed(() => {
@@ -19,13 +18,10 @@ const computedFb = computed(() => {
   return store.gammaF * store.gammaS * store.gammaB * store.gammaSF * fce
 })
 
-// γc 取值范围提示随水泥强度等级动态变化
 const gammaCHint = computed(() =>
   store.fceG === 42.5 ? '42.5 水泥：1.05 ~ 1.16' : '52.5 水泥：1.05 ~ 1.10'
 )
 
-// ── Mass fraction ↔ coefficient recommendation ──────────────────
-// Reference tables (掺量% → 系数范围 [low, high])
 const COEFF_TABLE: Record<string, [number, [number, number]][]> = {
   gammaF: [[0, [1.00, 1.00]], [10, [0.90, 1.00]], [20, [0.80, 0.90]], [30, [0.70, 0.80]], [40, [0.60, 0.70]]],
   gammaS: [[0, [1.00, 1.00]], [10, [1.00, 1.00]], [20, [0.95, 1.00]], [30, [0.90, 1.00]], [40, [0.80, 0.90]]],
@@ -33,43 +29,24 @@ const COEFF_TABLE: Record<string, [number, [number, number]][]> = {
   gammaSF: [[0, [1.00, 1.00]], [5, [1.05, 1.15]], [10, [1.10, 1.25]]],
 }
 
-/** Recommend coefficient midpoint for a given mass fraction % */
-function recommendCoeff(pct: number | null, tableKey: string): number | null {
+function getBracket(pct: number | null, tableKey: string): { lo: number; hi: number; mid: number; pctKey: number } | null {
   if (pct === null || pct < 0) return null
   const table = COEFF_TABLE[tableKey]
   if (!table) return null
-  // Find the bracket: last entry where pct >= bracket threshold
   let best = table[0]
   for (const entry of table) {
     if (pct >= entry[0]) best = entry
   }
   const [lo, hi] = best[1]
-  return parseFloat(((lo + hi) / 2).toFixed(2))
+  return { lo, hi, mid: parseFloat(((lo + hi) / 2).toFixed(2)), pctKey: best[0] }
 }
 
-// Watch mass fractions → auto-recommend coefficients
-watch(
-  () => [store.b1p, store.b2p, store.b3p, store.b4p] as const,
-  ([b1, b2, b3, b4]) => {
-    const recF = recommendCoeff(b1, 'gammaF')
-    if (recF !== null) store.gammaF = recF
-    const recS = recommendCoeff(b2, 'gammaS')
-    if (recS !== null) store.gammaS = recS
-    const recB = recommendCoeff(b3, 'gammaB')
-    if (recB !== null) store.gammaB = recB
-    const recSF = recommendCoeff(b4, 'gammaSF')
-    if (recSF !== null) store.gammaSF = recSF
-  },
-)
-
-// Cement mass fraction = 100% - sum of other four (in %)
 const cementPct = computed(() => {
   const sum = (store.b1p ?? 0) + (store.b2p ?? 0) + (store.b3p ?? 0) + (store.b4p ?? 0)
   const result = 100 - sum
   return result >= 0 ? result : 0
 })
 
-// Sync cement mass fraction to store.bc (as decimal)
 watch(cementPct, (val) => {
   store.bc = val / 100
 }, { immediate: true })
@@ -86,7 +63,6 @@ watch(
   { immediate: true }
 )
 
-// fb / 回归系数 变更时重新计算 W/B（fcu0 已在 store 中由 fcuk 自动计算）
 watch(
   () => [store.fb, store.aa, store.ab, store.ac] as const,
   () => { if (store.fcuk && store.fb) debouncedCalc() },
@@ -107,11 +83,25 @@ async function onFileChange(file: UploadFile) {
     store.loading = false
   }
 }
+
+type RefRow = { pct: number; lo: number; hi: number }
+const refTables: Record<string, RefRow[]> = {
+  gammaF: [{ pct: 0, lo: 1.00, hi: 1.00 }, { pct: 10, lo: 0.90, hi: 1.00 }, { pct: 20, lo: 0.80, hi: 0.90 }, { pct: 30, lo: 0.70, hi: 0.80 }, { pct: 40, lo: 0.60, hi: 0.70 }],
+  gammaS: [{ pct: 0, lo: 1.00, hi: 1.00 }, { pct: 10, lo: 1.00, hi: 1.00 }, { pct: 20, lo: 0.95, hi: 1.00 }, { pct: 30, lo: 0.90, hi: 1.00 }, { pct: 40, lo: 0.80, hi: 0.90 }],
+  gammaB: [{ pct: 0, lo: 1.00, hi: 1.00 }, { pct: 10, lo: 0.95, hi: 1.05 }, { pct: 20, lo: 0.90, hi: 1.00 }, { pct: 30, lo: 0.85, hi: 0.95 }, { pct: 40, lo: 0.80, hi: 0.90 }],
+  gammaSF: [{ pct: 0, lo: 1.00, hi: 1.00 }, { pct: 5, lo: 1.05, hi: 1.15 }, { pct: 10, lo: 1.10, hi: 1.25 }],
+}
+
+function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string): boolean {
+  if (pct === null) return rowPct === 0
+  const bracket = getBracket(pct, tableKey)
+  return bracket !== null && bracket.pctKey === rowPct
+}
 </script>
 
 <template>
   <div>
-    <!-- Section 1: 强度参数 -->
+    <!-- Section 1 -->
     <div class="cs-section">
       <div class="cs-section-head">
         <el-icon><DataAnalysis /></el-icon>
@@ -120,7 +110,7 @@ async function onFileChange(file: UploadFile) {
       <div class="cs-section-body">
         <el-form label-position="top">
           <el-row :gutter="20">
-            <el-col :span="8">
+            <el-col :span="12">
               <el-form-item>
                 <template #label>强度等级 f<sub>cu,k</sub></template>
                 <el-input-number
@@ -135,7 +125,7 @@ async function onFileChange(file: UploadFile) {
                 <div class="input-hint">参考值 80 MPa</div>
               </el-form-item>
             </el-col>
-            <el-col :span="8">
+            <el-col :span="12">
               <el-form-item>
                 <template #label>配制强度 f<sub>cu,0</sub></template>
                 <el-input
@@ -147,11 +137,25 @@ async function onFileChange(file: UploadFile) {
                 </el-input>
               </el-form-item>
             </el-col>
+          </el-row>
+        </el-form>
+      </div>
+    </div>
+
+    <!-- Section 2 -->
+    <div class="cs-section">
+      <div class="cs-section-head">
+        <el-icon><SetUp /></el-icon>
+        胶凝材料 28d 强度 f<sub>b</sub> 及影响系数
+      </div>
+      <div class="cs-section-body">
+        <el-form label-position="top">
+          <el-row :gutter="20" style="margin-bottom:16px">
             <el-col :span="8">
               <el-form-item>
                 <template #label>
                   胶凝材料 28d 强度 f<sub>b</sub>
-                  <el-button link type="primary" size="small" style="margin-left: 8px" @click="store.fbCalcMode = store.fbCalcMode === 'input' ? 'calc' : 'input'">
+                  <el-button link type="primary" style="margin-left: 8px" @click="store.fbCalcMode = store.fbCalcMode === 'input' ? 'calc' : 'input'">
                     {{ store.fbCalcMode === 'input' ? '无实测值推算' : '手工输入实测值' }}
                   </el-button>
                 </template>
@@ -176,143 +180,175 @@ async function onFileChange(file: UploadFile) {
               </el-form-item>
             </el-col>
           </el-row>
+        </el-form>
 
-          <div v-if="store.fbCalcMode === 'calc'" class="estimation-panel">
-            <div class="estimation-panel__title">
-              28d 强度推算参数
-              <span class="estimation-panel__formula">f<sub>b</sub> = γ<sub>f</sub> × γ<sub>s</sub> × γ<sub>b</sub> × γ<sub>SF</sub> × (γ<sub>c</sub> × f<sub>ce,g</sub>)</span>
+        <div v-if="store.fbCalcMode === 'calc'" class="estimation-panel">
+          <div class="estimation-panel__title">
+            28d 强度推算参数
+            <span class="estimation-panel__formula">f<sub>b</sub> = γ<sub>f</sub> × γ<sub>s</sub> × γ<sub>b</sub> × γ<sub>SF</sub> × (γ<sub>c</sub> × f<sub>ce,g</sub>)</span>
+          </div>
+          <el-row :gutter="16" style="margin-bottom:14px">
+            <el-col :span="8">
+              <el-form-item label="水泥强度等级 fce,g" class="small-label">
+                <el-select v-model="store.fceG" style="width:100%">
+                  <el-option label="42.5" :value="42.5" />
+                  <el-option label="52.5" :value="52.5" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item class="small-label">
+                <template #label>水泥富余系数 γ<sub>c</sub></template>
+                <el-input-number v-model="store.gammaC" :step="0.01" :min="1.0" :max="1.5" style="width:100%" />
+                <div class="param-hint">{{ gammaCHint }}</div>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item class="small-label">
+                <template #label>水泥质量分数 β<sub>c</sub></template>
+                <el-input :value="cementPct.toFixed(1)" readonly class="computed-input">
+                  <template #suffix><span class="unit-suffix">%</span></template>
+                </el-input>
+                <div class="param-hint">= 100% − Σ(其他四组分)</div>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <div class="material-cards">
+            <div class="material-card">
+              <div class="material-card__head">粉煤灰</div>
+              <div class="material-card__inputs">
+                <div class="mc-input">
+                  <span class="mc-input__label">β<sub>1</sub> (%)</span>
+                  <el-input-number :model-value="n(store.b1p)" @update:model-value="v => store.b1p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
+                </div>
+                <div class="mc-input">
+                  <span class="mc-input__label">γ<sub>f</sub></span>
+                  <el-input-number v-model="store.gammaF" :step="0.01" :min="0.5" :max="1.2" style="width:100%" />
+                </div>
+              </div>
+              <table class="ref-table">
+                <thead><tr><th>掺量</th><th>系数范围</th></tr></thead>
+                <tbody>
+                  <tr v-for="r in refTables.gammaF" :key="r.pct" :class="{ 'ref-row--active': isRecommendedRow(store.b1p, r.pct, 'gammaF') }">
+                    <td>{{ r.pct }}%</td>
+                    <td>{{ r.lo.toFixed(2) }} ~ {{ r.hi.toFixed(2) }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-
-            <!-- Top bar: fce,g | γc | βc -->
-            <el-row :gutter="16" style="margin-bottom:14px">
-              <el-col :span="8">
-                <el-form-item label="水泥强度等级 fce,g" class="small-label">
-                  <el-select v-model="store.fceG" style="width:100%">
-                    <el-option label="42.5" :value="42.5" />
-                    <el-option label="52.5" :value="52.5" />
-                  </el-select>
-                </el-form-item>
-              </el-col>
-              <el-col :span="8">
-                <el-form-item class="small-label">
-                  <template #label>水泥富余系数 γ<sub>c</sub></template>
-                  <el-input-number v-model="store.gammaC" :step="0.01" :min="1.0" :max="1.5" style="width:100%" />
-                  <div class="param-hint">{{ gammaCHint }}</div>
-                </el-form-item>
-              </el-col>
-              <el-col :span="8">
-                <el-form-item class="small-label">
-                  <template #label>水泥质量分数 β<sub>c</sub></template>
-                  <el-input :value="cementPct.toFixed(1)" readonly class="computed-input">
-                    <template #suffix><span class="unit-suffix">%</span></template>
-                  </el-input>
-                  <div class="param-hint">= 100% − Σ(其他四组分)</div>
-                </el-form-item>
-              </el-col>
-            </el-row>
-
-            <!-- 4 material cards grid -->
-            <div class="material-cards">
-              <!-- 粉煤灰 -->
-              <div class="material-card">
-                <div class="material-card__head">粉煤灰</div>
-                <div class="material-card__inputs">
-                  <div class="mc-input">
-                    <span class="mc-input__label">β<sub>1</sub></span>
-                    <el-input-number :model-value="n(store.b1p)" @update:model-value="v => store.b1p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" size="small" style="width:100%">
-                      <template #suffix><span class="unit-suffix">%</span></template>
-                    </el-input-number>
-                  </div>
-                  <div class="mc-input">
-                    <span class="mc-input__label">γ<sub>f</sub></span>
-                    <el-input-number v-model="store.gammaF" :step="0.01" :min="0.5" :max="1.2" size="small" style="width:100%" />
-                  </div>
+            <div class="material-card">
+              <div class="material-card__head">矿粉</div>
+              <div class="material-card__inputs">
+                <div class="mc-input">
+                  <span class="mc-input__label">β<sub>2</sub> (%)</span>
+                  <el-input-number :model-value="n(store.b2p)" @update:model-value="v => store.b2p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
                 </div>
-                <dl class="ref-table">
-                  <div><dt>0%</dt><dd>1.00</dd></div>
-                  <div><dt>10%</dt><dd>0.90~1.00</dd></div>
-                  <div><dt>20%</dt><dd>0.80~0.90</dd></div>
-                  <div><dt>30%</dt><dd>0.70~0.80</dd></div>
-                  <div><dt>40%</dt><dd>0.60~0.70</dd></div>
-                </dl>
-              </div>
-
-              <!-- 矿粉 -->
-              <div class="material-card">
-                <div class="material-card__head">矿粉</div>
-                <div class="material-card__inputs">
-                  <div class="mc-input">
-                    <span class="mc-input__label">β<sub>2</sub></span>
-                    <el-input-number :model-value="n(store.b2p)" @update:model-value="v => store.b2p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" size="small" style="width:100%">
-                      <template #suffix><span class="unit-suffix">%</span></template>
-                    </el-input-number>
-                  </div>
-                  <div class="mc-input">
-                    <span class="mc-input__label">γ<sub>s</sub></span>
-                    <el-input-number v-model="store.gammaS" :step="0.01" :min="0.5" :max="1.2" size="small" style="width:100%" />
-                  </div>
+                <div class="mc-input">
+                  <span class="mc-input__label">γ<sub>s</sub></span>
+                  <el-input-number v-model="store.gammaS" :step="0.01" :min="0.5" :max="1.2" style="width:100%" />
                 </div>
-                <dl class="ref-table">
-                  <div><dt>0%</dt><dd>1.00</dd></div>
-                  <div><dt>10%</dt><dd>1.00</dd></div>
-                  <div><dt>20%</dt><dd>0.95~1.00</dd></div>
-                  <div><dt>30%</dt><dd>0.90~1.00</dd></div>
-                  <div><dt>40%</dt><dd>0.80~0.90</dd></div>
-                </dl>
               </div>
-
-              <!-- 微珠 -->
-              <div class="material-card">
-                <div class="material-card__head">微珠</div>
-                <div class="material-card__inputs">
-                  <div class="mc-input">
-                    <span class="mc-input__label">β<sub>3</sub></span>
-                    <el-input-number :model-value="n(store.b3p)" @update:model-value="v => store.b3p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" size="small" style="width:100%">
-                      <template #suffix><span class="unit-suffix">%</span></template>
-                    </el-input-number>
-                  </div>
-                  <div class="mc-input">
-                    <span class="mc-input__label">γ<sub>b</sub></span>
-                    <el-input-number v-model="store.gammaB" :step="0.01" :min="0.5" :max="1.2" size="small" style="width:100%" />
-                  </div>
+              <table class="ref-table">
+                <thead><tr><th>掺量</th><th>系数范围</th></tr></thead>
+                <tbody>
+                  <tr v-for="r in refTables.gammaS" :key="r.pct" :class="{ 'ref-row--active': isRecommendedRow(store.b2p, r.pct, 'gammaS') }">
+                    <td>{{ r.pct }}%</td>
+                    <td>{{ r.lo.toFixed(2) }} ~ {{ r.hi.toFixed(2) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="material-card">
+              <div class="material-card__head">微珠</div>
+              <div class="material-card__inputs">
+                <div class="mc-input">
+                  <span class="mc-input__label">β<sub>3</sub> (%)</span>
+                  <el-input-number :model-value="n(store.b3p)" @update:model-value="v => store.b3p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
                 </div>
-                <dl class="ref-table">
-                  <div><dt>0%</dt><dd>1.00</dd></div>
-                  <div><dt>10%</dt><dd>0.95~1.05</dd></div>
-                  <div><dt>20%</dt><dd>0.90~1.00</dd></div>
-                  <div><dt>30%</dt><dd>0.85~0.95</dd></div>
-                  <div><dt>40%</dt><dd>0.80~0.90</dd></div>
-                </dl>
-              </div>
-
-              <!-- 硅灰 -->
-              <div class="material-card">
-                <div class="material-card__head">硅灰</div>
-                <div class="material-card__inputs">
-                  <div class="mc-input">
-                    <span class="mc-input__label">β<sub>4</sub></span>
-                    <el-input-number :model-value="n(store.b4p)" @update:model-value="v => store.b4p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" size="small" style="width:100%">
-                      <template #suffix><span class="unit-suffix">%</span></template>
-                    </el-input-number>
-                  </div>
-                  <div class="mc-input">
-                    <span class="mc-input__label">γ<sub>SF</sub></span>
-                    <el-input-number v-model="store.gammaSF" :step="0.01" :min="0.5" :max="1.5" size="small" style="width:100%" />
-                  </div>
+                <div class="mc-input">
+                  <span class="mc-input__label">γ<sub>b</sub></span>
+                  <el-input-number v-model="store.gammaB" :step="0.01" :min="0.5" :max="1.2" style="width:100%" />
                 </div>
-                <dl class="ref-table">
-                  <div><dt>0%</dt><dd>1.00</dd></div>
-                  <div><dt>5%</dt><dd>1.05~1.15</dd></div>
-                  <div><dt>10%</dt><dd>1.10~1.25</dd></div>
-                </dl>
               </div>
+              <table class="ref-table">
+                <thead><tr><th>掺量</th><th>系数范围</th></tr></thead>
+                <tbody>
+                  <tr v-for="r in refTables.gammaB" :key="r.pct" :class="{ 'ref-row--active': isRecommendedRow(store.b3p, r.pct, 'gammaB') }">
+                    <td>{{ r.pct }}%</td>
+                    <td>{{ r.lo.toFixed(2) }} ~ {{ r.hi.toFixed(2) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="material-card">
+              <div class="material-card__head">硅灰</div>
+              <div class="material-card__inputs">
+                <div class="mc-input">
+                  <span class="mc-input__label">β<sub>4</sub> (%)</span>
+                  <el-input-number :model-value="n(store.b4p)" @update:model-value="v => store.b4p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
+                </div>
+                <div class="mc-input">
+                  <span class="mc-input__label">γ<sub>SF</sub></span>
+                  <el-input-number v-model="store.gammaSF" :step="0.01" :min="0.5" :max="1.5" style="width:100%" />
+                </div>
+              </div>
+              <table class="ref-table">
+                <thead><tr><th>掺量</th><th>系数范围</th></tr></thead>
+                <tbody>
+                  <tr v-for="r in refTables.gammaSF" :key="r.pct" :class="{ 'ref-row--active': isRecommendedRow(store.b4p, r.pct, 'gammaSF') }">
+                    <td>{{ r.pct }}%</td>
+                    <td>{{ r.lo.toFixed(2) }} ~ {{ r.hi.toFixed(2) }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
-        </el-form>
+        </div>
+
+        <div v-else class="estimation-panel">
+          <div class="estimation-panel__title">胶凝材料质量分数</div>
+          <p style="font-size:12px;color:#909399;margin:0 0 12px">水泥质量分数 = 100% − Σ(其他四组分)</p>
+          <el-row :gutter="16">
+            <el-col :span="8">
+              <el-form-item class="small-label">
+                <template #label>水泥 β<sub>c</sub></template>
+                <el-input :value="cementPct.toFixed(1)" readonly class="computed-input">
+                  <template #suffix><span class="unit-suffix">%</span></template>
+                </el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item class="small-label">
+                <template #label>粉煤灰 β<sub>1</sub></template>
+                <el-input-number :model-value="n(store.b1p)" @update:model-value="v => store.b1p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item class="small-label">
+                <template #label>矿粉 β<sub>2</sub></template>
+                <el-input-number :model-value="n(store.b2p)" @update:model-value="v => store.b2p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="16" style="margin-top:8px">
+            <el-col :span="8">
+              <el-form-item class="small-label">
+                <template #label>微珠 β<sub>3</sub></template>
+                <el-input-number :model-value="n(store.b3p)" @update:model-value="v => store.b3p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item class="small-label">
+                <template #label>硅灰 β<sub>4</sub></template>
+                <el-input-number :model-value="n(store.b4p)" @update:model-value="v => store.b4p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
       </div>
     </div>
 
-    <!-- Section 2: 回归系数 -->
+    <!-- Section 3 -->
     <div class="cs-section">
       <div class="cs-section-head">
         <el-icon><TrendCharts /></el-icon>
@@ -359,7 +395,7 @@ async function onFileChange(file: UploadFile) {
       </div>
     </div>
 
-    <!-- Section 3: 计算结果 -->
+    <!-- Section 4 -->
     <div class="cs-section">
       <div class="cs-section-head">
         <el-icon><Histogram /></el-icon>
@@ -380,7 +416,6 @@ async function onFileChange(file: UploadFile) {
             </el-col>
           </el-row>
         </el-form>
-
         <el-alert type="info" :closable="false" style="margin-top:8px">
           <template #title>计算公式说明</template>
           <template #default>
@@ -391,7 +426,6 @@ async function onFileChange(file: UploadFile) {
             </p>
           </template>
         </el-alert>
-
         <div class="footer-actions">
           <el-button type="primary" :disabled="!store.wb" @click="emit('next-step')">
             下一步
@@ -409,7 +443,6 @@ async function onFileChange(file: UploadFile) {
   font-weight: 700;
   letter-spacing: 2px;
 }
-
 .estimation-panel {
   margin-top: 16px;
   padding: 16px;
@@ -417,7 +450,6 @@ async function onFileChange(file: UploadFile) {
   border: 1px dashed #c0cfeb;
   border-radius: 8px;
 }
-
 .estimation-panel__title {
   display: flex;
   align-items: center;
@@ -426,7 +458,6 @@ async function onFileChange(file: UploadFile) {
   color: #1e3c72;
   margin-bottom: 12px;
 }
-
 .estimation-panel__formula {
   margin-left: 12px;
   font-weight: normal;
@@ -436,60 +467,40 @@ async function onFileChange(file: UploadFile) {
   background: #eef4ff;
   border-radius: 4px;
 }
-
 .small-label :deep(.el-form-item__label) {
   font-size: 12px !important;
   color: #5b6472 !important;
 }
-
+/* Force vertical (上下) layout for form items inside estimation panels */
+.estimation-panel :deep(.el-form-item) {
+  display: block;
+}
+.estimation-panel :deep(.el-form-item__label) {
+  display: block;
+  text-align: left;
+  padding-bottom: 4px;
+  line-height: 1.4;
+}
+.estimation-panel :deep(.el-form-item__content) {
+  display: block;
+  margin-left: 0 !important;
+}
 .param-hint {
   font-size: 11px;
   color: #909399;
   margin-top: 4px;
 }
-
-.param-table {
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: #7b8394;
-  line-height: 1.8;
-  width: 100%;
-}
-.param-table div {
-  display: flex;
-  justify-content: space-between;
-  border-bottom: 1px dotted #dcdfe6;
-  padding: 4px 6px;
-  background: #fff;
-}
-.param-table div:last-child {
-  border-bottom: none;
-}
-.param-table dt {
-  font-weight: 600;
-  color: #1e3c72;
-  min-width: 40px;
-}
-.param-table dd {
-  margin: 0;
-  text-align: right;
-  font-family: var(--el-font-family);
-}
-
-/* ── 4-card material grid ────────────────────────────────── */
 .material-cards {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
-
 .material-card {
   border: 1px solid #dbe5f1;
   border-radius: 10px;
   background: #fff;
   overflow: hidden;
 }
-
 .material-card__head {
   font-size: 13px;
   font-weight: 700;
@@ -499,53 +510,50 @@ async function onFileChange(file: UploadFile) {
   border-bottom: 1px solid #e5e9f2;
   text-align: center;
 }
-
 .material-card__inputs {
   display: flex;
   gap: 8px;
   padding: 10px 10px 6px;
 }
-
 .mc-input {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-
 .mc-input__label {
   font-size: 11px;
   font-weight: 600;
   color: #5b6472;
 }
-
 .ref-table {
+  width: 100%;
   margin: 0;
-  padding: 4px 10px 8px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
+  border-collapse: collapse;
+  font-size: 11px;
 }
-
-.ref-table div {
-  font-size: 10px;
-  background: #f8f9fc;
-  padding: 2px 6px;
-  border-radius: 3px;
-  border-bottom: none;
-  display: inline-flex;
-  gap: 3px;
-  white-space: nowrap;
-}
-
-.ref-table dt {
-  font-weight: 600;
+.ref-table th {
+  background: #eef3ff;
   color: #1e3c72;
+  font-weight: 600;
+  padding: 4px 6px;
+  border: 1px solid #dbe5f1;
+  text-align: center;
 }
-
-.ref-table dd {
-  margin: 0;
-  color: #6b7280;
-  text-align: left;
+.ref-table td {
+  padding: 3px 6px;
+  border: 1px solid #eef3fb;
+  text-align: center;
+}
+.ref-table tbody tr:hover {
+  background: #f0f5ff;
+}
+.ref-row--active {
+  background: #d4edda !important;
+  font-weight: 700;
+  color: #0f5132;
+}
+.ref-row--active td {
+  border-color: #82c88a;
 }
 </style>
