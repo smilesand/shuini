@@ -67,6 +67,26 @@ function exportReport(record: RecordItem) {
   const evalSpread = extractEval(record, 'evalSpread') || extractEval(record, 'spreadMeasured');
   const workDesc = extractEval(record, 'evalWorkabilityDesc') || extractEval(record, 'workabilityNote');
 
+  // ── Performance evaluation ──────────────────────────────────
+  const workabilityOk = extractEval(record, 'workabilityOk');
+  const sTargetStr = extractEval(record, 'sTargetStrength');
+
+  // Strength pass/fail: compare measured 28d strength vs target (配制强度)
+  // Target can come from trial_data.inputs.sTargetStrength or flatData (computed below)
+  let strengthPass: boolean | null = null;
+  let workabilityPass: boolean | null = null;
+  if (workabilityOk === true || workabilityOk === 'true' || workabilityOk === 1 || workabilityOk === '1') {
+    workabilityPass = true;
+  } else if (workabilityOk === false || workabilityOk === 'false' || workabilityOk === 0 || workabilityOk === '0') {
+    workabilityPass = false;
+  }
+
+  function passLabel(pass: boolean | null) {
+    if (pass === true) return '<span style="color:#0f5132;font-weight:bold;">合格 ✓</span>';
+    if (pass === false) return '<span style="color:#842029;font-weight:bold;">不合格 ✗</span>';
+    return '—';
+  }
+
   // Dictionary for Chinese/English Abbreviations
   const keyMap: Record<string, string> = {
     // Basic Materials
@@ -195,6 +215,14 @@ function exportReport(record: RecordItem) {
   let admix = flatData.alphaAdj ?? flatData.alpha ?? flatData.admixtureRatio ?? flatData.admixture_ratio ?? flatData.admixture_pct ?? '—';
   if (typeof admix === 'number' && flatData.admixtureRatio === undefined && flatData.admixture_ratio === undefined && flatData.admixture_pct === undefined && admix < 1) admix = admix * 100;
   const sf_vol = flatData.steelFiberVolumeRatio ?? flatData.steel_fiber_volume_ratio ?? flatData.steelFiberVolume ?? '—';
+
+  // ── Compute strength pass/fail (needs flatData for target fallbacks) ──
+  const targetForEval = sTargetStr || flatData.fcu0 || flatData.designStrength || flatData.design_strength;
+  const evalStrNum = Number(evalStrength);
+  const targetEvalNum = Number(targetForEval);
+  if (evalStrength && targetForEval && Number.isFinite(evalStrNum) && Number.isFinite(targetEvalNum)) {
+    strengthPass = evalStrNum >= targetEvalNum;
+  }
 
   // Lab Mix or Design Mix
   const calc = record.record_data?.calculated as Record<string, unknown> | undefined;
@@ -352,6 +380,24 @@ ${table2Body2}</tbody>
       <tr><td class="kv-key">实测坍落度 <span class="unit">[mm]</span></td><td class="kv-val">${evalSlump || '—'}</td></tr>
       <tr><td class="kv-key">实测扩展度 <span class="unit">[mm]</span></td><td class="kv-val">${evalSpread || '—'}</td></tr>
       <tr><td class="kv-key">工作性及表现</td><td class="kv-val">${workDesc || '—'}</td></tr>
+    </tbody>
+  </table>
+  <div class="section-title">四、 性能评价</div>
+  <table>
+    <thead>
+      <tr><th style="width:40%">评价指标</th><th style="width:30%">实测值</th><th style="width:30%">评判结果</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="kv-key">28d抗压强度</td>
+        <td class="kv-val">${evalStrength ? evalStrength + ' MPa' : '—'}</td>
+        <td class="kv-val">${passLabel(strengthPass)}</td>
+      </tr>
+      <tr>
+        <td class="kv-key">工作性${evalSlump ? '（坍落度）' : evalSpread ? '（扩展度）' : ''}</td>
+        <td class="kv-val">${evalSlump ? evalSlump + ' mm' : evalSpread ? evalSpread + ' mm' : '—'}</td>
+        <td class="kv-val">${passLabel(workabilityPass)}</td>
+      </tr>
     </tbody>
   </table>
   <div class="footer">本记录由 中国中车风电混塔用混凝土配合比设计系统 自动生成 · 打印时间：${printTimeStr}</div>
