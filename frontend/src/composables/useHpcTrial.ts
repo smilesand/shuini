@@ -387,6 +387,11 @@ export function useHpcTrial() {
   const strengthP = ref<NullableNumber>(null)
   const strengthN = ref<NullableNumber>(null)
   const sTargetStrength = ref<NullableNumber>(null)
+  const strengthAlpha = ref<NullableNumber>(null)
+  // Per-group admixture overrides (null = use computed from trial_alpha)
+  const strengthMa0 = ref<NullableNumber>(null)
+  const strengthMaP = ref<NullableNumber>(null)
+  const strengthMaN = ref<NullableNumber>(null)
 
   const measuredDensity = ref<NullableNumber>(null)
   const strengthGroups = ref<StrengthGroup[]>(defaultStrengthGroups())
@@ -525,6 +530,10 @@ export function useHpcTrial() {
     strengthP.value,
     strengthN.value,
     sTargetStrength.value,
+    strengthAlpha.value,
+    strengthMa0.value,
+    strengthMaP.value,
+    strengthMaN.value,
     wbAdj.value,
     mbAdj.value,
     sandRatioAdj.value,
@@ -554,6 +563,10 @@ export function useHpcTrial() {
         strengthP: strengthP.value,
         strengthN: strengthN.value,
         sTargetStrength: sTargetStrength.value,
+        strengthAlpha: strengthAlpha.value,
+        strengthMa0: strengthMa0.value,
+        strengthMaP: strengthMaP.value,
+        strengthMaN: strengthMaN.value,
         wbAdj: wbAdj.value,
         mbAdj: mbAdj.value,
         sandRatioAdj: sandRatioAdj.value,
@@ -588,6 +601,10 @@ export function useHpcTrial() {
     strengthP.value = toNullableNumber(inputs.strengthP)
     strengthN.value = toNullableNumber(inputs.strengthN)
     sTargetStrength.value = toNullableNumber(inputs.sTargetStrength)
+    strengthAlpha.value = toNullableNumber(inputs.strengthAlpha)
+    strengthMa0.value = toNullableNumber(inputs.strengthMa0)
+    strengthMaP.value = toNullableNumber(inputs.strengthMaP)
+    strengthMaN.value = toNullableNumber(inputs.strengthMaN)
     wbAdj.value = toNullableNumber(inputs.wbAdj)
     mbAdj.value = toNullableNumber(inputs.mbAdj)
     sandRatioAdj.value = toNullableNumber(inputs.sandRatioAdj)
@@ -671,6 +688,10 @@ export function useHpcTrial() {
       strength_p: strengthP.value,
       strength_n: strengthN.value,
       target_strength: sTargetStrength.value,
+      trial_alpha: strengthAlpha.value,
+      trial_ma0: strengthMa0.value,
+      trial_maP: strengthMaP.value,
+      trial_maN: strengthMaN.value,
       wb_adj: wbAdj.value,
       mb_adj: mbAdj.value,
       sand_ratio_adj: sandRatioAdj.value,
@@ -894,6 +915,10 @@ export function useHpcTrial() {
     strengthP,
     strengthN,
     sTargetStrength,
+    strengthAlpha,
+    strengthMa0,
+    strengthMaP,
+    strengthMaN,
     baseWb,
     baseBs,
     strengthMixes,

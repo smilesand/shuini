@@ -17,6 +17,10 @@ const {
   strengthP,
   strengthN,
   sTargetStrength,
+  strengthAlpha,
+  strengthMa0,
+  strengthMaP,
+  strengthMaN,
   workabilityResult,
   strengthMixes,
   strengthRegression,
@@ -101,27 +105,50 @@ const strengthDisplayRows = computed(() =>
   }),
 );
 
+// Per-group admixture refs: [P(+Δ), 0(base), N(-Δ)]
+const strengthMaRefs = [strengthMaP, strengthMa0, strengthMaN] as const
+
 const strengthMixTableRows = computed(() =>
-  strengthDisplayRows.value.map(({ sourceIndex, mix, meta }) => ({
-    headerLabel: meta.headerLabel,
-    headerType: meta.tagType,
-    summary: `W/B=${fmt(mix.wb, 4)}  βs=${fmt(mix.bs)}%`,
-    rows: [
-      {
-        // 调整水胶比后，变化的是胶材总量及其分项分配；水量保持不变。
-        mc: createTableCell(mix.mc, 2, { changed: sourceIndex !== 0 }),
-        m1: createTableCell(mix.m1, 2, { changed: sourceIndex !== 0 }),
-        m2: createTableCell(mix.m2, 2, { changed: sourceIndex !== 0 }),
-        m3: createTableCell(mix.m3, 2, { changed: sourceIndex !== 0 }),
-        m4: createTableCell(mix.m4, 2, { changed: sourceIndex !== 0 }),
-        mg: createTableCell(mix.mg, 2, { changed: sourceIndex !== 0 }),
-        ms: createTableCell(mix.ms, 2, { changed: sourceIndex !== 0 }),
-        mw: createTableCell(mix.mw),
-        ma: createTableCell(mix.ma, 2, { changed: sourceIndex !== 0 }),
-        total: createTableCell(mix.total, 2, { emphasized: true }),
-      },
-    ],
-  })),
+  strengthDisplayRows.value.map(({ sourceIndex, mix, meta }) => {
+    const maRef = strengthMaRefs[sourceIndex]
+    const computedMa = mix.ma
+    // 当用户覆盖了外加剂值时，本地即时调整合计
+    const effectiveMa = maRef.value ?? computedMa
+    const adjTotal = mix.total !== null && computedMa !== null
+      ? mix.total - computedMa + (effectiveMa ?? 0)
+      : mix.total
+    return {
+      headerLabel: meta.headerLabel,
+      headerType: meta.tagType,
+      summary: `W/B=${fmt(mix.wb, 4)}  βs=${fmt(mix.bs)}%`,
+      rows: [
+        {
+          mc: createTableCell(mix.mc, 2),
+          m1: createTableCell(mix.m1, 2),
+          m2: createTableCell(mix.m2, 2),
+          m3: createTableCell(mix.m3, 2),
+          m4: createTableCell(mix.m4, 2),
+          mg: createTableCell(mix.mg, 2),
+          ms: createTableCell(mix.ms, 2),
+          mw: createTableCell(mix.mw, 2, { changed: sourceIndex !== 0 }),
+          ma: sourceIndex !== 0 ? {
+            text: effectiveMa !== null ? effectiveMa.toFixed(2) : '—',
+            changed: true,
+            input: {
+              value: effectiveMa,
+              onInput: (v: number | null) => { maRef.value = v },
+              min: 0,
+              max: 50,
+              step: 0.1,
+              precision: 2,
+              placeholder: String(computedMa !== null ? computedMa.toFixed(2) : ''),
+            },
+          } : createTableCell(mix.ma, 2),
+          total: createTableCell(adjTotal, 2, { emphasized: true }),
+        },
+      ],
+    }
+  }),
 );
 
 const strengthRelationRows = computed(() =>
@@ -178,6 +205,7 @@ const strengthRelationRows = computed(() =>
             v-model:strength-p="strengthP"
             v-model:strength-n="strengthN"
             v-model:s-target-strength="sTargetStrength"
+            v-model:strength-alpha="strengthAlpha"
           />
         </div>
       </div>

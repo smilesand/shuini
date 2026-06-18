@@ -157,6 +157,10 @@ export interface HpcTrialReq {
   sand_ratio_adj: number | null
   alpha_adj: number | null
   measured_density: number | null
+  trial_alpha?: number | null
+  trial_ma0?: number | null
+  trial_maP?: number | null
+  trial_maN?: number | null
 }
 
 export interface HpcTrialMaterialRowRes {

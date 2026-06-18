@@ -7,6 +7,7 @@ const strengthN = defineModel<number | null>("strengthN", { required: true });
 const sTargetStrength = defineModel<number | null>("sTargetStrength", {
   required: true,
 });
+const strengthAlpha = defineModel<number | null>("strengthAlpha", { required: true });
 </script>
 
 <template>
@@ -14,7 +15,7 @@ const sTargetStrength = defineModel<number | null>("sTargetStrength", {
     <span style="font-size: 13px; color: #666">强度实验调整步长</span>
   </el-divider>
   <p style="font-size: 12px; color: #909399; margin-bottom: 10px">
-    以工作性实验确认后的基准配合比为中心进行三组强度实验。调整水胶比时保持用水量不变，按原胶材构成比例同步重算水泥、粉煤灰、矿粉、微珠、硅灰；调整砂率时保持粗细骨料总量不变。
+    以工作性实验确认后的基准配合比为中心进行三组强度实验。调整水胶比时保持胶凝材料总量不变，水 = 胶材 × W/B；调整砂率时保持粗细骨料总量不变。外加剂掺量可由用户自定义输入。
   </p>
 
   <el-form label-position="top" size="default">
@@ -45,6 +46,23 @@ const sTargetStrength = defineModel<number | null>("sTargetStrength", {
           >
             <template #suffix><span class="unit-suffix">%</span></template>
           </el-input-number>
+        </el-form-item>
+      </el-col>
+      <el-col :span="6">
+        <el-form-item>
+          <template #label>外加剂掺量 α</template>
+          <el-input-number
+            v-model="strengthAlpha"
+            :min="0"
+            :max="10"
+            :step="0.1"
+            :precision="2"
+            placeholder="沿用工作性"
+            style="width: 100%"
+          >
+            <template #suffix><span class="unit-suffix">%</span></template>
+          </el-input-number>
+          <div class="input-hint">留空则沿用工作性确认值</div>
         </el-form-item>
       </el-col>
     </el-row>

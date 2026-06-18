@@ -167,6 +167,10 @@ class HpcTrialRequest(BaseModel):
     sand_ratio_adj: Optional[float] = Field(default=None, gt=0, lt=100)
     alpha_adj: Optional[float] = Field(default=None, ge=0, le=100)
     measured_density: Optional[float] = Field(default=None, gt=0)
+    trial_alpha: Optional[float] = Field(default=None, ge=0, le=100)
+    trial_ma0: Optional[float] = Field(default=None, ge=0)
+    trial_maP: Optional[float] = Field(default=None, ge=0)
+    trial_maN: Optional[float] = Field(default=None, ge=0)
 
 
 class HpcTrialMaterialRowResponse(BaseModel):

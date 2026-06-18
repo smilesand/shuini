@@ -14,6 +14,15 @@ interface TableCell {
   unit?: string;
   changed?: boolean;
   emphasized?: boolean;
+  input?: {
+    value: number | null;
+    onInput: (v: number | null) => void;
+    min?: number;
+    max?: number;
+    step?: number;
+    precision?: number;
+    placeholder?: string;
+  };
 }
 
 type TableValue = TableCell | string | number | null | undefined;

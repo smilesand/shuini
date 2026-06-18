@@ -39,6 +39,7 @@ def _round_js(value: float, digits: int = 4) -> float:
 
     迁移前前端使用 `Math.round(value * factor) / factor`，这里用 floor(x + 0.5)
     近似同样的正负数舍入规则，尽量避免 Python 内置 round 的银行家舍入导致跨端差异。
+        4. 外加剂掺量由用户在强度试验页输入（trial_alpha）；未输入时沿用工作性的 alpha。
     """
     factor = 10 ** digits
     return math.floor(value * factor + 0.5) / factor
@@ -282,14 +283,20 @@ def _calculate_strength_mixes(
     workability_result: dict,
     delta_wb: float,
     delta_bs: float,
+    trial_alpha: Optional[float] = None,
+    trial_ma0: Optional[float] = None,
+    trial_maP: Optional[float] = None,
+    trial_maN: Optional[float] = None,
 ) -> list[dict]:
     """
     计算强度实验三组配合比。
 
     保持与迁移前前端一致的关键口径：
-        1. 以“工作性实验结果”为优先基准；若该结果为空，则回退到设计配合比。
-        2. 调整水胶比时固定用水量，通过反推胶材总量并按原胶材构成比例分配到各胶材分项。
+        1. 以\u201c工作性实验结果\u201d为优先基准；若该结果为空，则回退到设计配合比。
+        2. 调整水胶比时保持胶凝材料总量不变，通过水 = 胶材 \u00d7 W/B 重算用水量。
         3. 调整砂率时保持粗细骨料总量不变，一增一降完成重分配。
+        4. 外加剂掺量由用户在强度试验页输入（trial_alpha）；未输入时沿用工作性的 alpha。
+        5. 各组外加剂用量可由前端表格直接覆盖（trial_ma0/P/N）。
     """
     base_binder = workability_result.get("mb") if workability_result.get("mb") is not None else None
     base_cement = workability_result.get("mc") if workability_result.get("mc") is not None else None
@@ -317,24 +324,22 @@ def _calculate_strength_mixes(
     resolved_bs = current_bs if current_bs is not None else beta_s
     resolved_alpha = current_alpha if current_alpha is not None else alpha
 
+    # 外加剂掺量：优先使用用户在强度试验页输入的 trial_alpha
+    strength_alpha = trial_alpha if trial_alpha is not None else resolved_alpha
+
     if (
         binder is None
         or binder <= 0
         or coarse is None
         or fine is None
-        or water is None
-        or water <= 0
         or cement is None
         or resolved_wb is None
         or resolved_wb <= 0
         or resolved_bs is None
-        or resolved_alpha is None
+        or strength_alpha is None
     ):
         return []
 
-    fractions = _component_fractions_from_materials(cement, fly_ash, slag, micro_bead, silica_fume)
-    if fractions is None:
-        return []
 
     total_aggregate = coarse + fine
     variants = [
@@ -351,25 +356,37 @@ def _calculate_strength_mixes(
         },
     ]
 
+    # Per-group admixture overrides: [基准, +Δ, -Δ]
+    ma_overrides = [trial_ma0, trial_maP, trial_maN]
+
     mixes: list[dict] = []
-    for variant in variants:
+    for idx, variant in enumerate(variants):
         if variant["wb"] <= 0 or variant["bs"] <= 0 or variant["bs"] >= 100:
             mixes.append(_empty_strength_mix(variant["label"]))
             continue
 
-        adjusted_binder = water / variant["wb"]
-        if adjusted_binder <= 0:
+        # 胶材总量不变，水 = 胶材 × W/B
+        adjusted_water = binder * variant["wb"]
+        if adjusted_water <= 0:
             mixes.append(_empty_strength_mix(variant["label"]))
             continue
 
-        adjusted_cement = adjusted_binder * fractions["mc"]
-        adjusted_fly_ash = adjusted_binder * fractions["m1"]
-        adjusted_slag = adjusted_binder * fractions["m2"]
-        adjusted_micro_bead = adjusted_binder * fractions["m3"]
-        adjusted_silica_fume = adjusted_binder * fractions["m4"]
+        # 各胶材分量保持不变（因为胶材总量不变、比例不变）
+        adjusted_cement = cement
+        adjusted_fly_ash = fly_ash
+        adjusted_slag = slag
+        adjusted_micro_bead = micro_bead
+        adjusted_silica_fume = silica_fume
         adjusted_sand = total_aggregate * (variant["bs"] / 100.0)
         adjusted_coarse = total_aggregate - adjusted_sand
-        adjusted_admixture = adjusted_binder * (resolved_alpha / 100.0)
+
+        # 外加剂：优先使用前端表格直接输入的覆盖值
+        ma_override = ma_overrides[idx] if idx < len(ma_overrides) else None
+        if ma_override is not None:
+            adjusted_admixture = ma_override
+        else:
+            adjusted_admixture = binder * (strength_alpha / 100.0)
+
         total = sum([
             adjusted_cement,
             adjusted_fly_ash,
@@ -378,7 +395,7 @@ def _calculate_strength_mixes(
             adjusted_silica_fume,
             adjusted_coarse,
             adjusted_sand,
-            water,
+            adjusted_water,
             adjusted_admixture,
         ])
 
@@ -393,9 +410,9 @@ def _calculate_strength_mixes(
             "m4": _round_js(adjusted_silica_fume, 2),
             "mg": _round_js(adjusted_coarse, 2),
             "ms": _round_js(adjusted_sand, 2),
-            "mw": _round_js(water, 2),
+            "mw": _round_js(adjusted_water, 2),
             "ma": _round_js(adjusted_admixture, 2),
-            "mb": _round_js(adjusted_binder, 2),
+            "mb": _round_js(binder, 2),
             "total": _round_js(total, 2),
         })
 
@@ -626,6 +643,10 @@ def calc_hpc_trial(
     sand_ratio_adj: Optional[float] = None,
     alpha_adj: Optional[float] = None,
     measured_density: Optional[float] = None,
+    trial_alpha: Optional[float] = None,
+    trial_ma0: Optional[float] = None,
+    trial_maP: Optional[float] = None,
+    trial_maN: Optional[float] = None,
 ) -> dict:
     """
     高性能试配统一计算入口。
@@ -672,6 +693,10 @@ def calc_hpc_trial(
         workability_result=workability_result,
         delta_wb=delta_wb,
         delta_bs=delta_bs,
+        trial_alpha=trial_alpha,
+        trial_ma0=trial_ma0,
+        trial_maP=trial_maP,
+        trial_maN=trial_maN,
     )
     strength_regression = _calculate_strength_regression(
         strength_mixes=strength_mixes,
