@@ -50,6 +50,7 @@ function updateValue(groupIdx: number, valueIdx: number, raw: string | number | 
 interface GroupEval {
   value: number | null
   trimmed: boolean
+  invalid: boolean
   trimmedIndices: number[]
   allFilled: boolean
 }
@@ -61,6 +62,7 @@ const groupEvals = computed<GroupEval[]>(() =>
     return {
       value: result.value,
       trimmed: result.trimmed,
+      invalid: result.invalid,
       trimmedIndices: result.trimmedIndices,
       allFilled: filled === 3,
     }
@@ -69,60 +71,83 @@ const groupEvals = computed<GroupEval[]>(() =>
 
 // ── Overall statistics ──────────────────────────────────────────
 const overallAvg = computed<number | null>(() => {
-  const vals = groupEvals.value.map(e => e.value).filter((v): v is number => v !== null)
+  const vals = groupEvals.value
+    .filter(e => !e.invalid)
+    .map(e => e.value)
+    .filter((v): v is number => v !== null)
   if (vals.length === 0) return null
   return vals.reduce((s, v) => s + v, 0) / vals.length
 })
 
 const minGroupAvg = computed<number | null>(() => {
-  const vals = groupEvals.value.map(e => e.value).filter((v): v is number => v !== null)
+  const vals = groupEvals.value
+    .filter(e => !e.invalid)
+    .map(e => e.value)
+    .filter((v): v is number => v !== null)
   if (vals.length === 0) return null
   return Math.min(...vals)
 })
 
 const allComplete = computed(() =>
-  groupEvals.value.length >= 6 && groupEvals.value.every(e => e.value !== null),
+  groupEvals.value.length >= 6
+  && groupEvals.value.every(e => e.allFilled)
+  && !groupEvals.value.some(e => e.invalid),
+)
+
+const hasInvalidGroups = computed(() =>
+  groupEvals.value.some(e => e.invalid),
 )
 
 // ── Evaluation ──────────────────────────────────────────────────
 const evaluation = computed(() => {
   const ov = overallAvg.value
   const minG = minGroupAvg.value
-  const ts = props.targetStrength
   const sg = props.strengthGrade
 
-  if (!allComplete.value || ov === null || ts === null) {
+  if (!allComplete.value || ov === null) {
+    const reason = hasInvalidGroups.value
+      ? '存在无效试验组（最大值和最小值与中间值的差值均超过中间值的15%），请修正数据。'
+      : '请完成所有 6 组（每组 3 条）强度数据填写。'
     return {
       status: 'pending' as const,
       label: '待评价',
       tagType: 'info' as const,
-      detail: '请完成所有 6 组（每组 3 条）强度数据填写。',
+      detail: reason,
     }
   }
 
-  const overallPass = ov >= ts
+  // 六组试块强度平均值 ≥ 1.15 × 强度等级
+  const avgThreshold = sg !== null ? sg * 1.15 : null
+  const overallPass = avgThreshold !== null ? ov >= avgThreshold : null
+
+  // 最小值 ≥ 0.95 × 强度等级
   const minThreshold = sg !== null ? sg * 0.95 : null
   const minGroupPass = minThreshold !== null && minG !== null ? minG >= minThreshold : null
 
-  const allPass = overallPass && (minGroupPass !== false)
+  const allPass = overallPass !== false && (minGroupPass !== false)
 
-  let detail = `总体平均值 ${ov.toFixed(1)} MPa`
-  detail += overallPass
-    ? ` ≥ 配制强度 ${ts.toFixed(1)} MPa`
-    : ` < 配制强度 ${ts.toFixed(1)} MPa，差值 ${(ts - ov).toFixed(1)} MPa`
+  // Build detail message
+  const parts: string[] = []
 
-  if (minThreshold !== null && minG !== null) {
-    detail += `；组均值最小值 ${minG.toFixed(1)} MPa`
-    detail += minGroupPass
-      ? ` ≥ 0.95×强度等级(${minThreshold.toFixed(1)} MPa)`
-      : ` < 0.95×强度等级(${minThreshold.toFixed(1)} MPa)`
+  if (avgThreshold !== null) {
+    if (overallPass === false) {
+      parts.push(`总体平均值 ${ov.toFixed(1)} MPa 不足 1.15×强度等级(${avgThreshold.toFixed(1)} MPa)，差值 ${(avgThreshold - ov).toFixed(1)} MPa`)
+    }
+  }
+
+  if (minThreshold !== null && minG !== null && minGroupPass === false) {
+    parts.push(`组均值最小值 ${minG.toFixed(1)} MPa 不足 0.95×强度等级(${minThreshold.toFixed(1)} MPa)，差值 ${(minThreshold - minG).toFixed(1)} MPa`)
+  }
+
+  if (allPass) {
+    parts.unshift(`总体平均值 ${ov.toFixed(1)} MPa ≥ 1.15×强度等级(${avgThreshold!.toFixed(1)} MPa)，组均值最小值 ${minG!.toFixed(1)} MPa ≥ 0.95×强度等级(${minThreshold!.toFixed(1)} MPa)`)
   }
 
   return {
     status: allPass ? ('pass' as const) : ('fail' as const),
     label: allPass ? '合格' : '不合格',
     tagType: allPass ? ('success' as const) : ('danger' as const),
-    detail,
+    detail: parts.join('；'),
   }
 })
 
@@ -168,7 +193,10 @@ function fmt(v: number | null, d = 1): string {
           <tr
             v-for="(group, gi) in groups"
             :key="group.id"
-            :class="{ 'row-trimmed': groupEvals[gi]?.trimmed }"
+            :class="{
+              'row-trimmed': groupEvals[gi]?.trimmed && !groupEvals[gi]?.invalid,
+              'row-invalid': groupEvals[gi]?.invalid,
+            }"
           >
             <td class="td-center td-group">
               <span class="group-id">{{ group.id }}</span>
@@ -193,14 +221,22 @@ function fmt(v: number | null, d = 1): string {
               </span>
             </td>
             <td class="td-center td-avg">
-              <span v-if="groupEvals[gi]?.value !== null" class="avg-val">
+              <span v-if="groupEvals[gi]?.invalid" class="avg-invalid">无效</span>
+              <span v-else-if="groupEvals[gi]?.value !== null" class="avg-val">
                 {{ fmt(groupEvals[gi]!.value, 1) }}
               </span>
               <span v-else class="avg-pending">待完善</span>
             </td>
             <td class="td-center">
               <el-tag
-                v-if="groupEvals[gi]?.allFilled && groupEvals[gi]?.trimmed"
+                v-if="groupEvals[gi]?.allFilled && groupEvals[gi]?.invalid"
+                type="danger"
+                size="small"
+              >
+                无效
+              </el-tag>
+              <el-tag
+                v-else-if="groupEvals[gi]?.allFilled && groupEvals[gi]?.trimmed"
                 type="warning"
                 size="small"
               >
@@ -246,8 +282,8 @@ function fmt(v: number | null, d = 1): string {
         <span class="summary-val">{{ fmt(minGroupAvg, 1) }} MPa</span>
       </div>
       <div class="summary-item">
-        <span class="summary-label">配制强度 (f<sub>cu,0</sub>)</span>
-        <span class="summary-val">{{ fmt(targetStrength, 1) }} MPa</span>
+        <span class="summary-label">1.15 × 强度等级</span>
+        <span class="summary-val summary-val--primary">{{ strengthGrade !== null ? fmt(strengthGrade * 1.15, 1) : '—' }} MPa</span>
       </div>
       <div class="summary-item">
         <span class="summary-label">0.95 × 强度等级</span>
@@ -341,6 +377,11 @@ function fmt(v: number | null, d = 1): string {
   color: #9ca3af;
   font-size: 11px;
 }
+.avg-invalid {
+  color: #e74c3c;
+  font-weight: 700;
+  font-size: 11px;
+}
 .td-dash { color: #ccc; }
 
 .row-trimmed td {
@@ -348,6 +389,14 @@ function fmt(v: number | null, d = 1): string {
 }
 .row-trimmed .td-avg {
   background: #fff8d4;
+}
+
+/* ── Invalid row ────────────────────────────────────────────── */
+.row-invalid td {
+  background: #fff0f0;
+}
+.row-invalid .td-avg {
+  background: #ffe0e0;
 }
 
 .readonly-val {
