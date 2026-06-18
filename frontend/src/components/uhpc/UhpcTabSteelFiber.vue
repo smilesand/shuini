@@ -81,7 +81,6 @@ const steelFiberMassPreview = computed(() => {
                   :model-value="store.steelFiberVolumeRatio ?? undefined"
                   @update:model-value="value => store.steelFiberVolumeRatio = value ?? null"
                   :min="0" :max="5" :step="0.1" :precision="2"
-                  :placeholder="UHPC_INPUT_PLACEHOLDERS.steelFiberVolumeRatio"
                   style="width:100%"
                 >
                   <template #suffix><span class="unit-suffix">%</span></template>

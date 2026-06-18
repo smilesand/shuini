@@ -157,24 +157,27 @@ async function handleFinish() {
               <div class="binder-form-field">
                 <el-form-item>
                   <template #label>体系最大粒径 D<sub>L</sub></template>
-                  <el-input-number :model-value="store.maxParticleSize ?? undefined" @update:model-value="value => store.maxParticleSize = value ?? null" :min="1" :step="1" :placeholder="UHPC_INPUT_PLACEHOLDERS.maxParticleSize" style="width:100%">
+                  <el-input-number :model-value="store.maxParticleSize ?? undefined" @update:model-value="value => store.maxParticleSize = value ?? null" :min="1" :step="1" style="width:100%">
                     <template #suffix><span class="unit-suffix">μm</span></template>
                   </el-input-number>
                 </el-form-item>
+                <div class="field-hint">参考值：80 μm</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
                   <template #label>体系最小粒径 D<sub>S</sub></template>
-                  <el-input-number :model-value="store.minParticleSize ?? undefined" @update:model-value="value => store.minParticleSize = value ?? null" :min="0.1" :step="0.1" :precision="2" :placeholder="UHPC_INPUT_PLACEHOLDERS.minParticleSize" style="width:100%">
+                  <el-input-number :model-value="store.minParticleSize ?? undefined" @update:model-value="value => store.minParticleSize = value ?? null" :min="0.1" :step="0.1" :precision="2" style="width:100%">
                     <template #suffix><span class="unit-suffix">μm</span></template>
                   </el-input-number>
                 </el-form-item>
+                <div class="field-hint">参考值：1 μm</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
                   <template #label>粒径分布指数 q</template>
-                  <el-input-number :model-value="store.distributionIndex ?? undefined" @update:model-value="value => store.distributionIndex = value ?? null" :min="0.01" :step="0.01" :precision="3" :placeholder="UHPC_INPUT_PLACEHOLDERS.distributionIndex" style="width:100%" />
+                  <el-input-number :model-value="store.distributionIndex ?? undefined" @update:model-value="value => store.distributionIndex = value ?? null" :min="0.01" :step="0.01" :precision="3" style="width:100%" />
                 </el-form-item>
+                <div class="field-hint">参考值：0.22</div>
               </div>
             </div>
           </section>
@@ -185,27 +188,30 @@ async function handleFinish() {
               <div class="binder-form-field">
                 <el-form-item>
                   <template #label>粉煤灰峰值粒径 D<sub>pfa</sub></template>
-                  <el-input-number :model-value="store.flyAshPeakSize ?? undefined" @update:model-value="value => store.flyAshPeakSize = value ?? null" :min="0.1" :step="0.5" :precision="2" :placeholder="UHPC_INPUT_PLACEHOLDERS.flyAshPeakSize" style="width:100%">
+                  <el-input-number :model-value="store.flyAshPeakSize ?? undefined" @update:model-value="value => store.flyAshPeakSize = value ?? null" :min="0.1" :step="0.5" :precision="2" style="width:100%">
                     <template #suffix><span class="unit-suffix">μm</span></template>
                   </el-input-number>
                 </el-form-item>
+                <div class="field-hint">参考值：18 μm</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
                   <template #label>粉煤灰堆积粒径 I<sub>fa</sub></template>
-                  <el-input-number :model-value="store.flyAshAccumulationSize ?? undefined" @update:model-value="value => store.flyAshAccumulationSize = value ?? null" :min="0.1" :step="0.5" :precision="2" :placeholder="UHPC_INPUT_PLACEHOLDERS.flyAshAccumulationSize" style="width:100%">
+                  <el-input-number :model-value="store.flyAshAccumulationSize ?? undefined" @update:model-value="value => store.flyAshAccumulationSize = value ?? null" :min="0.1" :step="0.5" :precision="2" style="width:100%">
                     <template #suffix><span class="unit-suffix">μm</span></template>
                   </el-input-number>
                 </el-form-item>
+                <div class="field-hint">参考值：8 μm</div>
                 <div class="field-note">{{ flyAshAccumulationNote }}</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
                   <template #label>微珠峰值粒径 D<sub>pm</sub></template>
-                  <el-input-number :model-value="store.microBeadPeakSize ?? undefined" @update:model-value="value => store.microBeadPeakSize = value ?? null" :min="0.1" :step="0.1" :precision="2" :placeholder="UHPC_INPUT_PLACEHOLDERS.microBeadPeakSize" style="width:100%">
+                  <el-input-number :model-value="store.microBeadPeakSize ?? undefined" @update:model-value="value => store.microBeadPeakSize = value ?? null" :min="0.1" :step="0.1" :precision="2" style="width:100%">
                     <template #suffix><span class="unit-suffix">μm</span></template>
                   </el-input-number>
                 </el-form-item>
+                <div class="field-hint">参考值：4 μm</div>
               </div>
             </div>
           </section>
@@ -216,24 +222,27 @@ async function handleFinish() {
               <div class="binder-form-field">
                 <el-form-item>
                   <template #label>微珠占硅灰、微粉比例 I<sub>ce</sub></template>
-                  <el-input-number :model-value="store.microBeadSilicaFumeRatio ?? undefined" @update:model-value="value => store.microBeadSilicaFumeRatio = value ?? null" :min="0.1" :max="0.9" :step="0.05" :precision="2" :placeholder="UHPC_INPUT_PLACEHOLDERS.microBeadSilicaFumeRatio" style="width:100%" />
+                  <el-input-number :model-value="store.microBeadSilicaFumeRatio ?? undefined" @update:model-value="value => store.microBeadSilicaFumeRatio = value ?? null" :min="0.1" :max="0.9" :step="0.05" :precision="2" style="width:100%" />
                 </el-form-item>
+                <div class="field-hint">参考值：0.50</div>
                 <div class="field-note">{{ microBeadRatioNote }}</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
                   <template #label>微粉系数 I<sub>m</sub></template>
-                  <el-input-number :model-value="store.microPowderCoefficient ?? undefined" @update:model-value="value => store.microPowderCoefficient = value ?? null" :min="0.1" :max="2" :step="0.05" :precision="2" :placeholder="UHPC_INPUT_PLACEHOLDERS.microPowderCoefficient" style="width:100%" />
+                  <el-input-number :model-value="store.microPowderCoefficient ?? undefined" @update:model-value="value => store.microPowderCoefficient = value ?? null" :min="0.1" :max="2" :step="0.05" :precision="2" style="width:100%" />
                 </el-form-item>
+                <div class="field-hint">参考值：0.55</div>
                 <div class="field-note">{{ microPowderCoefficientNote }}</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
                   <template #label>假定拌合物质量 m<sub>cp</sub></template>
-                  <el-input-number :model-value="store.assumedMixMass ?? undefined" @update:model-value="value => store.assumedMixMass = value ?? null" :min="1000" :step="50" :precision="0" :placeholder="UHPC_INPUT_PLACEHOLDERS.assumedMixMass" style="width:100%">
+                  <el-input-number :model-value="store.assumedMixMass ?? undefined" @update:model-value="value => store.assumedMixMass = value ?? null" :min="1000" :step="50" :precision="0" style="width:100%">
                     <template #suffix><span class="unit-suffix">kg/m³</span></template>
                   </el-input-number>
                 </el-form-item>
+                <div class="field-hint">参考值：2500 kg/m³</div>
               </div>
             </div>
           </section>
@@ -244,34 +253,38 @@ async function handleFinish() {
               <div class="binder-form-field">
                 <el-form-item>
                   <template #label>水泥密度 ρ<sub>c</sub></template>
-                  <el-input-number :model-value="store.cementDensity ?? undefined" @update:model-value="value => store.cementDensity = value ?? null" :min="1" :step="10" :precision="0" :placeholder="UHPC_INPUT_PLACEHOLDERS.cementDensity" style="width:100%">
+                  <el-input-number :model-value="store.cementDensity ?? undefined" @update:model-value="value => store.cementDensity = value ?? null" :min="1" :step="10" :precision="0" style="width:100%">
                     <template #suffix><span class="unit-suffix">kg/m³</span></template>
                   </el-input-number>
                 </el-form-item>
+                <div class="field-hint">参考值：3100 kg/m³</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
                   <template #label>粉煤灰密度 ρ<sub>1</sub></template>
-                  <el-input-number :model-value="store.flyAshDensity ?? undefined" @update:model-value="value => store.flyAshDensity = value ?? null" :min="1" :step="10" :precision="0" :placeholder="UHPC_INPUT_PLACEHOLDERS.flyAshDensity" style="width:100%">
+                  <el-input-number :model-value="store.flyAshDensity ?? undefined" @update:model-value="value => store.flyAshDensity = value ?? null" :min="1" :step="10" :precision="0" style="width:100%">
                     <template #suffix><span class="unit-suffix">kg/m³</span></template>
                   </el-input-number>
                 </el-form-item>
+                <div class="field-hint">参考值：2300 kg/m³</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
                   <template #label>微珠密度 ρ<sub>3</sub></template>
-                  <el-input-number :model-value="store.microBeadDensity ?? undefined" @update:model-value="value => store.microBeadDensity = value ?? null" :min="1" :step="10" :precision="0" :placeholder="UHPC_INPUT_PLACEHOLDERS.microBeadDensity" style="width:100%">
+                  <el-input-number :model-value="store.microBeadDensity ?? undefined" @update:model-value="value => store.microBeadDensity = value ?? null" :min="1" :step="10" :precision="0" style="width:100%">
                     <template #suffix><span class="unit-suffix">kg/m³</span></template>
                   </el-input-number>
                 </el-form-item>
+                <div class="field-hint">参考值：2600 kg/m³</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
                   <template #label>硅灰密度 ρ<sub>4</sub></template>
-                  <el-input-number :model-value="store.silicaFumeDensity ?? undefined" @update:model-value="value => store.silicaFumeDensity = value ?? null" :min="1" :step="10" :precision="0" :placeholder="UHPC_INPUT_PLACEHOLDERS.silicaFumeDensity" style="width:100%">
+                  <el-input-number :model-value="store.silicaFumeDensity ?? undefined" @update:model-value="value => store.silicaFumeDensity = value ?? null" :min="1" :step="10" :precision="0" style="width:100%">
                     <template #suffix><span class="unit-suffix">kg/m³</span></template>
                   </el-input-number>
                 </el-form-item>
+                <div class="field-hint">参考值：2200 kg/m³</div>
               </div>
             </div>
           </section>
@@ -392,6 +405,13 @@ async function handleFinish() {
 
 .binder-form-field :deep(.el-form-item) {
   margin-bottom: 0;
+}
+
+.field-hint {
+  margin-top: 6px;
+  color: #a8abb2;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .field-note {

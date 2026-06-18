@@ -69,7 +69,6 @@ function handleGuideSelect(grade: number) {
                   :model-value="store.sandBinderRatio ?? undefined"
                   @update:model-value="value => store.sandBinderRatio = value ?? null"
                   :min="0.5" :max="2" :step="0.05" :precision="2"
-                  :placeholder="UHPC_INPUT_PLACEHOLDERS.sandBinderRatio"
                   style="width:100%"
                 />
                 <div class="input-hint">参考值 {{ UHPC_INPUT_PLACEHOLDERS.sandBinderRatio }}</div>

@@ -52,7 +52,6 @@ function handleGuideSelect(grade: number) {
                   :model-value="store.strengthGrade ?? undefined"
                   @update:model-value="value => store.strengthGrade = value ?? null"
                   :min="130" :step="20" :precision="0"
-                  :placeholder="UHPC_INPUT_PLACEHOLDERS.strengthGrade"
                   style="width:100%"
                 >
                   <template #suffix><span class="unit-suffix">MPa</span></template>
@@ -105,7 +104,6 @@ function handleGuideSelect(grade: number) {
                   :model-value="store.waterBinderRatio ?? undefined"
                   @update:model-value="value => store.waterBinderRatio = value ?? null"
                   :min="0.1" :max="0.5" :step="0.01" :precision="3"
-                  :placeholder="waterBinderPlaceholder"
                   style="width:100%"
                 />
                 <div class="input-hint">参考值 {{ waterBinderPlaceholder }}</div>
@@ -117,7 +115,6 @@ function handleGuideSelect(grade: number) {
                   :model-value="store.admixtureRatio ?? undefined"
                   @update:model-value="value => store.admixtureRatio = value ?? null"
                   :min="0" :max="10" :step="0.1" :precision="2"
-                  :placeholder="UHPC_INPUT_PLACEHOLDERS.admixtureRatio"
                   style="width:100%"
                 >
                   <template #suffix><span class="unit-suffix">%</span></template>
