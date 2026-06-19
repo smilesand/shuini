@@ -12,6 +12,7 @@ export interface RecordItem {
   created_at: string
   project_id?: number | null
   record_data: RecordData
+  source: string
   [key: string]: unknown
 }
 
@@ -28,6 +29,7 @@ export interface SaveRecordPayload {
   category: string
   project_id?: number | null
   record_data?: RecordData | null
+  source?: string
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

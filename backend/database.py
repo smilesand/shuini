@@ -32,7 +32,7 @@ RECORD_PAYLOAD_FIELDS = (
     "alpha", "mw", "ma", "total_mass", "trial_data", "design_data",
 )
 RECORD_METADATA_FIELDS = (
-    "id", "name", "category", "created_by", "created_at", "project_id",
+    "id", "name", "category", "created_by", "created_at", "project_id", "source",
 )
 
 
@@ -215,7 +215,8 @@ def init_db():
             is_deleted   INTEGER NOT NULL DEFAULT 0,
             deleted_at   TEXT,
             deleted_by   TEXT,
-            deleted_with_project INTEGER NOT NULL DEFAULT 0
+            deleted_with_project INTEGER NOT NULL DEFAULT 0,
+            source         TEXT    NOT NULL DEFAULT 'system'
         );
     """)
     # 创建默认管理员
@@ -281,6 +282,7 @@ def init_db():
         "ALTER TABLE projects ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE projects ADD COLUMN deleted_at TEXT",
         "ALTER TABLE projects ADD COLUMN deleted_by TEXT",
+        "ALTER TABLE records ADD COLUMN source TEXT NOT NULL DEFAULT 'system'",
     ):
         try:
             conn.execute(ddl)
@@ -602,6 +604,21 @@ def _ensure_record_access_conn(
     return conn.execute(sql, params).fetchone() is not None
 
 
+def get_record(record_id: int, *, username: str, is_admin: bool = False) -> dict | None:
+    """获取单条记录（含权限检查）。"""
+    conn = get_db()
+    params: list[object] = [record_id]
+    sql = f"SELECT * FROM records WHERE id=? AND {_is_active_clause()}"
+    if not is_admin:
+        sql += " AND created_by=?"
+        params.append(username)
+    row = conn.execute(sql, params).fetchone()
+    conn.close()
+    if row is None:
+        return None
+    return _record_row_to_dict(row)
+
+
 def save_record(data: dict, *, username: str, is_admin: bool = False) -> int:
     conn = get_db()
     record_id = data.get("id")
@@ -637,10 +654,12 @@ def save_record(data: dict, *, username: str, is_admin: bool = False) -> int:
         name = data.get("name", existing_row["name"])
         category = data.get("category", existing_row["category"])
         final_project_id = project_id_int if "project_id" in data else existing_row["project_id"]
+        final_source = data.get("source", existing_row["source"] if "source" in existing_row.keys() else "system")
     else:
         name = data.get("name")
         category = data.get("category", "hpc")
         final_project_id = project_id_int
+        final_source = data.get("source", "system")
 
     if not name:
         conn.close()
@@ -649,16 +668,16 @@ def save_record(data: dict, *, username: str, is_admin: bool = False) -> int:
     try:
         if record_id_int is not None:
             conn.execute(
-                "UPDATE records SET name=?, category=?, project_id=?, record_data=?, deleted_with_project=0 WHERE id=?",
-                [name, category, final_project_id, record_data, record_id_int],
+                "UPDATE records SET name=?, category=?, project_id=?, record_data=?, source=?, deleted_with_project=0 WHERE id=?",
+                [name, category, final_project_id, record_data, final_source, record_id_int],
             )
             conn.commit()
             conn.close()
             return record_id_int
 
         cur = conn.execute(
-            "INSERT INTO records (name, category, created_by, project_id, record_data) VALUES (?,?,?,?,?)",
-            [name, category, username, final_project_id, record_data],
+            "INSERT INTO records (name, category, created_by, project_id, record_data, source) VALUES (?,?,?,?,?,?)",
+            [name, category, username, final_project_id, record_data, final_source],
         )
         conn.commit()
     except sqlite3.Error as e:

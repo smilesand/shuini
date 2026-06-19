@@ -357,11 +357,13 @@ class RecordSaveRequest(BaseModel):
     category: str = Field(default='hpc', pattern=r'^(hpc|uhpc)$')
     project_id: Optional[int] = Field(default=None, gt=0)
     record_data: Optional[dict[str, Any]] = None
+    source: str = Field(default='system', pattern=r'^(system|import)$')
 
 class RecordResponse(BaseModel):
     id: int; name: str; category: str = 'hpc'; created_by: str; created_at: str
     project_id: Optional[int]=None
     record_data: dict[str, Any] = Field(default_factory=dict)
+    source: str = 'system'
 
 class ProjectCreateRequest(BaseModel):
     project_code: str = Field(..., min_length=1, max_length=50)

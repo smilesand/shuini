@@ -6,6 +6,8 @@ import { deleteRecord } from '../api/records'
 import type { RecordItem } from '../api/records'
 import { getProject, updateProject, listProjectRecords } from '../api/projects'
 import type { Project } from '../api/projects'
+import { exportProject, exportRecord, downloadBlob } from '../api/exchange'
+import ImportDialog from '../components/ImportDialog.vue'
 import { useCalcStore } from '../stores/calcStore'
 import { useUhpcStore } from '../stores/uhpcStore'
 import RecordTable from '../components/RecordTable.vue'
@@ -24,6 +26,10 @@ const editForm = ref({ project_code: '', project_name: '', requirements: '' })
 const saving = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
+// ── 导入导出 ──
+const importDialogVisible = ref(false)
+const exporting = ref(false)
+const exportingRecordId = ref<number | null>(null)
 
 const pagedRecords = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
@@ -121,6 +127,49 @@ async function handleDeleteRecord(record: RecordItem) {
 }
 
 onMounted(loadProject)
+
+// ── 导入导出 ──
+async function handleExportProject() {
+  exporting.value = true
+  try {
+    const blob = await exportProject(projectId)
+    const name = project.value?.project_code || 'project'
+    downloadBlob(blob, `${name}_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('项目导出成功')
+  } catch (e: unknown) {
+    ElMessage.error(e instanceof Error ? e.message : '导出失败')
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function handleExportRecord(record: RecordItem) {
+  exportingRecordId.value = record.id
+  try {
+    const blob = await exportRecord(record.id)
+    downloadBlob(blob, `${record.name}_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (e: unknown) {
+    ElMessage.error(e instanceof Error ? e.message : '导出失败')
+  } finally {
+    exportingRecordId.value = null
+  }
+}
+
+function handleImportLoad(data: Record<string, unknown>, category: string) {
+  if (category === 'uhpc') {
+    uhpcStore.importFromExcel(data)
+    uhpcStore.setCurrentRecord(null, (data.record_name as string) || '', projectId)
+  } else {
+    store.importFromExcel(data)
+    store.setCurrentRecord(null, (data.record_name as string) || '', projectId)
+  }
+  ElMessage.success('导入成功，即将跳转到计算页面')
+  router.push({
+    path: category === 'uhpc' ? '/calc/uhpc' : '/calc/hpc',
+    query: { project_id: projectId },
+  })
+}
 </script>
 
 <template>
@@ -133,9 +182,14 @@ onMounted(loadProject)
             <el-icon color="#2a5298"><Folder /></el-icon>
             {{ project.project_name }}
           </span>
-          <el-button size="small" @click="editVisible = true">
-            <el-icon><Edit /></el-icon> 编辑
-          </el-button>
+          <div style="display:flex;gap:8px">
+            <el-button size="small" @click="editVisible = true">
+              <el-icon><Edit /></el-icon> 编辑
+            </el-button>
+            <el-button size="small" type="primary" :loading="exporting" @click="handleExportProject">
+              <el-icon><Download /></el-icon> 导出项目
+            </el-button>
+          </div>
         </div>
       </template>
       <el-descriptions :column="3" border size="small">
@@ -155,6 +209,9 @@ onMounted(loadProject)
         </el-button>
         <el-button type="primary" @click="goNewCalc('uhpc')">
           <el-icon><Plus /></el-icon> 新建超高性能混凝土
+        </el-button>
+        <el-button type="success" @click="importDialogVisible = true">
+          <el-icon><Upload /></el-icon> 导入配比
         </el-button>
       </div>
     </el-card>
@@ -181,6 +238,17 @@ onMounted(loadProject)
             <el-tooltip content="删除" :show-after="300">
               <el-button size="small" text type="danger" @click="handleDeleteRecord(row)">
                 <el-icon><Delete /></el-icon>
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="导出" :show-after="300">
+              <el-button
+                size="small"
+                text
+                type="success"
+                :loading="exportingRecordId === row.id"
+                @click="handleExportRecord(row)"
+              >
+                <el-icon><Download /></el-icon>
               </el-button>
             </el-tooltip>
           </div>
@@ -212,6 +280,13 @@ onMounted(loadProject)
         <el-button type="primary" :loading="saving" @click="handleUpdate">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 导入对话框 -->
+    <ImportDialog
+      v-model:visible="importDialogVisible"
+      :project-id="projectId"
+      @load="handleImportLoad"
+    />
   </div>
 </template>
 

@@ -612,6 +612,49 @@ export const useUhpcStore = defineStore('uhpc', () => {
     if (recordData.fcu0 != null) calculated.value.designStrength = Number(recordData.fcu0)
   }
 
+  /** 从 Excel 导入数据直接载入（支持 Excel 导出格式的字段名映射） */
+  function importFromExcel(data: Record<string, unknown>) {
+    resetAll()
+
+    // ── 基本信息 ──
+    const name = typeof data.record_name === 'string' ? data.record_name : ''
+    setCurrentRecord(null, name, null)
+
+    // ── 主要参数（兼容 Excel 导出字段名） ──
+    if (data.strength_grade != null) strengthGrade.value = Number(data.strength_grade)
+    else if (data.fcuk != null) strengthGrade.value = Number(data.fcuk)
+
+    if (data.water_binder_ratio != null) waterBinderRatio.value = Number(data.water_binder_ratio)
+    else if (data.wb != null) waterBinderRatio.value = Number(data.wb)
+
+    if (data.admixture_ratio != null) admixtureRatio.value = Number(data.admixture_ratio)
+    else if (data.alpha != null) admixtureRatio.value = Number(data.alpha)
+
+    if (data.sand_binder_ratio != null) sandBinderRatio.value = Number(data.sand_binder_ratio)
+    else if (data.sand_ratio != null) sandBinderRatio.value = Number(data.sand_ratio)
+
+    if (data.steel_fiber_volume_ratio != null) steelFiberVolumeRatio.value = Number(data.steel_fiber_volume_ratio)
+    if (data.fiber_strength_grade != null) fiberStrengthGrade.value = toFiberStrengthGrade(data.fiber_strength_grade)
+
+    // ── 粒径分布 ──
+    if (data.max_particle_size != null) maxParticleSize.value = Number(data.max_particle_size)
+    if (data.min_particle_size != null) minParticleSize.value = Number(data.min_particle_size)
+    if (data.distribution_index != null) distributionIndex.value = Number(data.distribution_index)
+    if (data.fly_ash_peak_size != null) flyAshPeakSize.value = Number(data.fly_ash_peak_size)
+    if (data.fly_ash_accumulation_size != null) flyAshAccumulationSize.value = Number(data.fly_ash_accumulation_size)
+    if (data.micro_bead_peak_size != null) microBeadPeakSize.value = Number(data.micro_bead_peak_size)
+    if (data.micro_bead_silica_fume_ratio != null) microBeadSilicaFumeRatio.value = Number(data.micro_bead_silica_fume_ratio)
+
+    // ── 密度参数 ──
+    if (data.cement_density != null) cementDensity.value = Number(data.cement_density)
+    if (data.fly_ash_density != null) flyAshDensity.value = Number(data.fly_ash_density)
+    if (data.micro_bead_density != null) microBeadDensity.value = Number(data.micro_bead_density)
+    if (data.silica_fume_density != null) silicaFumeDensity.value = Number(data.silica_fume_density)
+    if (data.micro_powder_coefficient != null) microPowderCoefficient.value = Number(data.micro_powder_coefficient)
+    if (data.assumed_mix_mass != null) assumedMixMass.value = Number(data.assumed_mix_mass)
+    if (data.steel_fiber_density != null) steelFiberDensity.value = Number(data.steel_fiber_density)
+  }
+
   function buildRecordPayload(
     name: string,
     projectId: number | null = null,
@@ -734,6 +777,7 @@ export const useUhpcStore = defineStore('uhpc', () => {
     calcMix,
     buildDesignSnapshot,
     applyRecordData,
+    importFromExcel,
     buildRecordPayload,
     resetAll,
   }

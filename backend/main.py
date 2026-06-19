@@ -15,7 +15,7 @@ from core.logging_utils import (
     summarize_request_body,
     to_log_text,
 )
-from routers import auth, calc, diagnostics, projects, records, recycle_bin
+from routers import auth, calc, diagnostics, exchange, projects, records, recycle_bin
 from core.config import get_settings
 from database import init_db
 
@@ -135,7 +135,7 @@ app.include_router(auth.router,     prefix="/api", tags=["auth"])
 app.include_router(diagnostics.router, prefix="/api", tags=["diagnostics"])
 app.include_router(records.router,  prefix="/api", tags=["records"])
 app.include_router(projects.router, prefix="/api", tags=["projects"])
-app.include_router(recycle_bin.router, prefix="/api", tags=["recycle-bin"])
+app.include_router(exchange.router, prefix="/api", tags=["import-export"])
 
 
 @app.exception_handler(HTTPException)

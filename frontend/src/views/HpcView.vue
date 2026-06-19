@@ -12,6 +12,8 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import { deleteRecord, formatRecordNumber, type RecordItem } from "../api/records";
 import { listProjectRecords, listProjects } from "../api/projects";
 import type { Project } from "../api/projects";
+import { exportRecord, downloadBlob } from "../api/exchange";
+import ImportDialog from "../components/ImportDialog.vue";
 
 const store = useCalcStore();
 const route = useRoute();
@@ -50,6 +52,9 @@ const showCalculator = computed<boolean>({
     store.setHpcProjectState(store.hpcSelectedProjectId, value);
   },
 });
+// ── 导入导出 ──
+const importDialogVisible = ref(false);
+const exportingId = ref<number | null>(null);
 const showProjectSelect = computed(() => !showCalculator.value);
 const hasSelectedProject = computed(() => selectedProjectId.value !== null);
 const currentProjectName = computed(
@@ -250,6 +255,30 @@ async function handleReset() {
   store.resetAll();
   activeTab.value = "wb";
 }
+
+// ── 导入导出 ──
+async function handleExportRecord(record: RecordItem) {
+  exportingId.value = record.id;
+  try {
+    const blob = await exportRecord(record.id);
+    downloadBlob(blob, `${record.name}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    ElMessage.success("导出成功");
+  } catch (e: unknown) {
+    ElMessage.error(e instanceof Error ? e.message : "导出失败");
+  } finally {
+    exportingId.value = null;
+  }
+}
+
+function handleImportLoad(data: Record<string, unknown>, _category: string) {
+  store.importFromExcel(data);
+  if (selectedProjectId.value) {
+    store.setCurrentRecord(null, (data.record_name as string) || "", selectedProjectId.value);
+  }
+  activeTab.value = "wb";
+  showCalculator.value = true;
+  ElMessage.success("导入成功，参数已载入计算界面");
+}
 </script>
 
 <template>
@@ -292,6 +321,10 @@ async function handleReset() {
             <el-button type="primary" size="small" :disabled="!hasSelectedProject" @click="openCalculatorForNewRecord">
               <el-icon><Plus /></el-icon>
               新建配比记录
+            </el-button>
+            <el-button size="small" :disabled="!hasSelectedProject" @click="importDialogVisible = true">
+              <el-icon><Upload /></el-icon>
+              导入配比
             </el-button>
           </div>
         </template>
@@ -338,6 +371,15 @@ async function handleReset() {
                 @click="handleDeleteRecord(row)"
               >
                 删除
+              </el-button>
+              <el-button
+                size="small"
+                text
+                type="success"
+                :loading="exportingId === row.id"
+                @click="handleExportRecord(row)"
+              >
+                导出
               </el-button>
             </template>
           </el-table-column>
@@ -413,6 +455,13 @@ async function handleReset() {
 
     <!-- 右侧汇总 -->
     <SidebarSummary v-if="showCalculator" />
+
+    <!-- 导入对话框 -->
+    <ImportDialog
+      v-model:visible="importDialogVisible"
+      :project-id="selectedProjectId"
+      @load="handleImportLoad"
+    />
   </div>
 </template>
 

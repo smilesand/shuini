@@ -182,6 +182,12 @@ export const useCalcStore = defineStore('calc', () => {
     if (recordData.ma != null) ma.value = Number(recordData.ma)
   }
 
+  /** 从 Excel 导入数据直接载入（无需 record 包装） */
+  function importFromExcel(data: Record<string, unknown>) {
+    // 复用 applyRecordData，将 data 作为 record_data 传入
+    applyRecordData({ record_data: data } as Record<string, unknown>)
+  }
+
   function buildRecordPayload(
     category: 'hpc' | 'uhpc',
     name: string,
@@ -383,6 +389,7 @@ export const useCalcStore = defineStore('calc', () => {
     setHpcProjectState,
     clearHpcProjectState,
     applyRecordData,
+    importFromExcel,
     buildRecordPayload,
     calcWaterBinder,
     fitCoefficients,

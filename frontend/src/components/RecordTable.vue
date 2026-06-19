@@ -243,7 +243,7 @@ function categoryLabel(cat: string) {
     <el-table-column label="时间" width="170" align="center" fixed="right">
       <template #default="{ row }">{{ fmtDate(row.created_at) }}</template>
     </el-table-column>
-    <el-table-column label="操作" width="140" fixed="right" align="center">
+    <el-table-column label="操作" width="160" fixed="right" align="center">
       <template #default="{ row, $index }">
         <slot name="actions" :row="row" :index="$index" />
       </template>
