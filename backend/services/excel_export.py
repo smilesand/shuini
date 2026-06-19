@@ -8,6 +8,7 @@ Excel 导出服务
 from __future__ import annotations
 
 import io
+import re
 from datetime import datetime
 from typing import Any
 
@@ -212,25 +213,26 @@ def generate_record_export_bytes(record: dict[str, Any], project_name: str = "")
 
     fields = HPC_FIELDS if category == "hpc" else UHPC_FIELDS
 
-    # 对于 UHPC，数据在 design_data.inputs 中
+    # 对于 UHPC，数据在 design_data.inputs 中（camelCase），需转换为 UHPC_FIELDS 的 snake_case
     if category == "uhpc":
+        export_data = {"category": "uhpc", "record_name": name}
         design_data = record_data.get("design_data", {}) or {}
         if isinstance(design_data, dict):
             inputs = design_data.get("inputs", {}) or {}
-            export_data = dict(inputs)
-            export_data["category"] = "uhpc"
-            export_data["record_name"] = name
-            # 映射旧字段名
-            if "fcuk" in record_data:
-                export_data.setdefault("strength_grade", record_data["fcuk"])
-            if "wb" in record_data:
-                export_data.setdefault("water_binder_ratio", record_data["wb"])
-            if "alpha" in record_data:
-                export_data.setdefault("admixture_ratio", record_data["alpha"])
-            if "sand_ratio" in record_data:
-                export_data.setdefault("sand_binder_ratio", record_data["sand_ratio"])
-        else:
-            export_data = {"category": "uhpc", "record_name": name}
+            if isinstance(inputs, dict):
+                # 将 camelCase 的 inputs key 转换为 snake_case
+                for camel_key, value in inputs.items():
+                    snake_key = re.sub(r"(?<!^)(?=[A-Z])", "_", camel_key).lower()
+                    export_data.setdefault(snake_key, value)
+        # 补充 record_data 顶层字段（兼容旧数据格式）
+        if "fcuk" in record_data:
+            export_data.setdefault("strength_grade", record_data["fcuk"])
+        if "wb" in record_data:
+            export_data.setdefault("water_binder_ratio", record_data["wb"])
+        if "alpha" in record_data:
+            export_data.setdefault("admixture_ratio", record_data["alpha"])
+        if "sand_ratio" in record_data:
+            export_data.setdefault("sand_binder_ratio", record_data["sand_ratio"])
     else:
         export_data = dict(record_data)
         export_data["category"] = category

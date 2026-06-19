@@ -3,7 +3,9 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listProjects, listProjectRecords, type Project } from '../api/projects'
 import { type RecordItem } from '../api/records'
+import { exportRecord, downloadBlob } from '../api/exchange'
 import RecordTable from '../components/RecordTable.vue'
+import ImportDialog from '../components/ImportDialog.vue'
 import { computeGroupValue } from '../composables/useStrengthEval'
 import { generateReportHtml } from '../utils/reportHtml'
 import html2pdf from 'html2pdf.js'
@@ -14,6 +16,8 @@ const selectedProject = ref<Project | null>(null)
 const records = ref<RecordItem[]>([])
 const loadingRecords = ref(false)
 const projectSearch = ref('')
+const importDialogVisible = ref(false)
+const exportingId = ref<number | null>(null)
 
 async function fetchProjects() {
   loadingProjects.value = true
@@ -38,6 +42,36 @@ async function selectProject(project: Project) {
   } finally {
     loadingRecords.value = false
   }
+}
+
+async function refreshRecords() {
+  if (!selectedProject.value) return
+  loadingRecords.value = true
+  try {
+    records.value = await listProjectRecords(selectedProject.value.id)
+  } catch {
+    ElMessage.error('刷新记录失败')
+  } finally {
+    loadingRecords.value = false
+  }
+}
+
+async function handleExportRecord(record: RecordItem) {
+  exportingId.value = record.id
+  try {
+    const blob = await exportRecord(record.id)
+    downloadBlob(blob, `${record.name}_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (e: unknown) {
+    ElMessage.error(e instanceof Error ? e.message : '导出失败')
+  } finally {
+    exportingId.value = null
+  }
+}
+
+function handleImportLoad(_data: Record<string, unknown>, _category: string) {
+  ElMessage.success('导入成功')
+  void refreshRecords()
 }
 
 function categoryLabel(cat: string) {
@@ -309,6 +343,15 @@ onMounted(fetchProjects)
             <el-icon><Document /></el-icon>
             配合比记录
             <span class="record-count-badge">共 {{ records.length }} 条</span>
+            <el-button
+              size="small"
+              :disabled="!selectedProject"
+              style="margin-left: auto"
+              @click="importDialogVisible = true"
+            >
+              <el-icon><Upload /></el-icon>
+              导入配比
+            </el-button>
           </div>
           <div class="cs-section-body report-records-body">
             <div v-if="loadingRecords" style="text-align:center; padding: 30px">
@@ -323,6 +366,17 @@ onMounted(fetchProjects)
               <template #actions="{ row }">
                 <el-tooltip content="导出PDF" :show-after="300">
                   <el-button size="small" text type="primary" @click="exportReport(row)">
+                    <el-icon><Printer /></el-icon>
+                  </el-button>
+                </el-tooltip>
+                <el-tooltip content="导出Excel" :show-after="300">
+                  <el-button
+                    size="small"
+                    text
+                    type="success"
+                    :loading="exportingId === row.id"
+                    @click="handleExportRecord(row)"
+                  >
                     <el-icon><Download /></el-icon>
                   </el-button>
                 </el-tooltip>
@@ -332,6 +386,13 @@ onMounted(fetchProjects)
         </div>
       </template>
     </div>
+
+    <!-- 导入对话框 -->
+    <ImportDialog
+      v-model:visible="importDialogVisible"
+      :project-id="selectedProject?.id ?? null"
+      @load="handleImportLoad"
+    />
   </div>
 </template>
 

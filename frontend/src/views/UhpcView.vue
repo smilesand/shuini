@@ -3,11 +3,12 @@ import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { deleteRecord, formatRecordNumber, type RecordItem } from '../api/records'
+import { deleteRecord, type RecordItem } from '../api/records'
 import { listProjectRecords, listProjects } from '../api/projects'
 import type { Project } from '../api/projects'
 import { exportRecord, downloadBlob } from '../api/exchange'
 import ImportDialog from '../components/ImportDialog.vue'
+import RecordTable from '../components/RecordTable.vue'
 import UhpcSidebarSummary from '../components/uhpc/UhpcSidebarSummary.vue'
 import UhpcTabBinderRatios from '../components/uhpc/UhpcTabBinderRatios.vue'
 import UhpcTabSandBinder from '../components/uhpc/UhpcTabSandBinder.vue'
@@ -311,40 +312,37 @@ function handleImportLoad(data: Record<string, unknown>, _category: string) {
             <span class="record-header__title">
               {{ hasSelectedProject ? `当前项目配比记录：${currentProjectName}` : '当前项目配比记录' }}
             </span>
-            <el-button type="primary" size="small" :disabled="!hasSelectedProject" @click="openCalculatorForNewRecord">
-              <el-icon><Plus /></el-icon>
-              新建配比记录
-            </el-button>
-            <el-button size="small" :disabled="!hasSelectedProject" @click="importDialogVisible = true">
-              <el-icon><Upload /></el-icon>
-              导入配比
-            </el-button>
+            <div class="record-header__actions">
+              <el-button type="primary" size="small" :disabled="!hasSelectedProject" @click="openCalculatorForNewRecord">
+                <el-icon><Plus /></el-icon>
+                新建配比记录
+              </el-button>
+              <el-button size="small" :disabled="!hasSelectedProject" @click="importDialogVisible = true">
+                <el-icon><Upload /></el-icon>
+                导入配比
+              </el-button>
+            </div>
           </div>
         </template>
 
-        <el-table v-if="projectRecords.length" :data="pagedProjectRecords" stripe size="small" v-loading="recordsLoading">
-          <el-table-column prop="name" label="名称" min-width="180" />
-          <el-table-column prop="wb" label="W/B" width="100">
-            <template #default="{ row }">
-              {{ formatRecordNumber(row, 'wb', 3) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="mb" label="胶材" width="90">
-            <template #default="{ row }">
-              {{ formatRecordNumber(row, 'mb', 1) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="total_mass" label="合计" width="90">
-            <template #default="{ row }">
-              {{ formatRecordNumber(row, 'total_mass', 0) }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="created_by" label="创建人" width="100" />
-          <el-table-column prop="created_at" label="时间" width="170" />
-          <el-table-column label="操作" width="130" fixed="right">
-            <template #default="{ row }">
-              <el-button size="small" text type="primary" @click="loadRecord(row)">载入</el-button>
-              <el-button size="small" text type="danger" @click="handleDeleteRecord(row)">删除</el-button>
+        <RecordTable
+          :records="pagedProjectRecords"
+          :loading="recordsLoading"
+          :empty-description="projectRecordsEmptyDescription"
+          hide-category
+        >
+          <template #actions="{ row }">
+            <el-tooltip content="载入" :show-after="300">
+              <el-button size="small" text type="primary" @click="loadRecord(row)">
+                <el-icon><Right /></el-icon>
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="删除" :show-after="300">
+              <el-button size="small" text type="danger" @click="handleDeleteRecord(row)">
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="导出" :show-after="300">
               <el-button
                 size="small"
                 text
@@ -352,13 +350,11 @@ function handleImportLoad(data: Record<string, unknown>, _category: string) {
                 :loading="exportingId === row.id"
                 @click="handleExportRecord(row)"
               >
-                导出
+                <el-icon><Download /></el-icon>
               </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <el-empty v-else v-loading="recordsLoading" :description="projectRecordsEmptyDescription" :image-size="80" />
+            </el-tooltip>
+          </template>
+        </RecordTable>
 
         <div v-if="projectRecords.length" class="pagination-wrap">
           <el-pagination
@@ -511,6 +507,12 @@ function handleImportLoad(data: Record<string, unknown>, _category: string) {
   color: #1e3c72;
   font-size: 13px;
   font-weight: 700;
+}
+
+.record-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .pagination-wrap {

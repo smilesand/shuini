@@ -15,10 +15,14 @@ const props = withDefaults(defineProps<{
   showProjectName?: boolean
   getProjectName?: (record: RecordItem) => string
   border?: boolean
+  emptyDescription?: string
+  hideCategory?: boolean
 }>(), {
   loading: false,
   showProjectName: false,
   border: false,
+  emptyDescription: '暂无配合记录',
+  hideCategory: false,
 })
 
 const materialColumns: RecordColumnDefinition[] = [
@@ -203,7 +207,7 @@ function categoryLabel(cat: string) {
       </template>
     </el-table-column>
     <el-table-column prop="name" label="配比名称" width="180" fixed="left" show-overflow-tooltip />
-    <el-table-column label="类别" width="90" fixed="left" align="center">
+    <el-table-column v-if="!hideCategory" label="类别" width="90" fixed="left" align="center">
       <template #default="{ row }">
         <el-tag :type="categoryTag(row.category)" size="small">
           {{ categoryLabel(row.category) }}
@@ -250,7 +254,7 @@ function categoryLabel(cat: string) {
     </el-table-column>
   </el-table>
   </div>
-  <el-empty v-else v-loading="loading" description="暂无配合记录" :image-size="88" />
+  <el-empty v-else v-loading="loading" :description="emptyDescription" :image-size="88" />
 </template>
 
 <style scoped>

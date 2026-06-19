@@ -5,6 +5,7 @@
 """
 
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Depends
 from fastapi.responses import Response
@@ -71,11 +72,13 @@ def export_record(record_id: int, username=Depends(get_current_user)):
 
         content = generate_record_export_bytes(record, project_name)
         name = record.get("name", "record")
+        filename = _export_filename(name)
+        encoded_filename = quote(filename, safe="")
         return Response(
             content=content,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": f'attachment; filename="{_export_filename(name)}"',
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
             },
         )
     except Exception as e:
@@ -92,11 +95,13 @@ def export_project(project_id: int, username=Depends(get_current_user)):
         records = list_project_records(project_id, username=username, is_admin=is_admin_user(username))
         content = generate_project_export_bytes(project, records)
         code = project.get("project_code", "project")
+        filename = _export_filename(code)
+        encoded_filename = quote(filename, safe="")
         return Response(
             content=content,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": f'attachment; filename="{_export_filename(code)}"',
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
             },
         )
     except Exception as e:
