@@ -12,6 +12,9 @@ import { generateReportHtml } from '../utils/reportHtml'
 import html2pdf from 'html2pdf.js'
 
 const projects = ref<Project[]>([])
+const projectTotal = ref(0)
+const projectPage = ref(1)
+const projectPageSize = ref(10)
 const loadingProjects = ref(false)
 const selectedProject = ref<Project | null>(null)
 const records = ref<RecordItem[]>([])
@@ -25,13 +28,19 @@ const exportingProject = ref(false)
 async function fetchProjects() {
   loadingProjects.value = true
   try {
-    const res = await listProjects(projectSearch.value || undefined, 1, 100)
+    const res = await listProjects(projectSearch.value || undefined, projectPage.value, projectPageSize.value)
     projects.value = res.items
+    projectTotal.value = res.total
   } catch {
     ElMessage.error('加载项目列表失败')
   } finally {
     loadingProjects.value = false
   }
+}
+
+function handleProjectPageChange(p: number) {
+  projectPage.value = p
+  void fetchProjects()
 }
 
 async function selectProject(project: Project) {
@@ -325,6 +334,18 @@ onMounted(fetchProjects)
               </div>
             </div>
           </div>
+
+          <div v-if="projectTotal > projectPageSize" class="project-pagination">
+            <el-pagination
+              v-model:current-page="projectPage"
+              :page-size="projectPageSize"
+              :total="projectTotal"
+              layout="prev, pager, next"
+              small
+              background
+              @current-change="handleProjectPageChange"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -573,6 +594,13 @@ onMounted(fetchProjects)
   margin-left: auto;
   display: flex;
   gap: 8px;
+}
+
+.project-pagination {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 0;
+  flex-shrink: 0;
 }
 
 /* ── Shared section card style ─────────────────────── */

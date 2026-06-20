@@ -100,7 +100,8 @@ def configure_logging(
         named_logger = logging.getLogger(logger_name)
         named_logger.handlers.clear()
         named_logger.propagate = True
-        named_logger.setLevel(numeric_level)
+        # 第三方库日志至少 WARNING，避免大量 access log 刷屏
+        named_logger.setLevel(max(numeric_level, logging.WARNING))
 
     return {
         "log_dir": str(log_directory),
@@ -124,14 +125,19 @@ def install_global_exception_logging(logger: logging.Logger | None = None) -> No
 
     sys.excepthook = handle_exception
 
-    def handle_thread_exception(args: threading.ExceptHookArgs) -> None:
+    def handle_thread_exception(args: Any) -> None:
+        exc_type = getattr(args, "exc_type", None)
+        exc_value = getattr(args, "exc_value", None)
+        exc_traceback = getattr(args, "exc_traceback", None)
+        thread_name = getattr(args, "thread", None)
+        thread_name = thread_name.name if thread_name else "unknown"
         target_logger.critical(
             "Unhandled thread exception thread=%s",
-            args.thread.name if args.thread else "unknown",
-            exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+            thread_name,
+            exc_info=(exc_type, exc_value, exc_traceback) if exc_type else None,
         )
 
-    threading.excepthook = handle_thread_exception
+    threading.excepthook = handle_thread_exception  # type: ignore[assignment]
 
 
 def sanitize_for_log(value: Any, *, max_string_length: int = 2000, max_items: int = 50) -> Any:
