@@ -14,7 +14,7 @@ router = APIRouter()
 @router.post("/projects", summary="创建项目")
 def api_create_project(req: ProjectCreateRequest, username=Depends(get_current_user)):
     try:
-        p = create_project(req.project_code, req.project_name, username, req.requirements)
+        p = create_project(req.project_code, req.project_name, username, req.requirements, source=req.source)
         return ok(ProjectResponse(**p).model_dump())
     except RuntimeError as e:
         raise HTTPException(status_code=422, detail=str(e))

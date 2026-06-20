@@ -258,7 +258,8 @@ def init_db():
             updated_at   TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
             is_deleted   INTEGER NOT NULL DEFAULT 0,
             deleted_at   TEXT,
-            deleted_by   TEXT
+            deleted_by   TEXT,
+            source       TEXT    NOT NULL DEFAULT 'system'
         )
     """)
 
@@ -282,6 +283,7 @@ def init_db():
         "ALTER TABLE projects ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE projects ADD COLUMN deleted_at TEXT",
         "ALTER TABLE projects ADD COLUMN deleted_by TEXT",
+        "ALTER TABLE projects ADD COLUMN source TEXT NOT NULL DEFAULT 'system'",
         "ALTER TABLE records ADD COLUMN source TEXT NOT NULL DEFAULT 'system'",
     ):
         try:
@@ -764,13 +766,13 @@ def delete_record(record_id: int, username: str | None = None, is_admin: bool = 
 # ── 项目 ──
 
 def create_project(project_code: str, project_name: str, created_by: str,
-                   requirements: str = "") -> dict:
+                   requirements: str = "", source: str = "system") -> dict:
     conn = get_db()
     _ensure_unique_project_code_conn(conn, project_code, created_by)
     try:
         cur = conn.execute(
-            "INSERT INTO projects (project_code, project_name, requirements, created_by) VALUES (?,?,?,?)",
-            (project_code, project_name, requirements, created_by),
+            "INSERT INTO projects (project_code, project_name, requirements, created_by, source) VALUES (?,?,?,?,?)",
+            (project_code, project_name, requirements, created_by, source),
         )
         conn.commit()
     except sqlite3.IntegrityError:

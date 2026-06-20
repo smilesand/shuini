@@ -27,7 +27,7 @@ from services.excel_export import (
     generate_project_export_bytes,
     _export_filename,
 )
-from services.excel_import import parse_and_validate_excel
+from services.excel_import import parse_and_validate_excel, parse_project_import_excel
 
 router = APIRouter(prefix="/exchange", tags=["import-export"])
 
@@ -186,3 +186,98 @@ async def import_record(
         })
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"保存失败: {e}")
+
+
+# ── 项目导入 ──────────────────────────────────────────────────────────────────
+
+@router.post("/import/project", summary="导入项目 Excel（含项目信息与所有记录）")
+async def import_project(
+    file: UploadFile = File(...),
+    dry_run: bool = Query(False, description="仅校验不保存"),
+    username=Depends(get_current_user),
+):
+    if not file.filename or not file.filename.endswith(".xlsx"):
+        raise HTTPException(status_code=422, detail="仅支持 .xlsx 格式文件")
+
+    try:
+        file_bytes = await file.read()
+        result = parse_project_import_excel(file_bytes)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"文件解析失败: {e}")
+
+    project_info = result.get("project", {})
+    records = result.get("records", [])
+    all_valid = result.get("all_valid", False)
+
+    if dry_run:
+        return ok({
+            "saved": False,
+            "project": project_info,
+            "records": records,
+            "all_valid": all_valid,
+            "message": "校验完成（dry_run 模式，未实际保存）",
+        })
+
+    # 创建项目
+    project_code = project_info.get("project_code") or f"IMP_{file.filename.replace('.xlsx', '')[:20]}"
+    project_name = project_info.get("project_name") or f"导入项目_{file.filename.replace('.xlsx', '')[:20]}"
+    requirements = project_info.get("requirements", "")
+
+    is_admin = is_admin_user(username)
+    try:
+        project_row = create_project(project_code, project_name, username, requirements, source="import")
+        pid = project_row["id"]
+    except RuntimeError as e:
+        # 项目编号重复时尝试加后缀
+        import time
+        suffix = int(time.time()) % 10000
+        alt_code = f"{project_code[:40]}_{suffix}"
+        try:
+            project_row = create_project(alt_code, project_name, username, requirements, source="import")
+            pid = project_row["id"]
+        except RuntimeError as e2:
+            raise HTTPException(status_code=422, detail=str(e2))
+
+    # 逐条创建记录
+    created_ids: list[int] = []
+    record_results: list[dict[str, Any]] = []
+    for rec in records:
+        try:
+            record_payload = {
+                "name": rec.get("name", "未命名"),
+                "category": rec.get("category", "hpc"),
+                "project_id": pid,
+                "record_data": rec.get("data", {}),
+                "source": "import",
+            }
+            rid = save_record(record_payload, username=username, is_admin=is_admin)
+            created_ids.append(rid)
+            record_results.append({
+                "name": rec.get("name"),
+                "record_id": rid,
+                "category": rec.get("category"),
+                "validation": rec.get("validation"),
+                "saved": True,
+            })
+        except Exception as e:
+            record_results.append({
+                "name": rec.get("name"),
+                "record_id": None,
+                "category": rec.get("category"),
+                "validation": rec.get("validation"),
+                "saved": False,
+                "error": str(e),
+            })
+
+    return ok({
+        "saved": True,
+        "project_id": pid,
+        "project_code": project_code,
+        "project_name": project_name,
+        "records_created": len(created_ids),
+        "records_total": len(records),
+        "all_valid": all_valid,
+        "record_details": record_results,
+    })

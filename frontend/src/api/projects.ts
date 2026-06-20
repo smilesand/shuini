@@ -10,6 +10,7 @@ export interface Project {
   created_at: string
   updated_at: string
   record_count: number
+  source: string
 }
 
 export interface ProjectCreateReq {

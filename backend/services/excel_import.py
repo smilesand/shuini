@@ -340,7 +340,7 @@ def validate_uhpc(data: dict[str, Any]) -> dict[str, Any]:
 
 def parse_and_validate_excel(file_bytes: bytes, filename: str = "") -> dict[str, Any]:
     """
-    解析上传的 Excel 文件并执行校验。
+    解析上传的 Excel 文件并执行校验（单条记录模板格式）。
 
     返回: {
         "category": "hpc" | "uhpc",
@@ -349,7 +349,6 @@ def parse_and_validate_excel(file_bytes: bytes, filename: str = "") -> dict[str,
     }
     """
     wb = load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
-    # 优先取第一个 sheet 或名为"配比导入模板"的 sheet
     sheet_names = wb.sheetnames
     target_sheet = None
     for name in ["配比导入模板", "Sheet1", sheet_names[0]]:
@@ -381,4 +380,95 @@ def parse_and_validate_excel(file_bytes: bytes, filename: str = "") -> dict[str,
     }
 
 
+# ── 项目导入（多 sheet）──────────────────────────────────────────────────────
 
+PROJECT_INFO_LABEL_MAP = {
+    "项目编号": "project_code",
+    "项目名称": "project_name",
+    "技术要求": "requirements",
+    "创建人": "created_by",
+    "创建时间": "created_at",
+    "导出时间": "exported_at",
+    "记录数量": "record_count",
+}
+
+
+def parse_project_info_sheet(worksheet) -> dict[str, Any]:
+    """解析"项目信息"sheet（简单 key-value 两列布局）。"""
+    result: dict[str, Any] = {}
+    for row in worksheet.iter_rows(min_row=1, max_col=2, values_only=True):
+        if not row or not row[0]:
+            continue
+        label = str(row[0]).strip()
+        value = row[1] if len(row) > 1 else None
+        key = PROJECT_INFO_LABEL_MAP.get(label)
+        if key:
+            result[key] = str(value).strip() if value is not None else ""
+    return result
+
+
+def parse_project_import_excel(file_bytes: bytes) -> dict[str, Any]:
+    """
+    解析项目导入 Excel（多 sheet 格式，与项目导出对应）。
+
+    Sheet 1 "项目信息" — 项目元数据
+    后续 sheet — 各条记录（纵向模板格式）
+
+    返回: {
+        "project": { project_code, project_name, requirements, ... },
+        "records": [
+            { "category": "hpc"|"uhpc", "name": "...", "data": {...}, "validation": {...} },
+            ...
+        ],
+        "all_valid": bool,
+    }
+    """
+    wb = load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
+    sheet_names = wb.sheetnames
+
+    if len(sheet_names) < 1:
+        wb.close()
+        raise ValueError("Excel 文件中没有 sheet")
+
+    # Sheet 1: 项目信息
+    project_info = parse_project_info_sheet(wb[sheet_names[0]])
+
+    # 后续 sheet: 记录
+    records: list[dict[str, Any]] = []
+    all_valid = True
+
+    for sheet_name in sheet_names[1:]:
+        ws = wb[sheet_name]
+        data = parse_template_sheet(ws)
+        if not data:
+            continue
+
+        category = data.get("category", "hpc")
+        if isinstance(category, str):
+            category = category.lower().strip()
+        if category not in ("hpc", "uhpc"):
+            category = "hpc"
+
+        if category == "uhpc":
+            validation = validate_uhpc(data)
+        else:
+            validation = validate_hpc(data)
+
+        name = data.get("record_name") or sheet_name
+        if not validation.get("valid"):
+            all_valid = False
+
+        records.append({
+            "category": category,
+            "name": str(name),
+            "data": data,
+            "validation": validation,
+        })
+
+    wb.close()
+
+    return {
+        "project": project_info,
+        "records": records,
+        "all_valid": all_valid,
+    }

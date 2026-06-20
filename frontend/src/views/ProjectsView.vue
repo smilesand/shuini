@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listProjects, deleteProject, createProject } from '../api/projects'
 import type { Project, ProjectCreateReq } from '../api/projects'
+import { exportProject, downloadBlob } from '../api/exchange'
+import ImportProjectDialog from '../components/ImportProjectDialog.vue'
 
 const router = useRouter()
 const loading = ref(false)
@@ -16,6 +18,8 @@ const search = ref('')
 const dialogVisible = ref(false)
 const creating = ref(false)
 const form = ref<ProjectCreateReq>({ project_code: '', project_name: '', requirements: '' })
+const importProjectVisible = ref(false)
+const exportingId = ref<number | null>(null)
 
 async function fetchProjects() {
   loading.value = true
@@ -58,6 +62,19 @@ async function handleCreate() {
   }
 }
 
+async function handleExportProject(project: Project) {
+  exportingId.value = project.id
+  try {
+    const blob = await exportProject(project.id)
+    downloadBlob(blob, `${project.project_code}_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (e: unknown) {
+    ElMessage.error(e instanceof Error ? e.message : '导出失败')
+  } finally {
+    exportingId.value = null
+  }
+}
+
 onMounted(fetchProjects)
 </script>
 
@@ -69,9 +86,14 @@ onMounted(fetchProjects)
           <span style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;color:#1e3c72">
             <el-icon color="#2a5298"><Folder /></el-icon> 项目管理
           </span>
-          <el-button type="primary" @click="dialogVisible = true">
-            <el-icon><Plus /></el-icon> 新建项目
-          </el-button>
+          <div style="display: flex; gap: 8px">
+            <el-button @click="importProjectVisible = true">
+              <el-icon><Upload /></el-icon> 导入项目
+            </el-button>
+            <el-button type="primary" @click="dialogVisible = true">
+              <el-icon><Plus /></el-icon> 新建项目
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -93,12 +115,23 @@ onMounted(fetchProjects)
         <el-table-column prop="created_by" label="创建人" width="100" />
         <el-table-column prop="record_count" label="配比数" width="80" align="center" />
         <el-table-column prop="created_at" label="创建时间" width="170" />
-        <el-table-column label="操作" width="120" fixed="right" align="center">
+        <el-table-column label="操作" width="180" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-group">
               <el-tooltip content="详情" :show-after="300">
                 <el-button size="small" text type="primary" @click="goDetail(row.id)">
                   <el-icon><InfoFilled /></el-icon>
+                </el-button>
+              </el-tooltip>
+              <el-tooltip content="导出" :show-after="300">
+                <el-button
+                  size="small"
+                  text
+                  type="success"
+                  :loading="exportingId === row.id"
+                  @click="handleExportProject(row)"
+                >
+                  <el-icon><Download /></el-icon>
                 </el-button>
               </el-tooltip>
               <el-tooltip content="删除" :show-after="300">
@@ -137,6 +170,12 @@ onMounted(fetchProjects)
         <el-button type="primary" :loading="creating" @click="handleCreate">创建</el-button>
       </template>
     </el-dialog>
+
+    <!-- 导入项目对话框 -->
+    <ImportProjectDialog
+      v-model:visible="importProjectVisible"
+      @success="fetchProjects"
+    />
   </div>
 </template>
 

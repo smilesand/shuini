@@ -37,6 +37,29 @@ export interface ImportSaveResult {
   message?: string
 }
 
+export interface ImportProjectRecordDetail {
+  name: string
+  record_id: number | null
+  category: string
+  validation: ValidationResult
+  saved: boolean
+  error?: string
+}
+
+export interface ImportProjectResult {
+  saved: boolean
+  project_id?: number
+  project_code?: string
+  project_name?: string
+  records_created?: number
+  records_total?: number
+  all_valid: boolean
+  project?: Record<string, unknown>
+  records?: ImportProjectRecordDetail[]
+  record_details?: ImportProjectRecordDetail[]
+  message?: string
+}
+
 // ── API ───────────────────────────────────────────────────────────────────────
 
 /** 下载导入模板 */
@@ -82,6 +105,19 @@ export const importRecord = (
   return request.post('/exchange/import/record', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     params,
+  })
+}
+
+/** 导入项目 Excel（含项目信息与所有记录） */
+export const importProject = (
+  file: File,
+  dryRun = false,
+): Promise<ImportProjectResult> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post('/exchange/import/project', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    params: { dry_run: dryRun },
   })
 }
 

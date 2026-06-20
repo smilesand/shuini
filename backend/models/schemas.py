@@ -369,6 +369,7 @@ class ProjectCreateRequest(BaseModel):
     project_code: str = Field(..., min_length=1, max_length=50)
     project_name: str = Field(..., min_length=1, max_length=200)
     requirements: str = Field(default='', max_length=2000)
+    source: str = Field(default='system', pattern=r'^(system|import)$')
 
 class ProjectUpdateRequest(BaseModel):
     project_code: Optional[str] = Field(default=None, max_length=50)
@@ -378,6 +379,7 @@ class ProjectUpdateRequest(BaseModel):
 class ProjectResponse(BaseModel):
     id: int; project_code: str; project_name: str; requirements: str = ''
     created_by: str; created_at: str; updated_at: str; record_count: int = 0
+    source: str = 'system'
 
 
 class RecycleBinItemResponse(BaseModel):
