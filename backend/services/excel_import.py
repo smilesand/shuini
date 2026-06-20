@@ -50,26 +50,26 @@ def parse_template_sheet(worksheet) -> dict[str, Any]:
     """
     result: dict[str, Any] = {}
     current_section = ""
+    SECTION_NAMES = (
+        "基本信息", "水胶比计算", "砂率与骨料", "胶凝材料", "水和外加剂",
+        "UHPC配比参数", "粒径分布参数", "密度参数",
+    )
 
     for row in worksheet.iter_rows(min_row=1, values_only=True):
         if not row:
             continue
         label = str(row[0]).strip() if row[0] is not None else ""
         value = row[1] if len(row) > 1 else None
-        # unit = row[2] if len(row) > 2 else ""
 
         if not label:
             continue
-        # 跳过表头行
-        if label in ("参数名称", "参数值", "单位"):
+        # 跳过表头行（含新增的"参考数值"列头）
+        if label in ("参数名称", "参数值", "单位", "参考数值"):
             continue
 
-        # 检测是否为区块标题（值列为空或与标签相同）
+        # 检测是否为区块标题（label 为已知区块名，或第二列值与标签相同）
         cell_b = str(row[1]).strip() if len(row) > 1 and row[1] is not None else ""
-        if not cell_b or cell_b == label or label in (
-            "基本信息", "水胶比计算", "砂率与骨料", "胶凝材料", "水和外加剂",
-            "UHPC配比参数", "粒径分布参数", "密度参数",
-        ):
+        if label in SECTION_NAMES or (cell_b and cell_b == label):
             current_section = label
             continue
 

@@ -3,9 +3,10 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listProjects, listProjectRecords, type Project } from '../api/projects'
 import { type RecordItem } from '../api/records'
-import { exportRecord, downloadBlob } from '../api/exchange'
+import { exportRecord, exportProject, downloadBlob } from '../api/exchange'
 import RecordTable from '../components/RecordTable.vue'
 import ImportDialog from '../components/ImportDialog.vue'
+import ImportProjectDialog from '../components/ImportProjectDialog.vue'
 import { computeGroupValue } from '../composables/useStrengthEval'
 import { generateReportHtml } from '../utils/reportHtml'
 import html2pdf from 'html2pdf.js'
@@ -17,7 +18,9 @@ const records = ref<RecordItem[]>([])
 const loadingRecords = ref(false)
 const projectSearch = ref('')
 const importDialogVisible = ref(false)
+const importProjectVisible = ref(false)
 const exportingId = ref<number | null>(null)
+const exportingProject = ref(false)
 
 async function fetchProjects() {
   loadingProjects.value = true
@@ -69,9 +72,28 @@ async function handleExportRecord(record: RecordItem) {
   }
 }
 
+async function handleExportProject() {
+  if (!selectedProject.value) return
+  exportingProject.value = true
+  try {
+    const blob = await exportProject(selectedProject.value.id)
+    downloadBlob(blob, `${selectedProject.value.project_code}_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('项目导出成功')
+  } catch (e: unknown) {
+    ElMessage.error(e instanceof Error ? e.message : '导出失败')
+  } finally {
+    exportingProject.value = false
+  }
+}
+
 function handleImportLoad(_data: Record<string, unknown>, _category: string) {
   ElMessage.success('导入成功')
   void refreshRecords()
+}
+
+function handleProjectImportSuccess() {
+  ElMessage.success('项目导入成功')
+  void fetchProjects()
 }
 
 function categoryLabel(cat: string) {
@@ -324,6 +346,16 @@ onMounted(fetchProjects)
           <div class="cs-section-head">
             <el-icon><FolderOpened /></el-icon>
             {{ selectedProject.project_name }}
+            <div class="project-actions">
+              <el-button size="small" @click="importProjectVisible = true">
+                <el-icon><Upload /></el-icon>
+                导入项目
+              </el-button>
+              <el-button size="small" :loading="exportingProject" @click="handleExportProject">
+                <el-icon><Download /></el-icon>
+                导出项目
+              </el-button>
+            </div>
           </div>
           <div class="cs-section-body">
             <el-descriptions :column="3" size="small" border>
@@ -345,7 +377,6 @@ onMounted(fetchProjects)
             <span class="record-count-badge">共 {{ records.length }} 条</span>
             <el-button
               size="small"
-              :disabled="!selectedProject"
               style="margin-left: auto"
               @click="importDialogVisible = true"
             >
@@ -393,6 +424,12 @@ onMounted(fetchProjects)
       :project-id="selectedProject?.id ?? null"
       @load="handleImportLoad"
     />
+
+    <!-- 导入项目对话框 -->
+    <ImportProjectDialog
+      v-model:visible="importProjectVisible"
+      @success="handleProjectImportSuccess"
+    />
   </div>
 </template>
 
@@ -400,9 +437,10 @@ onMounted(fetchProjects)
 .report-layout {
   display: grid;
   grid-template-columns: 280px 1fr;
-  gap: 16px;
+  gap: 20px;
   align-items: start;
-  height: calc(100vh - 120px);
+  height: calc(100vh - 100px);
+  padding: 4px;
 }
 
 .report-left {
@@ -422,7 +460,7 @@ onMounted(fetchProjects)
   gap: 8px;
   color: #9ca3af;
   font-size: 13px;
-  padding: 20px;
+  padding: 30px;
   justify-content: center;
 }
 
@@ -436,32 +474,58 @@ onMounted(fetchProjects)
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding-right: 2px;
+}
+
+.project-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.project-list::-webkit-scrollbar-thumb {
+  background: #cdd7e6;
+  border-radius: 4px;
 }
 
 .project-item {
-  padding: 10px 14px;
-  border-radius: 8px;
+  padding: 12px 16px;
+  border-radius: 10px;
   border: 1px solid #e8eff8;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
   background: #fff;
+  position: relative;
 }
 
 .project-item:hover {
   border-color: #2a5298;
-  background: #f0f5ff;
+  background: #f4f8ff;
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(42, 82, 152, 0.08);
 }
 
 .project-item--active {
   border-color: #1e3c72;
   background: linear-gradient(135deg, #eef3ff, #dce8ff);
+  box-shadow: 0 2px 12px rgba(30, 60, 114, 0.1);
+}
+
+.project-item--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: #1e3c72;
+  border-radius: 0 2px 2px 0;
 }
 
 .project-item__name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #1e3c72;
   margin-bottom: 4px;
+  line-height: 1.3;
 }
 
 .project-item__meta {
@@ -469,12 +533,16 @@ onMounted(fetchProjects)
   align-items: center;
   font-size: 11px;
   color: #9ca3af;
+  gap: 4px;
 }
 
 .report-right {
   min-width: 0;
   overflow: hidden;
   min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .report-records-body {
@@ -485,10 +553,10 @@ onMounted(fetchProjects)
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 300px;
-  border: 1px solid #dbe5f1;
-  border-radius: 12px;
-  background: #fff;
+  min-height: 400px;
+  border: 2px dashed #dbe5f1;
+  border-radius: 16px;
+  background: #fafbfd;
 }
 
 .record-count-badge {
@@ -499,5 +567,41 @@ onMounted(fetchProjects)
   background: #f0f4fa;
   padding: 2px 8px;
   border-radius: 999px;
+}
+
+.project-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Shared section card style ─────────────────────── */
+.cs-section {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e4ebf5;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.2s;
+}
+
+.cs-section:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.cs-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e3c72;
+  background: linear-gradient(180deg, #f8fafd, #f0f4fa);
+  border-bottom: 1px solid #e4ebf5;
+}
+
+.cs-section-body {
+  padding: 16px 20px;
 }
 </style>

@@ -136,6 +136,7 @@ app.include_router(diagnostics.router, prefix="/api", tags=["diagnostics"])
 app.include_router(records.router,  prefix="/api", tags=["records"])
 app.include_router(projects.router, prefix="/api", tags=["projects"])
 app.include_router(exchange.router, prefix="/api", tags=["import-export"])
+app.include_router(recycle_bin.router, prefix="/api", tags=["recycle-bin"])
 
 
 @app.exception_handler(HTTPException)
