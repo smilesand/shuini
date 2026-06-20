@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
+import { useLicenseStore } from '../stores/licenseStore'
 
 const HomeView = () => import('../views/HomeView.vue')
 const HpcView = () => import('../views/HpcView.vue')
@@ -16,6 +17,7 @@ const LoginView = () => import('../views/LoginView.vue')
 const SettingsView = () => import('../views/SettingsView.vue')
 const ProfileView = () => import('../views/ProfileView.vue')
 const ReportView = () => import('../views/ReportView.vue')
+const ActivationView = () => import('../views/ActivationView.vue')
 
 // ── 菜单配置（集中管理，供 NavBar / Sidebar 共用）──────────────────────────
 export interface MenuItem {
@@ -85,6 +87,7 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   { path: '/profile',  name: 'profile',    component: ProfileView },
+  { path: '/activation', name: 'activation', component: ActivationView, meta: { title: '软件激活' } },
   { path: '/projects', name: 'projects',   component: ProjectsView },
   { path: '/projects/:id', name: 'project-detail', component: ProjectDetailView, meta: { title: '项目详情' } },
   { path: '/records', name: 'records', component: RecordsView, meta: { title: '配合记录' } },
@@ -111,6 +114,13 @@ router.beforeEach((to) => {
   }
   if (to.meta['requiresAdmin'] && !isAdmin) {
     return { name: 'home' }
+  }
+  // 授权锁定：试用到期/未激活时，仅允许停留在激活页（及公共页）。
+  if (token && !to.meta['public'] && to.name !== 'activation') {
+    const licenseStore = useLicenseStore()
+    if (licenseStore.locked) {
+      return { name: 'activation' }
+    }
   }
 })
 

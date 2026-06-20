@@ -70,6 +70,7 @@ class Settings:
     session_ttl_seconds: int
     admin_username: str
     admin_password: str
+    edition: str
 
 
 @lru_cache(maxsize=1)
@@ -89,4 +90,5 @@ def get_settings() -> Settings:
         session_ttl_seconds=_get_env_int("SC_SESSION_TTL_SECONDS", 24 * 60 * 60),
         admin_username=os.getenv("SC_ADMIN_USERNAME", "admin"),
         admin_password=os.getenv("SC_ADMIN_PASSWORD", "123456"),
+        edition=(os.getenv("SC_EDITION", "web").strip().lower() or "web"),
     )

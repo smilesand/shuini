@@ -42,6 +42,7 @@ class RecordTrialDataPersistenceTest(unittest.TestCase):
                 "deleted_at",
                 "deleted_by",
                 "deleted_with_project",
+                "source",
             ],
         )
 

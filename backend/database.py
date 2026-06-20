@@ -218,6 +218,16 @@ def init_db():
             deleted_with_project INTEGER NOT NULL DEFAULT 0,
             source         TEXT    NOT NULL DEFAULT 'system'
         );
+
+        CREATE TABLE IF NOT EXISTS license_state (
+            id           INTEGER PRIMARY KEY CHECK (id = 1),
+            fingerprint  TEXT    NOT NULL DEFAULT '',
+            license_code TEXT,
+            expiry       TEXT,
+            activated_at TEXT,
+            first_seen   TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+            last_seen    TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        );
     """)
     # 创建默认管理员
     cur = conn.execute("SELECT password, must_reset FROM users WHERE username=?", (DEFAULT_ADMIN_USERNAME,))

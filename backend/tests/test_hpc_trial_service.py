@@ -220,22 +220,9 @@ def legacy_strength_mixes(payload: dict[str, Any], workability_result: dict[str,
         return []
 
     total_aggregate = coarse_aggregate + fine_aggregate
-    binder_distribution_total = sum([
-        cement,
-        fly_ash or 0,
-        slag or 0,
-        micro_bead or 0,
-        silica_fume or 0,
-    ])
 
-    if binder_distribution_total <= 0:
-        return []
-
-    cement_fraction = cement / binder_distribution_total
-    fly_ash_fraction = (fly_ash or 0) / binder_distribution_total
-    slag_fraction = (slag or 0) / binder_distribution_total
-    micro_bead_fraction = (micro_bead or 0) / binder_distribution_total
-    silica_fume_fraction = (silica_fume or 0) / binder_distribution_total
+    # 强度实验外加剂掺量：未提供强度试验页输入时沿用工作性的 alpha。
+    strength_alpha = current_alpha
 
     variants = [
         {"label": "基准", "wb": current_wb, "bs": current_bs},
@@ -257,20 +244,21 @@ def legacy_strength_mixes(payload: dict[str, Any], workability_result: dict[str,
             mixes.append(empty_strength_mix(variant["label"]))
             continue
 
-        sand_ratio = variant["bs"] / 100.0
-        adjusted_binder = water / variant["wb"]
-        if adjusted_binder <= 0:
+        # 胶材总量保持不变，水 = 胶材 × W/B 重算用水量。
+        adjusted_water = binder * variant["wb"]
+        if adjusted_water <= 0:
             mixes.append(empty_strength_mix(variant["label"]))
             continue
 
-        adjusted_cement = adjusted_binder * cement_fraction
-        adjusted_fly_ash = adjusted_binder * fly_ash_fraction
-        adjusted_slag = adjusted_binder * slag_fraction
-        adjusted_micro_bead = adjusted_binder * micro_bead_fraction
-        adjusted_silica_fume = adjusted_binder * silica_fume_fraction
-        admixture = adjusted_binder * (current_alpha / 100.0) if current_alpha is not None else 0
-        sand = total_aggregate * sand_ratio
+        # 各胶材分项保持不变（胶材总量与比例均不变）。
+        adjusted_cement = cement
+        adjusted_fly_ash = fly_ash
+        adjusted_slag = slag
+        adjusted_micro_bead = micro_bead
+        adjusted_silica_fume = silica_fume
+        sand = total_aggregate * (variant["bs"] / 100.0)
         coarse = total_aggregate - sand
+        admixture = binder * (strength_alpha / 100.0) if strength_alpha is not None else 0
         total = sum([
             adjusted_cement,
             adjusted_fly_ash,
@@ -279,7 +267,7 @@ def legacy_strength_mixes(payload: dict[str, Any], workability_result: dict[str,
             adjusted_silica_fume,
             coarse,
             sand,
-            water,
+            adjusted_water,
             admixture,
         ])
 
@@ -294,9 +282,9 @@ def legacy_strength_mixes(payload: dict[str, Any], workability_result: dict[str,
             "m4": js_round(adjusted_silica_fume, 2),
             "mg": js_round(coarse, 2),
             "ms": js_round(sand, 2),
-            "mw": js_round(water, 2),
+            "mw": js_round(adjusted_water, 2),
             "ma": js_round(admixture, 2),
-            "mb": js_round(adjusted_binder, 2),
+            "mb": js_round(binder, 2),
             "total": js_round(total, 2),
         })
 

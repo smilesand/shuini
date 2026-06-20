@@ -147,6 +147,15 @@ def build_backend_binary(platform_name: str) -> Path:
     for source, destination in DATA_DIRS:
         command.extend(['--add-data', pyinstaller_data_arg(BACKEND_DIR / source, destination)])
 
+    # 授权公钥以内嵌混淆模块 core/_license_pubkey.py 编译进后端内部，无需再夹带明文公钥文件。
+    pubkey_module = BACKEND_DIR / 'core' / '_license_pubkey.py'
+    if not pubkey_module.is_file():
+        raise RuntimeError(
+            f'Embedded license public-key module not found: {pubkey_module}. '
+            f'Run "python scripts/init_license_keys.py" first.'
+        )
+    command.extend(['--hidden-import', 'core._license_pubkey'])
+
     for hidden_import in HIDDEN_IMPORTS:
         command.extend(['--hidden-import', hidden_import])
 
@@ -156,6 +165,66 @@ def build_backend_binary(platform_name: str) -> Path:
     binary_path = dist_dir / binary_name
     if not binary_path.exists():
         raise RuntimeError(f'Backend binary not found after build: {binary_path}')
+    return binary_path
+
+
+def build_license_admin_binary(platform_name: str) -> Path:
+    """编译管理员授权客户端（license_admin/app.py）为独立可执行文件。
+
+    ⚠️ 签发工具内嵌混淆私钥（编译进 exe 内部），仅限授权方内部使用，切勿分发给客户。
+    """
+    ensure_python_build_dependencies()
+
+    tool_path = ROOT_DIR / 'release' / 'license-tool' / 'wtcmd-license-tool.py'
+    if not tool_path.is_file():
+        raise RuntimeError(
+            f'License signing tool not found: {tool_path}. '
+            'Run "python scripts/init_license_keys.py" first to generate the embedded-key tool.'
+        )
+
+    app_entry = ROOT_DIR / 'license_admin' / 'app.py'
+    dist_dir = RELEASE_DIR / 'license-admin' / platform_name
+    work_dir = RELEASE_DIR / '.admin-work' / platform_name
+    spec_dir = RELEASE_DIR / '.admin-spec' / platform_name
+    binary_name = 'wtcmd-license-admin.exe' if platform_name == 'windows' else 'wtcmd-license-admin'
+
+    ensure_clean_dir(dist_dir)
+    ensure_clean_dir(work_dir)
+    ensure_clean_dir(spec_dir)
+
+    command = [
+        sys.executable,
+        '-m',
+        'PyInstaller',
+        '--noconfirm',
+        '--clean',
+        '--onefile',
+        '--windowed',
+        '--name',
+        'wtcmd-license-admin',
+        '--distpath',
+        str(dist_dir),
+        '--workpath',
+        str(work_dir),
+        '--specpath',
+        str(spec_dir),
+        # 签发工具以数据文件方式打包，运行时由 app.py 动态 import；PyInstaller 静态分析
+        # 看不到工具内部对 cryptography 子模块（serialization 等）的依赖，必须显式收集，
+        # 否则点击“签发授权码”会报 No module named 'cryptography.hazmat.primitives.serialization'。
+        '--collect-submodules',
+        'cryptography',
+        # 捆绑内嵌混淆私钥的签发工具：运行时 app.py 从 _MEIPASS/license-tool 加载并解码。
+        '--add-data',
+        pyinstaller_data_arg(tool_path, 'license-tool'),
+        str(app_entry),
+    ]
+    run(command, cwd=ROOT_DIR)
+
+    binary_path = dist_dir / binary_name
+    if not binary_path.exists():
+        raise RuntimeError(f'License admin binary not found after build: {binary_path}')
+
+    print('\n[!] wtcmd-license-admin 内嵌授权私钥，仅限授权方内部使用，切勿分发给客户。')
     return binary_path
 
 
@@ -216,6 +285,8 @@ def build_web_bundle(platform_name: str, frontend_dist: Path, backend_binary: Pa
     target_dir = RELEASE_DIR / 'web' / platform_name
     ensure_clean_dir(target_dir)
 
+    # Web 形态默认 SC_EDITION=web，后端始终放行（不强制激活/试用），数据库也不加密，
+    # 因此 Web 包无需分发授权公钥，避免夹带授权相关产物。
     shutil.copy2(backend_binary, target_dir / backend_binary.name)
     shutil.copytree(frontend_dist, target_dir / 'frontend')
     (target_dir / 'data').mkdir(parents=True, exist_ok=True)
@@ -235,8 +306,61 @@ def stage_desktop_resources(frontend_dist: Path, backend_binary: Path) -> None:
     shutil.copytree(frontend_dist, frontend_target)
 
 
+WINCODESIGN_VERSION = '2.6.0'
+WINCODESIGN_URL = (
+    'https://github.com/electron-userland/electron-builder-binaries/releases/'
+    f'download/winCodeSign-{WINCODESIGN_VERSION}/winCodeSign-{WINCODESIGN_VERSION}.7z'
+)
+
+
+def ensure_wincodesign_cache() -> None:
+    """预解压 electron-builder 的 winCodeSign 缓存（排除 darwin 符号链接）。
+
+    Windows 普通用户无权创建符号链接，electron-builder 解压 winCodeSign 时
+    会因 darwin/*.dylib 符号链接失败而中断。这里提前用 7za 解压并排除 darwin
+    目录，使 electron-builder 检测到缓存已就绪而跳过自身的解压步骤。
+    """
+    if os.name != 'nt':
+        return
+
+    local_appdata = os.getenv('LOCALAPPDATA')
+    if not local_appdata:
+        return
+
+    cache_dir = Path(local_appdata) / 'electron-builder' / 'Cache' / 'winCodeSign'
+    final_dir = cache_dir / f'winCodeSign-{WINCODESIGN_VERSION}'
+    if (final_dir / 'windows-10').exists():
+        return
+
+    seven_zip = DESKTOP_DIR / 'node_modules' / '7zip-bin' / 'win' / 'x64' / '7za.exe'
+    if not seven_zip.exists():
+        return
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    archive = next((p for p in cache_dir.glob('*.7z')), None)
+    if archive is None:
+        archive = cache_dir / f'winCodeSign-{WINCODESIGN_VERSION}.7z'
+        print(f'Downloading winCodeSign archive -> {archive}')
+        import urllib.request
+
+        urllib.request.urlretrieve(WINCODESIGN_URL, archive)
+
+    if final_dir.exists():
+        shutil.rmtree(final_dir)
+
+    print(f'Pre-extracting winCodeSign cache (excluding darwin) -> {final_dir}')
+    subprocess.run(
+        [str(seven_zip), 'x', str(archive), f'-o{final_dir}', '-x!darwin', '-y'],
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+
+
 def build_desktop_bundle(platform_name: str) -> Path:
     ensure_node_dependencies(DESKTOP_DIR)
+
+    if platform_name == 'windows':
+        ensure_wincodesign_cache()
 
     output_dir = RELEASE_DIR / 'desktop' / platform_name
     if output_dir.exists():
@@ -263,7 +387,7 @@ def build_desktop_bundle(platform_name: str) -> Path:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Build web and desktop packages from one codebase.')
-    parser.add_argument('--variant', choices=['web', 'desktop', 'all'], default='all')
+    parser.add_argument('--variant', choices=['web', 'desktop', 'admin', 'all'], default='all')
     parser.add_argument('--platform', choices=['windows', 'debian'], default=current_platform_name())
     return parser.parse_args()
 
@@ -276,8 +400,11 @@ def main() -> int:
             f'Cross-platform packaging is not supported. Run this on a {args.platform} host instead.'
         )
 
-    backend_binary = build_backend_binary(args.platform)
     built_paths: list[Path] = []
+    backend_binary: Path | None = None
+
+    if args.variant in {'web', 'desktop', 'all'}:
+        backend_binary = build_backend_binary(args.platform)
 
     if args.variant in {'web', 'all'}:
         frontend_dist = build_frontend('web')
@@ -287,6 +414,9 @@ def main() -> int:
         frontend_dist = build_frontend('desktop')
         stage_desktop_resources(frontend_dist, backend_binary)
         built_paths.append(build_desktop_bundle(args.platform))
+
+    if args.variant in {'admin', 'all'}:
+        built_paths.append(build_license_admin_binary(args.platform))
 
     print('\nBuild complete.')
     for path in built_paths:

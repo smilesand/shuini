@@ -14,6 +14,8 @@ const topNavItems = computed(() => filterNavItems(navMenu, authStore.isAdmin))
 async function handleCommand(cmd: string) {
   if (cmd === 'profile') {
     router.push('/profile')
+  } else if (cmd === 'activate') {
+    router.push('/activation')
   } else if (cmd === 'logout') {
     await authStore.logout()
     await router.push('/login')
@@ -46,6 +48,9 @@ async function handleCommand(cmd: string) {
             <el-dropdown-item command="profile">
               <el-icon><User /></el-icon>
               个人中心
+            </el-dropdown-item>
+            <el-dropdown-item command="activate">
+              激活软件
             </el-dropdown-item>
             <el-dropdown-item command="logout" divided>
               退出登录
