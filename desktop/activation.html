@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>产品激活</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: "Microsoft YaHei", sans-serif;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+  height: 100vh; display: flex; align-items: center; justify-content: center;
+  user-select: none;
+}
+.card {
+  background: #fff; border-radius: 16px; padding: 40px 36px;
+  width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.title { font-size: 22px; font-weight: 700; color: #1e3c72; margin-bottom: 8px; text-align: center; }
+.subtitle { font-size: 13px; color: #8899aa; text-align: center; margin-bottom: 28px; }
+.row { margin-bottom: 18px; }
+.row label { display: block; font-size: 12px; font-weight: 700; color: #4a5568; margin-bottom: 6px; }
+.row input, .row textarea {
+  width: 100%; padding: 10px 14px; border: 1px solid #dbe5f1;
+  border-radius: 8px; font-size: 13px; transition: border-color 0.2s;
+  font-family: "Consolas", "Courier New", monospace;
+}
+.row input:focus, .row textarea:focus {
+  outline: none; border-color: #2a5298; box-shadow: 0 0 0 2px rgba(42,82,152,0.15);
+}
+.row textarea { resize: vertical; min-height: 60px; }
+.fingerprint {
+  background: #f0f4fa; padding: 10px 14px; border-radius: 8px;
+  font-size: 11px; font-family: "Consolas", monospace; color: #1e3c72;
+  word-break: break-all; margin-top: 4px;
+  user-select: text; cursor: text;
+}
+.fingerprint-row { display: flex; gap: 8px; align-items: flex-start; }
+.fingerprint-row .fingerprint { flex: 1; margin-top: 0; }
+.btn-copy {
+  flex-shrink: 0; padding: 8px 14px; border: 1px solid #2a5298;
+  border-radius: 8px; background: #fff; color: #2a5298;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: all 0.2s; white-space: nowrap;
+}
+.btn-copy:hover { background: #2a5298; color: #fff; }
+.btn-copy:active { transform: scale(0.96); }
+.btn-copy.copied { background: #276749; color: #fff; border-color: #276749; }
+.btn {
+  width: 100%; padding: 12px; border: none; border-radius: 8px;
+  font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+}
+.btn-primary { background: linear-gradient(135deg, #1e3c72, #2a5298); color: #fff; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(30,60,114,0.4); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.msg { margin-top: 16px; padding: 10px 14px; border-radius: 8px; font-size: 13px; display: none; }
+.msg-error { background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; }
+.msg-success { background: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="title">🔐 产品激活</div>
+  <div class="subtitle">请输入管理员提供的授权码完成激活</div>
+
+  <div class="row">
+    <label>本机指纹</label>
+    <div class="fingerprint-row">
+      <div class="fingerprint" id="fp" title="选中指纹文本后可 Ctrl+C 复制">加载中...</div>
+      <button class="btn-copy" id="copyBtn" onclick="copyFingerprint()" disabled>📋 复制</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <label>授权码</label>
+    <textarea id="license" placeholder="粘贴授权码..."></textarea>
+  </div>
+
+  <button class="btn btn-primary" id="activateBtn" onclick="doActivate()">激 活</button>
+
+  <div class="msg" id="msg"></div>
+</div>
+
+<script>
+const API = window.activationAPI;
+
+async function loadStatus() {
+  try {
+    const data = await API.getStatus();
+    const fpEl = document.getElementById('fp');
+    const copyBtn = document.getElementById('copyBtn');
+    if (data.code === 0 && data.data) {
+      fpEl.textContent = data.data.fingerprint || '未知';
+      copyBtn.disabled = false;
+      if (data.data.activated) {
+        showMsg('产品已激活，正在进入...', 'success');
+        setTimeout(() => window.close(), 1500);
+      }
+    } else {
+      fpEl.textContent = data.detail || '获取失败';
+    }
+  } catch (e) {
+    document.getElementById('fp').textContent = '无法连接服务: ' + (e.message || '');
+  }
+}
+
+function copyFingerprint() {
+  const fpEl = document.getElementById('fp');
+  const text = fpEl.textContent || '';
+  if (!text || text === '加载中...' || text.startsWith('无法连接') || text === '获取失败' || text === '未知') {
+    return;
+  }
+
+  // 优先使用 Clipboard API，降级到 execCommand
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => showCopied()).catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  textarea.style.top = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  try {
+    document.execCommand('copy');
+    showCopied();
+  } catch (e) {
+    showMsg('复制失败，请手动选中并 Ctrl+C 复制', 'error');
+  }
+  document.body.removeChild(textarea);
+}
+
+function showCopied() {
+  const btn = document.getElementById('copyBtn');
+  const originalText = btn.textContent;
+  btn.textContent = '✅ 已复制';
+  btn.classList.add('copied');
+  setTimeout(() => {
+    btn.textContent = originalText;
+    btn.classList.remove('copied');
+  }, 2000);
+}
+
+async function doActivate() {
+  const btn = document.getElementById('activateBtn');
+  const code = document.getElementById('license').value.trim();
+  if (!code) { showMsg('请输入授权码', 'error'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '激活中...';
+  try {
+    const data = await API.activate(code);
+    if (data.code === 0) {
+      showMsg(data.data.message || '激活成功', 'success');
+      setTimeout(() => window.close(), 1500);
+    } else {
+      showMsg(data.detail || data.message || '激活失败', 'error');
+    }
+  } catch (e) {
+    showMsg('通信错误: ' + (e.message || ''), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '激 活';
+  }
+}
+
+function showMsg(text, type) {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg msg-' + type;
+  el.style.display = 'block';
+}
+
+loadStatus();
+</script>
+</body>
+</html>

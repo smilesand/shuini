@@ -10,15 +10,15 @@
 用法（在仓库根目录运行）::
 
     # 1) 把加密库解密成明文 sqlite，可直接用 DBeaver / sqlite3 打开
-    python scripts/decrypt_db.py decrypt --in  "%APPDATA%\\wtcmd-platform-desktop\\data.db" \
+    python scripts/decrypt_db.py decrypt --in  "%APPDATA%\\WTCMD Platform\\data.db" \
                                          --out  plain.db
 
     # 2) 改完明文库后再加密写回（覆盖客户端加密库）
     python scripts/decrypt_db.py encrypt --in  plain.db \
-                                         --out  "%APPDATA%\\wtcmd-platform-desktop\\data.db"
+                                         --out  "%APPDATA%\\WTCMD Platform\\data.db"
 
     # 3) 直接查看 license_state（无需先落地明文文件）
-    python scripts/decrypt_db.py show --in "%APPDATA%\\wtcmd-platform-desktop\\data.db"
+    python scripts/decrypt_db.py show --in "%APPDATA%\\WTCMD Platform\\data.db"
 """
 
 from __future__ import annotations
@@ -40,8 +40,31 @@ _NONCE_LEN = 12
 _SQLITE_MAGIC = b"SQLite format 3\x00"
 
 
+def _frozen_bundle_key() -> "bytes | None":
+    """打包成 exe 后，主密钥 db_key.bin 以数据文件形式内嵌在 PyInstaller 解压目录中。"""
+    base = getattr(sys, "_MEIPASS", None)
+    if not base:
+        return None
+    bundled = Path(base) / "db_key.bin"
+    if not bundled.is_file():
+        return None
+    key = bundled.read_bytes()
+    if len(key) != 32:
+        raise ValueError(f"内嵌主密钥长度异常（应为 32 字节）：{bundled}")
+    return key
+
+
 def load_db_key() -> bytes:
-    """读取数据库主密钥（优先 db_key.bin，其次后端内嵌混淆模块）。"""
+    """读取数据库主密钥。
+
+    优先级：
+      1. 打包 exe 内嵌的 db_key.bin（``sys._MEIPASS``）；
+      2. 仓库内 ``scripts/keys/db_key.bin``（开发机）；
+      3. 后端内嵌混淆模块 ``backend/core/_db_secret.py``（兜底）。
+    """
+    bundled = _frozen_bundle_key()
+    if bundled is not None:
+        return bundled
     if DB_KEY_PATH.is_file():
         key = DB_KEY_PATH.read_bytes()
         if len(key) != 32:

@@ -28,8 +28,8 @@ backend/main
 
 
 release/
-desktop
 desktop/node_modules/
+desktop/resources/frontend-dist
 desktop/resources/backend/wtcmd-platform-backend.exe
 build/
 

@@ -30,10 +30,22 @@ import decrypt_db
 
 
 def default_db_path() -> Path:
-    """桌面版默认把 data.db 放在 Electron userData 目录（productName=wtcmd-platform-desktop）。"""
+    """桌面版默认把 data.db 放在 Electron userData 目录。
+
+    Electron 的 userData = ``%APPDATA%\\<productName>``，本产品 productName 为
+    ``WTCMD Platform``（见 desktop/package.json）。为兼容历史/不同命名，按存在性
+    依次探测候选目录。
+    """
     appdata = os.getenv("APPDATA")
     if appdata:
-        return Path(appdata) / "wtcmd-platform-desktop" / "data.db"
+        candidates = [
+            Path(appdata) / "WTCMD Platform" / "data.db",
+            Path(appdata) / "wtcmd-platform-desktop" / "data.db",
+        ]
+        for cand in candidates:
+            if cand.is_file():
+                return cand
+        return candidates[0]
     return Path.cwd() / "data.db"
 
 

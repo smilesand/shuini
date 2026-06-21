@@ -1,0 +1,65 @@
+{
+  "name": "wtcmd-platform-desktop",
+  "private": true,
+  "version": "1.0.0",
+  "main": "main.cjs",
+  "scripts": {
+    "dist:win": "electron-builder --win nsis --x64",
+    "dist:linux": "electron-builder --linux AppImage deb --x64"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.wtcmd.platform.desktop",
+    "productName": "WTCMD Platform",
+    "artifactName": "wtcmd-platform-desktop-${version}-${os}-${arch}.${ext}",
+    "icon": "icon.ico",
+    "files": [
+      "main.cjs",
+      "preload-activation.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/backend",
+        "to": "backend"
+      },
+      {
+        "from": "resources/frontend-dist",
+        "to": "frontend-dist"
+      },
+      {
+        "from": "activation.html",
+        "to": "activation.html"
+      }
+    ],
+    "asar": true,
+    "win": {
+      "signAndEditExecutable": true,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
+    }
+  }
+}

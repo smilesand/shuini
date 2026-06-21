@@ -240,6 +240,115 @@ def build_license_admin_binary(platform_name: str) -> Path:
     return binary_path
 
 
+def build_dev_tools(platform_name: str) -> Path:
+    """编译开发者/运维工具（数据库解密加密工具 + 试用期修改工具）为独立 exe。
+
+    两个工具都需要数据库主密钥 ``scripts/keys/db_key.bin``。这里把它以数据文件方式
+    内嵌进每个 exe，运行时由 ``decrypt_db.load_db_key()`` 从 ``sys._MEIPASS`` 读取，
+    因此客户拿到 exe 后无需任何额外密钥文件即可解密/查看自己的数据库与验证过期逻辑。
+
+    ⚠️ 这两个工具内嵌数据库主密钥，可解密所有客户端数据库，请按内部工具管理；
+       只在确需让客户自助验证数据/过期时再分发。
+    """
+    ensure_python_build_dependencies()
+
+    scripts_dir = ROOT_DIR / 'scripts'
+    db_key = scripts_dir / 'keys' / 'db_key.bin'
+    if not db_key.is_file():
+        raise RuntimeError(
+            f'Database master key not found: {db_key}. '
+            'Run "python scripts/init_license_keys.py" first to generate it.'
+        )
+
+    dist_dir = RELEASE_DIR / 'dev-tools' / platform_name
+    work_dir = RELEASE_DIR / '.tools-work' / platform_name
+    spec_dir = RELEASE_DIR / '.tools-spec' / platform_name
+    ensure_clean_dir(dist_dir)
+    ensure_clean_dir(work_dir)
+    ensure_clean_dir(spec_dir)
+
+    tools = [
+        ('wtcmd-db-tool', scripts_dir / 'decrypt_db.py'),
+        ('wtcmd-expire-tool', scripts_dir / 'expire_trial.py'),
+    ]
+    exe_suffix = '.exe' if platform_name == 'windows' else ''
+
+    for name, entry in tools:
+        if not entry.is_file():
+            raise RuntimeError(f'Dev tool entry not found: {entry}')
+        command = [
+            sys.executable,
+            '-m',
+            'PyInstaller',
+            '--noconfirm',
+            '--clean',
+            '--onefile',
+            '--console',
+            '--name',
+            name,
+            '--distpath',
+            str(dist_dir),
+            '--workpath',
+            str(work_dir),
+            '--specpath',
+            str(spec_dir),
+            # 把工具脚本所在目录加入搜索路径：expire_trial 运行时 import decrypt_db。
+            '--paths',
+            str(scripts_dir),
+            # 主密钥以数据文件内嵌进 exe；运行时从 _MEIPASS 读取。
+            '--add-data',
+            pyinstaller_data_arg(db_key, '.'),
+            # AES-GCM 解密依赖 cryptography 的 C 后端子模块。
+            '--collect-submodules',
+            'cryptography',
+            '--hidden-import',
+            'decrypt_db',
+            str(entry),
+        ]
+        run(command, cwd=scripts_dir)
+        binary_path = dist_dir / f'{name}{exe_suffix}'
+        if not binary_path.exists():
+            raise RuntimeError(f'Dev tool binary not found after build: {binary_path}')
+
+    write_dev_tools_readme(dist_dir, platform_name)
+    print('\n[!] dev-tools 内嵌数据库主密钥，可解密所有客户端数据库，请作为内部工具妥善保管。')
+    return dist_dir
+
+
+def write_dev_tools_readme(target_dir: Path, platform_name: str) -> None:
+    db_tool = 'wtcmd-db-tool.exe' if platform_name == 'windows' else './wtcmd-db-tool'
+    expire_tool = 'wtcmd-expire-tool.exe' if platform_name == 'windows' else './wtcmd-expire-tool'
+    readme = target_dir / 'README.txt'
+    readme.write_text(
+        "WTCMD 平台 开发者/运维工具\n"
+        "============================\n\n"
+        "本目录包含两个独立可执行工具，已内嵌数据库主密钥，无需任何额外密钥文件。\n"
+        "客户端数据库 data.db 在磁盘上是整库 AES-256-GCM 加密的，普通工具无法直接打开；\n"
+        "用下列工具可以解密查看、修改后再加密写回，或验证试用期/过期逻辑。\n\n"
+        "桌面版数据库默认位置（Windows）：\n"
+        "  %APPDATA%\\WTCMD Platform\\data.db\n\n"
+        "1) 数据库解密/加密/查看工具：" + db_tool + "\n"
+        "  - 解密为明文 sqlite（可用 DBeaver/sqlite3 打开）：\n"
+        "      " + db_tool + " decrypt --in \"<data.db>\" --out plain.db\n"
+        "  - 改完明文库后加密写回：\n"
+        "      " + db_tool + " encrypt --in plain.db --out \"<data.db>\"\n"
+        "  - 直接查看授权状态（含防篡改校验）：\n"
+        "      " + db_tool + " show --in \"<data.db>\"\n\n"
+        "2) 试用期修改工具（验证到期行为）：" + expire_tool + "\n"
+        "  - 让试用期立刻过期：\n"
+        "      " + expire_tool + "\n"
+        "  - 指定还剩 1 天（first_seen 设为 2 天前）：\n"
+        "      " + expire_tool + " --days-ago 2\n"
+        "  - 清除已激活授权码回到试用状态：\n"
+        "      " + expire_tool + " --clear-activation\n"
+        "  - 指定数据库路径：\n"
+        "      " + expire_tool + " --db \"<data.db>\"\n\n"
+        "注意：修改前请先关闭桌面客户端，避免运行中的程序再次落盘覆盖你的改动。\n"
+        "安全提示：这两个工具内嵌主密钥，可解密任意客户端数据库，请妥善保管。\n",
+        encoding='utf-8',
+    )
+
+
 def write_web_start_script(target_dir: Path, platform_name: str, backend_binary: Path) -> None:
     if platform_name == 'windows':
         script_path = target_dir / 'start-web.ps1'
@@ -399,7 +508,7 @@ def build_desktop_bundle(platform_name: str) -> Path:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Build web and desktop packages from one codebase.')
-    parser.add_argument('--variant', choices=['web', 'desktop', 'admin', 'all'], default='all')
+    parser.add_argument('--variant', choices=['web', 'desktop', 'admin', 'tools', 'all'], default='all')
     parser.add_argument('--platform', choices=['windows', 'debian'], default=current_platform_name())
     return parser.parse_args()
 
@@ -431,6 +540,9 @@ def main() -> int:
 
     if args.variant in {'admin', 'all'}:
         built_paths.append(build_license_admin_binary(args.platform))
+
+    if args.variant in {'tools', 'all'}:
+        built_paths.append(build_dev_tools(args.platform))
 
     print('\nBuild complete.')
     for path in built_paths:
