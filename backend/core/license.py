@@ -207,21 +207,28 @@ def _parse_iso(value: Optional[str]) -> Optional[datetime]:
         return None
 
 
+def _state_guard(state: dict) -> str:
+    """对 license_state 受保护字段计算 HMAC（使用内嵌数据库主密钥）。"""
+    from core import secure_db
+
+    return secure_db.license_guard(
+        state.get("fingerprint"),
+        state.get("license_code"),
+        state.get("expiry"),
+        state.get("activated_at"),
+        state.get("first_seen"),
+    )
+
+
 def _load_state(conn) -> dict:
     row = conn.execute(
-        "SELECT fingerprint, license_code, expiry, activated_at, first_seen, last_seen "
+        "SELECT fingerprint, license_code, expiry, activated_at, first_seen, last_seen, guard "
         "FROM license_state WHERE id=1"
     ).fetchone()
     if row is None:
         now = _now_iso()
         fingerprint = compute_fingerprint()
-        conn.execute(
-            "INSERT INTO license_state (id, fingerprint, license_code, expiry, "
-            "activated_at, first_seen, last_seen) VALUES (1, ?, NULL, NULL, NULL, ?, ?)",
-            (fingerprint, now, now),
-        )
-        conn.commit()
-        return {
+        state = {
             "fingerprint": fingerprint,
             "license_code": None,
             "expiry": None,
@@ -229,7 +236,27 @@ def _load_state(conn) -> dict:
             "first_seen": now,
             "last_seen": now,
         }
-    return dict(row)
+        guard = _state_guard(state)
+        conn.execute(
+            "INSERT INTO license_state (id, fingerprint, license_code, expiry, "
+            "activated_at, first_seen, last_seen, guard) VALUES (1, ?, NULL, NULL, NULL, ?, ?, ?)",
+            (fingerprint, now, now, guard),
+        )
+        conn.commit()
+        state["guard_ok"] = True
+        return state
+    state = dict(row)
+    stored_guard = state.pop("guard", None)
+    # 防篡改校验：guard 为空视为合法（旧库/测试/迁移），存在但不匹配即判定被篡改。
+    if stored_guard:
+        try:
+            state["guard_ok"] = (stored_guard == _state_guard(state))
+        except Exception:  # noqa: BLE001 - 校验异常按合法处理，避免误锁正常用户
+            state["guard_ok"] = True
+    else:
+        state["guard_ok"] = True
+    return state
+
 
 
 def _touch_last_seen(conn, state: dict) -> datetime:
@@ -280,6 +307,19 @@ def get_license_status() -> dict:
     try:
         state = _load_state(conn)
         effective_now = _touch_last_seen(conn, state)
+
+        if not state.get("guard_ok", True):
+            logger.warning("license_state 防篡改校验失败，疑似被人为修改")
+            return {
+                "edition": settings.edition,
+                "fingerprint": fingerprint,
+                "activated": False,
+                "can_use": False,
+                "expiry": None,
+                "trial": False,
+                "trial_days_left": 0,
+                "message": "授权数据校验失败（疑似被篡改），请联系软件供应商",
+            }
 
         code = state.get("license_code")
         if code:
@@ -344,10 +384,21 @@ def activate_license(license_code: str) -> dict:
     conn = get_db()
     try:
         _load_state(conn)  # 确保行存在
+        new_state = {
+            "fingerprint": fingerprint,
+            "license_code": license_code.strip(),
+            "expiry": result["expiry"],
+            "activated_at": _now_iso(),
+            "first_seen": conn.execute(
+                "SELECT first_seen FROM license_state WHERE id=1"
+            ).fetchone()[0],
+        }
+        guard = _state_guard(new_state)
         conn.execute(
-            "UPDATE license_state SET license_code=?, expiry=?, activated_at=?, fingerprint=? "
+            "UPDATE license_state SET license_code=?, expiry=?, activated_at=?, fingerprint=?, guard=? "
             "WHERE id=1",
-            (license_code.strip(), result["expiry"], _now_iso(), fingerprint),
+            (new_state["license_code"], new_state["expiry"], new_state["activated_at"],
+             fingerprint, guard),
         )
         conn.commit()
     finally:

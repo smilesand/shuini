@@ -156,6 +156,18 @@ def build_backend_binary(platform_name: str) -> Path:
         )
     command.extend(['--hidden-import', 'core._license_pubkey'])
 
+    # 数据库整库加密主密钥以内嵌混淆模块 core/_db_secret.py 编译进后端内部。
+    db_secret_module = BACKEND_DIR / 'core' / '_db_secret.py'
+    if not db_secret_module.is_file():
+        raise RuntimeError(
+            f'Embedded database-key module not found: {db_secret_module}. '
+            f'Run "python scripts/init_license_keys.py" first.'
+        )
+    command.extend(['--hidden-import', 'core._db_secret'])
+    command.extend(['--hidden-import', 'core.secure_db'])
+    # AES-GCM 整库加解密依赖 cryptography 的 C 后端子模块，确保全部打包。
+    command.extend(['--collect-submodules', 'cryptography'])
+
     for hidden_import in HIDDEN_IMPORTS:
         command.extend(['--hidden-import', hidden_import])
 
@@ -407,10 +419,12 @@ def main() -> int:
         backend_binary = build_backend_binary(args.platform)
 
     if args.variant in {'web', 'all'}:
+        assert backend_binary is not None
         frontend_dist = build_frontend('web')
         built_paths.append(build_web_bundle(args.platform, frontend_dist, backend_binary))
 
     if args.variant in {'desktop', 'all'}:
+        assert backend_binary is not None
         frontend_dist = build_frontend('desktop')
         stage_desktop_resources(frontend_dist, backend_binary)
         built_paths.append(build_desktop_bundle(args.platform))

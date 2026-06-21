@@ -23,9 +23,10 @@ from __future__ import annotations
 
 import argparse
 import os
-import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
+
+import decrypt_db
 
 
 def default_db_path() -> Path:
@@ -65,28 +66,43 @@ def main() -> int:
 
     new_first_seen = (datetime.now().replace(microsecond=0) - timedelta(days=args.days_ago)).isoformat()
 
-    conn = sqlite3.connect(str(db_path))
+    # 数据库是整库加密的：先用主密钥读入内存，改完再加密写回，并重算防篡改 guard。
+    key = decrypt_db.load_db_key()
+    conn = decrypt_db.open_in_memory(db_path, key)
     try:
         row = conn.execute(
-            "SELECT fingerprint, license_code, first_seen FROM license_state WHERE id=1"
+            "SELECT fingerprint, license_code, expiry, activated_at, first_seen FROM license_state WHERE id=1"
         ).fetchone()
         if row is None:
             print("[!] license_state 尚无数据行，请先启动一次桌面版后再运行本脚本。")
             return 1
 
-        fingerprint, license_code, old_first_seen = row
+        fingerprint = row["fingerprint"]
+        license_code = row["license_code"]
+        old_first_seen = row["first_seen"]
         if args.clear_activation:
+            license_code = None
+            expiry = None
+            activated_at = None
             conn.execute(
                 "UPDATE license_state SET first_seen=?, last_seen=?, license_code=NULL, "
                 "expiry=NULL, activated_at=NULL WHERE id=1",
                 (new_first_seen, new_first_seen),
             )
         else:
+            expiry = row["expiry"]
+            activated_at = row["activated_at"]
             conn.execute(
                 "UPDATE license_state SET first_seen=?, last_seen=? WHERE id=1",
                 (new_first_seen, new_first_seen),
             )
+        # 重算防篡改 guard，否则后端会判定为被篡改而锁定。
+        guard = decrypt_db.license_guard(
+            key, fingerprint, license_code, expiry, activated_at, new_first_seen
+        )
+        conn.execute("UPDATE license_state SET guard=? WHERE id=1", (guard,))
         conn.commit()
+        decrypt_db.save_encrypted(conn, db_path, key)
 
         print(f"[ok] 数据库：{db_path}")
         print(f"     指纹：{fingerprint}")
@@ -94,7 +110,7 @@ def main() -> int:
         if license_code and not args.clear_activation:
             print("[!] 注意：该机已保存授权码（已激活），试用期判断不会生效。")
             print("    如需测试试用到期，请加 --clear-activation 清除激活。")
-        elif args.clear_activation and license_code:
+        elif args.clear_activation and row["license_code"]:
             print("     已清除原有激活授权码，现处于试用状态。")
         print()
         print("下一步：重启桌面版（或重新调用 /api/license/status），即可看到试用期变化。")

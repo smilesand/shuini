@@ -5,16 +5,22 @@ SQLite 数据库模块
   users   - 用户账户（管理员/普通用户）
   records - 配比计算保存记录
 """
+import os
 import sqlite3
 import hashlib
 import hmac
 import json
+import logging
 import secrets
+import threading
 import time
 from core.config import get_settings
+from core import secure_db
 
 settings = get_settings()
 DB_PATH = settings.db_path
+
+logger = logging.getLogger("wtcmd.database")
 
 
 PASSWORD_SCHEME = "pbkdf2_sha256"
@@ -36,12 +42,207 @@ RECORD_METADATA_FIELDS = (
 )
 
 
-def get_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+_SQLITE_MAGIC = b"SQLite format 3\x00"
+
+# 共享的内存数据库连接：磁盘上始终是密文，运行期数据全部驻留在该内存连接中。
+_db_lock = threading.RLock()
+_shared_conn: "sqlite3.Connection | None" = None
+_shared_conn_path: "str | None" = None
+
+
+def _load_snapshot_from_disk() -> "bytes | None":
+    """从磁盘读取数据库快照（明文 SQLite 序列化字节）。
+
+    返回 None 表示全新空库。会自动识别三种情形：
+      * 不存在 / 0 字节       -> 全新空库
+      * 旧版明文 SQLite 文件   -> 读取并迁移（首次提交后会被密文覆盖）
+      * 本系统加密文件         -> 解密
+    """
+    if not os.path.exists(DB_PATH):
+        return None
+    size = os.path.getsize(DB_PATH)
+    if size == 0:
+        return None
+    with open(DB_PATH, "rb") as f:
+        head = f.read(16)
+        f.seek(0)
+        blob = f.read()
+    if head[: len(secure_db.MAGIC)] == secure_db.MAGIC:
+        return secure_db.decrypt(blob)
+    if head == _SQLITE_MAGIC:
+        # 旧版明文库：合并 WAL 后序列化为快照，随后清理旁路文件。
+        logger.warning("检测到旧版明文数据库，正在迁移为加密格式…")
+        legacy = sqlite3.connect(DB_PATH)
+        try:
+            try:
+                # 必须切出 WAL 模式：WAL 库序列化出的镜像无法 deserialize 进
+                # 内存库（内存库不支持 WAL），否则后续读写报 "unable to open database file"。
+                legacy.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                legacy.execute("PRAGMA journal_mode=DELETE")
+            except sqlite3.Error:
+                pass
+            snapshot = legacy.serialize()
+        finally:
+            legacy.close()
+        for suffix in ("-wal", "-shm"):
+            side = DB_PATH + suffix
+            try:
+                if os.path.exists(side):
+                    os.remove(side)
+            except OSError:
+                pass
+        return bytes(snapshot)
+    raise ValueError(
+        "数据库文件无法识别（既非加密格式也非合法 SQLite）。"
+        "请确认未被外部程序损坏。"
+    )
+
+
+def _open_shared_conn() -> sqlite3.Connection:
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
+    snapshot = _load_snapshot_from_disk()
+    if snapshot is not None:
+        conn.deserialize(snapshot)
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def _get_shared_conn() -> sqlite3.Connection:
+    global _shared_conn, _shared_conn_path
+    with _db_lock:
+        if _shared_conn is None or _shared_conn_path != DB_PATH:
+            if _shared_conn is not None:
+                try:
+                    _shared_conn.close()
+                except sqlite3.Error:
+                    pass
+            _shared_conn = _open_shared_conn()
+            _shared_conn_path = DB_PATH
+        return _shared_conn
+
+
+def _persist() -> None:
+    """把内存库序列化、加密后原子写入磁盘。调用方需已持有 _db_lock。"""
+    if _shared_conn is None:
+        return
+    snapshot = bytes(_shared_conn.serialize())
+    os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)) or ".", exist_ok=True)
+    secure_db.encrypt_to_file(DB_PATH, snapshot)
+
+
+class _LockedCursor:
+    """游标包装：每次取数都持锁，避免多线程同时触碰共享内存连接。"""
+
+    __slots__ = ("_cur",)
+
+    def __init__(self, cur: sqlite3.Cursor):
+        object.__setattr__(self, "_cur", cur)
+
+    def execute(self, *a, **k):
+        with _db_lock:
+            self._cur.execute(*a, **k)
+        return self
+
+    def executemany(self, *a, **k):
+        with _db_lock:
+            self._cur.executemany(*a, **k)
+        return self
+
+    def fetchone(self):
+        with _db_lock:
+            return self._cur.fetchone()
+
+    def fetchall(self):
+        with _db_lock:
+            return self._cur.fetchall()
+
+    def fetchmany(self, *a, **k):
+        with _db_lock:
+            return self._cur.fetchmany(*a, **k)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        with _db_lock:
+            row = self._cur.fetchone()
+        if row is None:
+            raise StopIteration
+        return row
+
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
+
+    def __setattr__(self, name, value):
+        setattr(self._cur, name, value)
+
+
+class _ConnProxy:
+    """对共享内存连接的代理。
+
+    单用户桌面应用下，所有数据库访问都走同一个内存连接；FastAPI 把同步路由放进线程池，
+    多个请求可能并发触碰该连接（SQLite 会抛 ``bad parameter or other API misuse``）。
+    因此这里用全局锁串行化每一次 execute/取数/提交。
+
+    * ``commit()``  -> 真实提交后立即把整库加密落盘。
+    * ``close()``   -> 空操作（共享连接不可关闭）。
+    """
+
+    __slots__ = ("_conn",)
+
+    def __init__(self, conn: sqlite3.Connection):
+        object.__setattr__(self, "_conn", conn)
+
+    def execute(self, *a, **k):
+        with _db_lock:
+            return _LockedCursor(self._conn.execute(*a, **k))
+
+    def executemany(self, *a, **k):
+        with _db_lock:
+            return _LockedCursor(self._conn.executemany(*a, **k))
+
+    def executescript(self, *a, **k):
+        with _db_lock:
+            return _LockedCursor(self._conn.executescript(*a, **k))
+
+    def cursor(self, *a, **k):
+        with _db_lock:
+            return _LockedCursor(self._conn.cursor(*a, **k))
+
+    def commit(self) -> None:
+        with _db_lock:
+            self._conn.commit()
+            _persist()
+
+    def rollback(self) -> None:
+        with _db_lock:
+            self._conn.rollback()
+
+    def close(self) -> None:  # noqa: D401 - 共享连接，关闭为空操作
+        return None
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+    def __setattr__(self, name, value):
+        setattr(self._conn, name, value)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type is None:
+            self.commit()
+        else:
+            with _db_lock:
+                self._conn.rollback()
+        return False
+
+
+def get_db() -> "sqlite3.Connection":
+    return _ConnProxy(_get_shared_conn())  # type: ignore[return-value]
+
 
 
 def _backfill_legacy_record_projects_conn(conn: sqlite3.Connection):
@@ -226,7 +427,8 @@ def init_db():
             expiry       TEXT,
             activated_at TEXT,
             first_seen   TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
-            last_seen    TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+            last_seen    TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+            guard        TEXT
         );
     """)
     # 创建默认管理员
@@ -295,6 +497,7 @@ def init_db():
         "ALTER TABLE projects ADD COLUMN deleted_by TEXT",
         "ALTER TABLE projects ADD COLUMN source TEXT NOT NULL DEFAULT 'system'",
         "ALTER TABLE records ADD COLUMN source TEXT NOT NULL DEFAULT 'system'",
+        "ALTER TABLE license_state ADD COLUMN guard TEXT",
     ):
         try:
             conn.execute(ddl)

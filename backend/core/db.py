@@ -10,11 +10,12 @@ def _current_db_path() -> str:
 
 
 def get_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(_current_db_path())
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+    # 委托给 database.get_db()：所有访问共享同一个内存加密快照连接，
+    # 否则各仓储直接打开磁盘文件会读到密文、绕过加密层。
+    import database
+
+    return database.get_db()
+
 
 
 def _backfill_legacy_record_projects_conn(conn: sqlite3.Connection):

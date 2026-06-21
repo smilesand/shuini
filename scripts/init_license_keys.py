@@ -40,6 +40,8 @@ PRIVATE_KEY_PATH = KEYS_DIR / "private_key.pem"
 PUBLIC_KEY_PATH = KEYS_DIR / "public_key.pem"
 TOOL_PATH = REPO_ROOT / "release" / "license-tool" / "wtcmd-license-tool.py"
 PUBKEY_MODULE_PATH = REPO_ROOT / "backend" / "core" / "_license_pubkey.py"
+DB_KEY_PATH = KEYS_DIR / "db_key.bin"
+DB_SECRET_MODULE_PATH = REPO_ROOT / "backend" / "core" / "_db_secret.py"
 
 
 # ── 内嵌私钥的签发工具（管理员端） ────────────────────────────────────────
@@ -193,6 +195,48 @@ def load_public_key_pem() -> str:
 '''
 
 
+# ── 内嵌数据库加密密钥模块（桌面端/后端） ────────────────────────────────
+DBSECRET_HEADER = '''\
+"""
+内嵌数据库加密密钥（混淆 + 完整性校验）
+========================================
+AES-256-GCM 主密钥以 XOR 混淆 + SHA-256 完整性校验的形式编译在本模块内，
+由 ``backend/core/secure_db.py`` 在运行时解码后用于整库加解密与 license_state 防篡改 HMAC。
+
+本模块被编译进后端可执行文件内部；任何对内嵌密钥的人为替换/篡改都会因完整性校验失败而被拒绝。
+
+本文件由 scripts/init_license_keys.py 自动生成，请勿手改。
+"""
+
+from __future__ import annotations
+'''
+
+DBSECRET_BODY = '''
+
+import base64
+import hashlib
+
+
+def _keystream(n: int, secret: bytes) -> bytes:
+    out = bytearray()
+    counter = 0
+    while len(out) < n:
+        out.extend(hashlib.sha256(secret + counter.to_bytes(8, "big")).digest())
+        counter += 1
+    return bytes(out[:n])
+
+
+def load_db_key() -> bytes:
+    """解码并校验内嵌数据库主密钥（32 字节）；被篡改时抛出 ValueError。"""
+    raw = base64.b64decode(_BLOB)
+    keystream = _keystream(len(raw), _SECRET)
+    key = bytes(b ^ k for b, k in zip(raw, keystream))
+    if hashlib.sha256(key).hexdigest() != _DIGEST:
+        raise ValueError("数据库主密钥完整性校验失败（疑似被人为替换/篡改）")
+    return key
+'''
+
+
 def _keystream(n: int, secret: bytes) -> bytes:
     out = bytearray()
     counter = 0
@@ -264,6 +308,25 @@ def sync_public_module() -> str:
     return public_pem
 
 
+def _generate_db_key() -> bytes:
+    """生成 32 字节随机 AES-256 主密钥。"""
+    return os.urandom(32)
+
+
+def write_db_secret_module(db_key: bytes) -> None:
+    """写出内嵌混淆的数据库主密钥模块（桌面端/后端）。"""
+    DB_SECRET_MODULE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    text = DBSECRET_HEADER + _render_embedded(db_key) + DBSECRET_BODY
+    DB_SECRET_MODULE_PATH.write_text(text, encoding="utf-8")
+
+
+def sync_db_secret_module() -> bytes:
+    """从 scripts/keys/db_key.bin 刷新内嵌数据库密钥模块。"""
+    db_key = DB_KEY_PATH.read_bytes()
+    write_db_secret_module(db_key)
+    return db_key
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="生成授权密钥与内嵌密钥模块（一次性）")
     parser.add_argument(
@@ -274,24 +337,33 @@ def main() -> int:
     KEYS_DIR.mkdir(parents=True, exist_ok=True)
 
     if PRIVATE_KEY_PATH.exists() and not args.force:
-        print(f"ℹ️ 私钥源已存在，跳过生成: {PRIVATE_KEY_PATH}")
+        print(f"[i] 私钥源已存在，跳过生成: {PRIVATE_KEY_PATH}")
         print("   如需重建（会作废历史授权码），请加 --force。")
     else:
         private_pem, public_pem = _generate_keypair()
         PRIVATE_KEY_PATH.write_text(private_pem, encoding="utf-8")
         PUBLIC_KEY_PATH.write_text(public_pem, encoding="utf-8")
-        print(f"✅ 已生成私钥源: {PRIVATE_KEY_PATH}")
-        print(f"✅ 已生成公钥源: {PUBLIC_KEY_PATH}")
+        print(f"[ok] 已生成私钥源: {PRIVATE_KEY_PATH}")
+        print(f"[ok] 已生成公钥源: {PUBLIC_KEY_PATH}")
 
     private_pem = PRIVATE_KEY_PATH.read_text(encoding="utf-8")
 
     # 管理员端：内嵌混淆私钥的签发工具。
     write_signing_tool(private_pem)
-    print(f"✅ 已写出内嵌混淆私钥的签发工具: {TOOL_PATH}")
+    print(f"[ok] 已写出内嵌混淆私钥的签发工具: {TOOL_PATH}")
 
     # 桌面端/后端：内嵌混淆公钥模块。
     sync_public_module()
-    print(f"✅ 已写出内嵌混淆公钥模块: {PUBKEY_MODULE_PATH}")
+    print(f"[ok] 已写出内嵌混淆公钥模块: {PUBKEY_MODULE_PATH}")
+
+    # 数据库整库加密主密钥（独立生命周期：仅在不存在时生成，避免重建时作废已有客户数据）。
+    if not DB_KEY_PATH.exists():
+        DB_KEY_PATH.write_bytes(_generate_db_key())
+        print(f"[ok] 已生成数据库主密钥源: {DB_KEY_PATH}")
+    else:
+        print(f"[ok] 数据库主密钥源已存在，保留以免作废客户数据: {DB_KEY_PATH}")
+    sync_db_secret_module()
+    print(f"[ok] 已写出内嵌混淆数据库密钥模块: {DB_SECRET_MODULE_PATH}")
 
     print(
         "\n完成。内嵌密钥已编译进各端源码（混淆 + 完整性校验，普通用户无法替换）。"
