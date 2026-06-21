@@ -3,11 +3,13 @@ import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/authStore'
+import { useLicenseStore } from '../stores/licenseStore'
 import { navMenu, buildPageTitles, type MenuItem } from '../router'
 
-const route     = useRoute()
-const router    = useRouter()
-const authStore = useAuthStore()
+const route        = useRoute()
+const router       = useRouter()
+const authStore    = useAuthStore()
+const licenseStore = useLicenseStore()
 
 const collapsed = ref(false)
 
@@ -91,6 +93,15 @@ async function handleCommand(cmd: string) {
           </el-breadcrumb>
         </div>
         <div class="header-right">
+          <!-- 桌面端未激活常驻提示：试用剩余天数 / 未激活，点击直达激活页。 -->
+          <el-tag
+            v-if="licenseStore.trialNotice"
+            class="license-notice"
+            :type="licenseStore.status && licenseStore.status.trial && licenseStore.status.can_use ? 'warning' : 'danger'"
+            effect="dark"
+            round
+            @click="router.push('/activation')"
+          >{{ licenseStore.trialNotice }}</el-tag>
           <el-dropdown v-if="authStore.isLoggedIn" trigger="click" @command="handleCommand">
             <span class="user-dropdown-trigger">
               <el-icon><User /></el-icon>
@@ -103,7 +114,7 @@ async function handleCommand(cmd: string) {
                   <el-icon><User /></el-icon>
                   个人中心
                 </el-dropdown-item>
-                <el-dropdown-item command="activate">
+                <el-dropdown-item v-if="licenseStore.isDesktop" command="activate">
                   激活软件
                 </el-dropdown-item>
                 <el-dropdown-item command="logout" divided>
@@ -205,7 +216,13 @@ async function handleCommand(cmd: string) {
 }
 
 .header-left { display: flex; align-items: center; }
-.header-right { display: flex; align-items: center; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+
+.license-notice {
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: .3px;
+}
 
 .user-dropdown-trigger {
   display: flex;

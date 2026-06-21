@@ -34,9 +34,4 @@ desktop/resources/backend/wtcmd-platform-backend.exe
 build/
 
 backend/data.db
-backend/logs/app.log
-backend/logs/error.log
-
-# 密钥材料：绝不提交（签发私钥、数据库主密钥、内嵌混淆密钥模块）
-scripts/keys/
-backend/core/_db_secret.py
+backend/logs/*.log

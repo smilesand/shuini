@@ -3,11 +3,13 @@ import { computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { User, ArrowDown } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/authStore'
+import { useLicenseStore } from '../stores/licenseStore'
 import { navMenu, filterNavItems } from '../router'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const licenseStore = useLicenseStore()
 
 const topNavItems = computed(() => filterNavItems(navMenu, authStore.isAdmin))
 
@@ -37,6 +39,14 @@ async function handleCommand(cmd: string) {
       >{{ item.title }}</RouterLink>
     </nav>
     <div class="nav-right">
+      <el-tag
+        v-if="licenseStore.trialNotice"
+        class="license-notice"
+        :type="licenseStore.status && licenseStore.status.trial && licenseStore.status.can_use ? 'warning' : 'danger'"
+        effect="dark"
+        round
+        @click="router.push('/activation')"
+      >{{ licenseStore.trialNotice }}</el-tag>
       <el-dropdown v-if="authStore.isLoggedIn" trigger="click" @command="handleCommand">
         <span class="user-dropdown-trigger">
           <el-icon><User /></el-icon>
@@ -49,7 +59,7 @@ async function handleCommand(cmd: string) {
               <el-icon><User /></el-icon>
               个人中心
             </el-dropdown-item>
-            <el-dropdown-item command="activate">
+            <el-dropdown-item v-if="licenseStore.isDesktop" command="activate">
               激活软件
             </el-dropdown-item>
             <el-dropdown-item command="logout" divided>
@@ -91,7 +101,8 @@ async function handleCommand(cmd: string) {
   background: rgba(255,255,255,.18); color: #fff;
 }
 
-.nav-right { display: flex; align-items: center; }
+.nav-right { display: flex; align-items: center; gap: 12px; }
+.license-notice { cursor: pointer; font-weight: 600; letter-spacing: .3px; }
 
 .user-dropdown-trigger {
   display: flex;
