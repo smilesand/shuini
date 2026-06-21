@@ -35,3 +35,4 @@ build/
 
 backend/data.db
 backend/logs/*.log
+backend/wtcmd-platform-backend
