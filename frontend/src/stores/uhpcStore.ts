@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { getRecordData, getRecordObject } from '../api/records'
-import { calcUhpcMix, type UhpcMixReq, type UhpcMixRes } from '../api/calc'
+import type { UhpcMixReq, UhpcMixRes } from '../api/calc'
+import { calcUhpcMix } from '../calc'
 
 type NullableNumber = number | null
 
@@ -494,10 +495,10 @@ export const useUhpcStore = defineStore('uhpc', () => {
       return
     }
 
-    loading.value = true
     error.value = null
     try {
-      const response = await calcUhpcMix(payload)
+      // 改为前端引擎同步计算（src/calc），服务端仅用于数据持久化。
+      const response = calcUhpcMix(payload)
       assumedMixMass.value = response.assumed_mix_mass
       steelFiberDensity.value = response.steel_fiber_density
       calculated.value = mapUhpcResponse(response)

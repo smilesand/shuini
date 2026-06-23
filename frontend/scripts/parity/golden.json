@@ -1,0 +1,701 @@
+{
+  "water_binder": [
+    {
+      "name": "C60-fb55",
+      "expected": {
+        "fcu0": 69.0,
+        "wb": 0.462497
+      }
+    },
+    {
+      "name": "C50-custom-coeff",
+      "expected": {
+        "fcu0": 57.5,
+        "wb": 0.542285
+      }
+    }
+  ],
+  "aggregate": [
+    {
+      "name": "beta0.435",
+      "expected": {
+        "mg": 864.0,
+        "ms": 665.2035
+      }
+    }
+  ],
+  "binder": [
+    {
+      "name": "full-blend",
+      "expected": {
+        "bc": 0.6,
+        "rhob": 2825.2131,
+        "vp": 0.4364755,
+        "mb": 642.3253,
+        "m1": 128.4651,
+        "m2": 89.9255,
+        "m3": 19.2698,
+        "m4": 19.2698,
+        "mc": 385.3952
+      }
+    }
+  ],
+  "water_admixture": [
+    {
+      "name": "alpha1.6",
+      "expected": {
+        "mw": 162.5,
+        "ma": 8.32
+      }
+    }
+  ],
+  "regression": [
+    {
+      "name": "model1-exact",
+      "expected": {
+        "aa": 0.5,
+        "ab": 0.6,
+        "ac": 0.0,
+        "r2": 1.0
+      }
+    }
+  ],
+  "adapt": [
+    {
+      "name": "adjusted-mix",
+      "expected": {
+        "mb": 540.0,
+        "mc": 324.0,
+        "m1": 108.0,
+        "m2": 75.6,
+        "m3": 16.2,
+        "m4": 16.2,
+        "mg": 845.0,
+        "ms": 669.3369,
+        "mw": 162.81,
+        "ma": 9.72
+      }
+    }
+  ],
+  "hpc_trial": [
+    {
+      "name": "full-flow",
+      "expected": {
+        "base_wb": 0.3125,
+        "base_bs": 45.0,
+        "base_alpha": 1.7,
+        "workability_result": {
+          "mc": 321.0,
+          "m1": 107.0,
+          "m2": 74.9,
+          "m3": 16.05,
+          "m4": 16.05,
+          "mg": 823.05,
+          "ms": 673.41,
+          "mw": 167.19,
+          "ma": 9.1,
+          "mb": 535.0,
+          "wb": 0.3125,
+          "bs": 45.0,
+          "alpha": 1.7,
+          "total": 2207.74
+        },
+        "trial_materials": [
+          {
+            "key": "mc",
+            "label": "水泥",
+            "trial_val": 6.42
+          },
+          {
+            "key": "m1",
+            "label": "粉煤灰",
+            "trial_val": 2.14
+          },
+          {
+            "key": "m2",
+            "label": "矿粉",
+            "trial_val": 1.498
+          },
+          {
+            "key": "m3",
+            "label": "微珠",
+            "trial_val": 0.321
+          },
+          {
+            "key": "m4",
+            "label": "硅灰",
+            "trial_val": 0.321
+          },
+          {
+            "key": "mg",
+            "label": "粗骨料",
+            "trial_val": 16.461
+          },
+          {
+            "key": "ms",
+            "label": "细骨料",
+            "trial_val": 13.468
+          },
+          {
+            "key": "mw",
+            "label": "水",
+            "trial_val": 3.344
+          },
+          {
+            "key": "ma",
+            "label": "外加剂",
+            "trial_val": 0.182
+          }
+        ],
+        "strength_mixes": [
+          {
+            "label": "基准",
+            "wb": 0.3125,
+            "bs": 45.0,
+            "mc": 321.0,
+            "m1": 107.0,
+            "m2": 74.9,
+            "m3": 16.05,
+            "m4": 16.05,
+            "mg": 823.05,
+            "ms": 673.41,
+            "mw": 167.19,
+            "ma": 9.1,
+            "mb": 535.0,
+            "total": 2207.74
+          },
+          {
+            "label": "W/B+0.02 βs+2%",
+            "wb": 0.3325,
+            "bs": 47.0,
+            "mc": 321.0,
+            "m1": 107.0,
+            "m2": 74.9,
+            "m3": 16.05,
+            "m4": 16.05,
+            "mg": 793.12,
+            "ms": 703.34,
+            "mw": 177.89,
+            "ma": 9.1,
+            "mb": 535.0,
+            "total": 2218.44
+          },
+          {
+            "label": "W/B-0.02 βs-2%",
+            "wb": 0.2925,
+            "bs": 43.0,
+            "mc": 321.0,
+            "m1": 107.0,
+            "m2": 74.9,
+            "m3": 16.05,
+            "m4": 16.05,
+            "mg": 852.98,
+            "ms": 643.48,
+            "mw": 156.49,
+            "ma": 9.1,
+            "mb": 535.0,
+            "total": 2197.04
+          }
+        ],
+        "strength_regression": {
+          "a": -19.1664,
+          "b": 143.9,
+          "r2": 0.9965,
+          "recommend_wb": 0.34,
+          "predict_strength": 87.5
+        },
+        "chart_data": {
+          "min_bw": 2.9575,
+          "max_bw": 3.4688,
+          "range_bw": 0.5112999999999999,
+          "min_strength": 76,
+          "max_strength": 89,
+          "range_strength": 13,
+          "bw_ratios": [
+            3.2,
+            3.0075,
+            3.4188
+          ],
+          "strengths": [
+            82.3,
+            86.4,
+            78.5
+          ]
+        },
+        "adapt_result": {
+          "mc": 324.0,
+          "m1": 108.0,
+          "m2": 75.6,
+          "m3": 16.2,
+          "m4": 16.2,
+          "mg": 845.0,
+          "ms": 669.34,
+          "mw": 162.81,
+          "ma": 9.72,
+          "total": 2226.87
+        },
+        "calculated_density": 2226.87,
+        "density_correction_factor": 1.095708,
+        "lab_mix": {
+          "mc": 355.01,
+          "m1": 118.34,
+          "m2": 82.84,
+          "m3": 17.75,
+          "m4": 17.75,
+          "mg": 925.87,
+          "ms": 733.4,
+          "mw": 178.39,
+          "ma": 10.65,
+          "total": 2440.0
+        }
+      }
+    },
+    {
+      "name": "sparse-optional",
+      "expected": {
+        "base_wb": 0.285,
+        "base_bs": 39.0,
+        "base_alpha": 1.5,
+        "workability_result": {
+          "mc": 470.0,
+          "m1": 0.0,
+          "m2": 0.0,
+          "m3": 0.0,
+          "m4": 0.0,
+          "mg": 915.0,
+          "ms": 585.0,
+          "mw": 133.95,
+          "ma": 7.05,
+          "mb": 470.0,
+          "wb": 0.285,
+          "bs": 39.0,
+          "alpha": 1.5,
+          "total": 2111.0
+        },
+        "trial_materials": [
+          {
+            "key": "mc",
+            "label": "水泥",
+            "trial_val": 7.05
+          },
+          {
+            "key": "m1",
+            "label": "粉煤灰",
+            "trial_val": 0.0
+          },
+          {
+            "key": "m2",
+            "label": "矿粉",
+            "trial_val": 0.0
+          },
+          {
+            "key": "m3",
+            "label": "微珠",
+            "trial_val": 0.0
+          },
+          {
+            "key": "m4",
+            "label": "硅灰",
+            "trial_val": 0.0
+          },
+          {
+            "key": "mg",
+            "label": "粗骨料",
+            "trial_val": 13.725
+          },
+          {
+            "key": "ms",
+            "label": "细骨料",
+            "trial_val": 8.775
+          },
+          {
+            "key": "mw",
+            "label": "水",
+            "trial_val": 2.009
+          },
+          {
+            "key": "ma",
+            "label": "外加剂",
+            "trial_val": 0.106
+          }
+        ],
+        "strength_mixes": [
+          {
+            "label": "基准",
+            "wb": 0.285,
+            "bs": 39.0,
+            "mc": 470.0,
+            "m1": 0.0,
+            "m2": 0.0,
+            "m3": 0.0,
+            "m4": 0.0,
+            "mg": 915.0,
+            "ms": 585.0,
+            "mw": 133.95,
+            "ma": 7.05,
+            "mb": 470.0,
+            "total": 2111.0
+          },
+          {
+            "label": "W/B+0.01 βs+1.5%",
+            "wb": 0.3,
+            "bs": 40.5,
+            "mc": 470.0,
+            "m1": 0.0,
+            "m2": 0.0,
+            "m3": 0.0,
+            "m4": 0.0,
+            "mg": 892.5,
+            "ms": 607.5,
+            "mw": 141.0,
+            "ma": 7.05,
+            "mb": 470.0,
+            "total": 2118.05
+          },
+          {
+            "label": "W/B-0.01 βs-1.5%",
+            "wb": 0.27,
+            "bs": 37.5,
+            "mc": 470.0,
+            "m1": 0.0,
+            "m2": 0.0,
+            "m3": 0.0,
+            "m4": 0.0,
+            "mg": 937.5,
+            "ms": 562.5,
+            "mw": 126.9,
+            "ma": 7.05,
+            "mb": 470.0,
+            "total": 2103.95
+          }
+        ],
+        "strength_regression": null,
+        "chart_data": null,
+        "adapt_result": {
+          "mc": 480.0,
+          "m1": 0.0,
+          "m2": 0.0,
+          "m3": 0.0,
+          "m4": 0.0,
+          "mg": 900.0,
+          "ms": 600.0,
+          "mw": 136.8,
+          "ma": 7.2,
+          "total": 2124.0
+        },
+        "calculated_density": 2124.0,
+        "density_correction_factor": null,
+        "lab_mix": {
+          "mc": null,
+          "m1": null,
+          "m2": null,
+          "m3": null,
+          "m4": null,
+          "mg": null,
+          "ms": null,
+          "mw": null,
+          "ma": null,
+          "total": null
+        }
+      }
+    },
+    {
+      "name": "sand-ratio-preserves-total",
+      "expected": {
+        "base_wb": 0.3125,
+        "base_bs": 45.0,
+        "base_alpha": 1.6,
+        "workability_result": {
+          "mc": 312.0,
+          "m1": 104.0,
+          "m2": 72.8,
+          "m3": 15.6,
+          "m4": 15.6,
+          "mg": 823.05,
+          "ms": 673.41,
+          "mw": 162.5,
+          "ma": 8.32,
+          "mb": 520.0,
+          "wb": 0.3125,
+          "bs": 45.0,
+          "alpha": 1.6,
+          "total": 2187.28
+        },
+        "trial_materials": [
+          {
+            "key": "mc",
+            "label": "水泥",
+            "trial_val": 6.24
+          },
+          {
+            "key": "m1",
+            "label": "粉煤灰",
+            "trial_val": 2.08
+          },
+          {
+            "key": "m2",
+            "label": "矿粉",
+            "trial_val": 1.456
+          },
+          {
+            "key": "m3",
+            "label": "微珠",
+            "trial_val": 0.312
+          },
+          {
+            "key": "m4",
+            "label": "硅灰",
+            "trial_val": 0.312
+          },
+          {
+            "key": "mg",
+            "label": "粗骨料",
+            "trial_val": 16.461
+          },
+          {
+            "key": "ms",
+            "label": "细骨料",
+            "trial_val": 13.468
+          },
+          {
+            "key": "mw",
+            "label": "水",
+            "trial_val": 3.25
+          },
+          {
+            "key": "ma",
+            "label": "外加剂",
+            "trial_val": 0.166
+          }
+        ],
+        "strength_mixes": [
+          {
+            "label": "基准",
+            "wb": 0.3125,
+            "bs": 45.0,
+            "mc": 312.0,
+            "m1": 104.0,
+            "m2": 72.8,
+            "m3": 15.6,
+            "m4": 15.6,
+            "mg": 823.05,
+            "ms": 673.41,
+            "mw": 162.5,
+            "ma": 8.32,
+            "mb": 520.0,
+            "total": 2187.28
+          },
+          {
+            "label": "W/B+0.02 βs+2%",
+            "wb": 0.3325,
+            "bs": 47.0,
+            "mc": 312.0,
+            "m1": 104.0,
+            "m2": 72.8,
+            "m3": 15.6,
+            "m4": 15.6,
+            "mg": 793.12,
+            "ms": 703.34,
+            "mw": 172.9,
+            "ma": 8.32,
+            "mb": 520.0,
+            "total": 2197.68
+          },
+          {
+            "label": "W/B-0.02 βs-2%",
+            "wb": 0.2925,
+            "bs": 43.0,
+            "mc": 312.0,
+            "m1": 104.0,
+            "m2": 72.8,
+            "m3": 15.6,
+            "m4": 15.6,
+            "mg": 852.98,
+            "ms": 643.48,
+            "mw": 152.1,
+            "ma": 8.32,
+            "mb": 520.0,
+            "total": 2176.88
+          }
+        ],
+        "strength_regression": null,
+        "chart_data": null,
+        "adapt_result": {
+          "mc": 312.0,
+          "m1": 104.0,
+          "m2": 72.8,
+          "m3": 15.6,
+          "m4": 15.6,
+          "mg": 845.0,
+          "ms": 650.58,
+          "mw": 162.5,
+          "ma": 8.32,
+          "total": 2186.4
+        },
+        "calculated_density": 2186.4,
+        "density_correction_factor": null,
+        "lab_mix": {
+          "mc": null,
+          "m1": null,
+          "m2": null,
+          "m3": null,
+          "m4": null,
+          "mg": null,
+          "ms": null,
+          "mw": null,
+          "ma": null,
+          "total": null
+        }
+      }
+    }
+  ],
+  "uhpc_mix": [
+    {
+      "name": "grade130",
+      "expected": {
+        "design_strength": 143.0,
+        "assumed_mix_mass": 2500.0,
+        "steel_fiber_density": 7850.0,
+        "binder_volume_ratios": {
+          "cement": 54.09,
+          "fly_ash": 23.93,
+          "micro_bead": 10.99,
+          "silica_fume": 10.99
+        },
+        "binder_mass_ratios": {
+          "initial": {
+            "cement": 60.87,
+            "fly_ash": 19.98,
+            "micro_bead": 10.37,
+            "silica_fume": 8.78
+          },
+          "corrected": {
+            "cement": 69.48,
+            "fly_ash": 19.98,
+            "micro_bead": 5.71,
+            "silica_fume": 4.83
+          }
+        },
+        "material_masses": {
+          "binder": 979.53,
+          "cement": 680.62,
+          "fly_ash": 195.73,
+          "micro_bead": 55.89,
+          "silica_fume": 47.29,
+          "sand": 1175.43,
+          "steel_fiber": 141.3,
+          "water": 186.11,
+          "admixture": 17.63,
+          "total": 2500.0
+        }
+      }
+    }
+  ],
+  "uhpc_trial": [
+    {
+      "name": "full-trial-correction",
+      "expected": {
+        "design_strength": 143.0,
+        "trial_sb": 1.2,
+        "trial_alpha": 1.8,
+        "trial_mix": {
+          "cement": 487.3,
+          "fly_ash": 194.9,
+          "micro_bead": 146.2,
+          "silica_fume": 146.2,
+          "sand": 1169.6,
+          "steel_fiber": 153.0,
+          "water": 185.2,
+          "admixture": 17.5,
+          "binder": 974.7,
+          "total": 2500.0,
+          "admixture_pct": 1.8
+        },
+        "variant_wb_plus": {
+          "cement": 485.3,
+          "fly_ash": 194.1,
+          "micro_bead": 145.6,
+          "silica_fume": 145.6,
+          "sand": 1164.8,
+          "steel_fiber": 153.0,
+          "water": 194.1,
+          "admixture": 17.5,
+          "binder": 970.6,
+          "total": 2500.0,
+          "admixture_pct": 1.8
+        },
+        "variant_wb_minus": {
+          "cement": 489.4,
+          "fly_ash": 195.7,
+          "micro_bead": 146.8,
+          "silica_fume": 146.8,
+          "sand": 1174.5,
+          "steel_fiber": 153.0,
+          "water": 176.2,
+          "admixture": 17.6,
+          "binder": 978.7,
+          "total": 2500.0,
+          "admixture_pct": 1.8
+        },
+        "variant_sf_plus": {
+          "cement": 438.6,
+          "fly_ash": 194.9,
+          "micro_bead": 146.2,
+          "silica_fume": 194.9,
+          "sand": 1169.6,
+          "steel_fiber": 153.0,
+          "water": 185.2,
+          "admixture": 17.5,
+          "binder": 974.7,
+          "total": 2500.0,
+          "admixture_pct": 1.8
+        },
+        "variant_sf_minus": {
+          "cement": 536.1,
+          "fly_ash": 194.9,
+          "micro_bead": 146.2,
+          "silica_fume": 97.5,
+          "sand": 1169.6,
+          "steel_fiber": 153.0,
+          "water": 185.2,
+          "admixture": 17.5,
+          "binder": 974.7,
+          "total": 2500.0,
+          "admixture_pct": 1.8
+        },
+        "rec_wb": 0.193,
+        "rec_sf": 97.5,
+        "corr_base": "trial",
+        "corr_mix": {
+          "cement": 487.3,
+          "fly_ash": 194.9,
+          "micro_bead": 146.2,
+          "silica_fume": 146.2,
+          "sand": 1169.6,
+          "steel_fiber": 153.0,
+          "water": 185.2,
+          "admixture": 17.5,
+          "binder": 974.7,
+          "total": 2500.0,
+          "admixture_pct": 1.8
+        },
+        "calc_density": 2500.0,
+        "corr_factor": 0.992,
+        "needs_corr": false,
+        "lab_mix": {
+          "cement": 487.3,
+          "fly_ash": 194.9,
+          "micro_bead": 146.2,
+          "silica_fume": 146.2,
+          "sand": 1169.6,
+          "steel_fiber": 153.0,
+          "water": 185.2,
+          "admixture": 17.5,
+          "binder": 974.7,
+          "total": 2500.0,
+          "admixture_pct": 1.8
+        }
+      }
+    }
+  ]
+}

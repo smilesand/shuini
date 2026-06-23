@@ -8,7 +8,7 @@ import vueParser from 'vue-eslint-parser'
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'node_modules', 'src/auto-imports.d.ts', 'src/components.d.ts'],
+    ignores: ['dist', 'node_modules', 'scripts', 'src/auto-imports.d.ts', 'src/components.d.ts'],
   },
   js.configs.recommended,
   ...pluginVue.configs['flat/recommended'],

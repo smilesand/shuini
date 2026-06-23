@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { calcHpcTrial, type HpcTrialReq, type HpcTrialRes } from '../api/calc'
+import { calcHpcTrial } from '../calc'
+import type { HpcTrialReq, HpcTrialRes } from '../api/calc'
 import { useCalcStore } from '../stores/calcStore'
 import { evaluateHpcWorkability, getHpcWorkabilityReference } from '../utils/hpcWorkability'
 import { type StrengthGroup, computeGroupValue } from './useStrengthEval'
@@ -124,12 +125,17 @@ interface TrialInputSnapshot {
   strengthP: NullableNumber
   strengthN: NullableNumber
   sTargetStrength: NullableNumber
+  strengthAlpha: NullableNumber
+  strengthMa0: NullableNumber
+  strengthMaP: NullableNumber
+  strengthMaN: NullableNumber
   wbAdj: NullableNumber
   mbAdj: NullableNumber
   sandRatioAdj: NullableNumber
   alphaAdj: NullableNumber
   measuredDensity: NullableNumber
-  evalStrength28d: NullableNumber
+  strengthGroups: Array<{ id: string; values: StrengthGroup['values'] }>
+  evalStrength28d?: NullableNumber
   evalSlump: NullableNumber
   evalSpread: NullableNumber
   evalWorkabilityDesc: string
@@ -184,25 +190,6 @@ function emptyWorkabilityResult(): WorkabilityAdjResult {
     wb: null,
     bs: null,
     alpha: null,
-    total: null,
-  }
-}
-
-function emptyStrengthMix(label = ''): StrengthMix {
-  return {
-    label,
-    wb: null,
-    bs: null,
-    mc: null,
-    m1: null,
-    m2: null,
-    m3: null,
-    m4: null,
-    mg: null,
-    ms: null,
-    mw: null,
-    ma: null,
-    mb: null,
     total: null,
   }
 }
@@ -700,22 +687,20 @@ export function useHpcTrial() {
     }
   }
 
-  async function calcTrial() {
+  function calcTrial() {
     const requestPayload = buildTrialRequest()
     if (!requestPayload) {
       clearCalculatedState()
       return
     }
 
-    loading.value = true
     error.value = null
     try {
-      const response = await calcHpcTrial(requestPayload)
+      // 改为前端引擎同步计算（src/calc），服务端仅用于数据持久化。
+      const response = calcHpcTrial(requestPayload)
       calculated.value = mapTrialResponse(response)
     } catch (e: unknown) {
       error.value = e instanceof Error ? e.message : '高性能试配计算失败'
-    } finally {
-      loading.value = false
     }
   }
 
@@ -862,6 +847,30 @@ export function useHpcTrial() {
     ElMessage.success(`已同步推荐水胶比 ${recommendedWb.toFixed(2)}`)
     return true
   }
+
+  // 需求：当用户修改前置步骤（水胶比、强度、砂率等）触发强度实验重新回归、
+  // 得到新的推荐水胶比时，“配合比校正”中的调整配合比应自动随之更新，
+  // 无需用户再手动点击“载入推荐水胶比”。
+  // 仅在推荐值实际发生变化时同步，避免覆盖用户在无上游变化时的手动微调，
+  // 且不会形成死循环（同一推荐值不会重复触发）。
+  watch(
+    () => strengthRegression.value?.recommendWb ?? null,
+    (recommend) => {
+      const recommendedWb = normalizeRecommendedWb(recommend)
+      if (recommendedWb === null) return
+
+      wbAdj.value = recommendedWb
+      if (workabilityResult.value.mb !== null) {
+        mbAdj.value = workabilityResult.value.mb
+      }
+      if (baseBs.value !== null) {
+        sandRatioAdj.value = baseBs.value
+      }
+      if (baseAlpha.value !== null) {
+        alphaAdj.value = baseAlpha.value
+      }
+    },
+  )
 
   return {
     loading,

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
+import * as XLSX from 'xlsx'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import { useCalcStore } from '../../stores/calcStore.ts'
-import { uploadFitFile } from '../../api/calc.ts'
+import { fitRegressionCoefficients } from '../../calc'
 import { debounce } from '../../utils/debounce.ts'
 import Formula from '../Formula.vue'
 import '../../style/calc-tabs.css'
@@ -82,7 +83,14 @@ async function onFileChange(file: UploadFile) {
   if (!file.raw) return
   try {
     store.loading = true
-    const res = await uploadFitFile(file.raw)
+    // 在浏览器端解析 .csv/.xlsx/.xls，转换为 CSV 文本后由前端回归引擎拟合，
+    // 不再依赖服务端 /upload-fit 接口（服务端仅用于数据持久化）。
+    const buffer = await file.raw.arrayBuffer()
+    const workbook = XLSX.read(buffer, { type: 'array' })
+    const sheetName = workbook.SheetNames[0]
+    if (!sheetName) throw new Error('文件中没有可用的工作表')
+    const csvText = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName])
+    const res = fitRegressionCoefficients(csvText)
     store.aa = res.aa
     store.ab = res.ab
     store.ac = res.ac

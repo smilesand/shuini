@@ -6,7 +6,8 @@ import UhpcSidebarSummary from '../components/uhpc/UhpcSidebarSummary.vue'
 import { useUhpcStore, type UhpcMaterialMasses } from '../stores/uhpcStore'
 import { saveRecord } from '../api/records'
 import { getProject } from '../api/projects'
-import { calcUhpcTrial, type UhpcTrialRes, type UhpcTrialMixRowRes } from '../api/calc'
+import { calcUhpcTrial } from '../calc'
+import type { UhpcTrialRes, UhpcTrialMixRowRes } from '../api/calc'
 import { debounce } from '../utils/debounce'
 import UhpcTrialWorkabilityTab from '../components/uhpc-trial/UhpcTrialWorkabilityTab.vue'
 import UhpcTrialStrengthTab from '../components/uhpc-trial/UhpcTrialStrengthTab.vue'
@@ -210,12 +211,13 @@ function buildTrialRequest() {
   }
 }
 
-const debouncedCalc = debounce(async () => {
+const debouncedCalc = debounce(() => {
   const req = buildTrialRequest()
   if (!req) { trialResult.value = null; return }
   trialLoading.value = true
   try {
-    trialResult.value = await calcUhpcTrial(req)
+    // 改为前端引擎同步计算（src/calc），服务端仅用于数据持久化。
+    trialResult.value = calcUhpcTrial(req)
   } catch {
     trialResult.value = null
   } finally {

@@ -3,12 +3,12 @@ import { ref, computed, watch } from 'vue'
 import { getRecordData, getRecordObject } from '../api/records'
 import { getHpcWorkabilityReference, type HpcWorkabilityReferenceCode } from '../utils/hpcWorkability'
 import {
-  calcWaterBinder as apiCalcWaterBinder,
-  fitCoefficients as apiFitCoefficients,
-  calcAggregate   as apiCalcAggregate,
-  calcBinder      as apiCalcBinder,
-  calcWaterAdmixture as apiCalcWaterAdmixture,
-} from '../api/calc'
+  calcWaterBinder as engineCalcWaterBinder,
+  fitRegressionCoefficients as engineFitCoefficients,
+  calcAggregate   as engineCalcAggregate,
+  calcBinder      as engineCalcBinder,
+  calcWaterAdmixture as engineCalcWaterAdmixture,
+} from '../calc'
 
 export const useCalcStore = defineStore('calc', () => {
   // ── Generic ─────────────────────────────────────────────────────────────
@@ -249,11 +249,12 @@ export const useCalcStore = defineStore('calc', () => {
   }
 
   // ── Actions ───────────────────────────────────────────────────────────
-  async function calcWaterBinder() {
+  // 计算全部由前端集中式引擎（src/calc）同步完成，服务端仅用于数据持久化。
+  function calcWaterBinder() {
     if (fcuk.value === null || fb.value === null) return
-    loading.value = true; error.value = null
+    error.value = null
     try {
-      const res = await apiCalcWaterBinder({
+      const res = engineCalcWaterBinder({
         fcuk: fcuk.value, fb: fb.value,
         aa: aa.value, ab: ab.value, ac: ac.value,
       })
@@ -261,23 +262,19 @@ export const useCalcStore = defineStore('calc', () => {
       wb.value   = res.wb
     } catch (e: unknown) {
       error.value = (e instanceof Error) ? e.message : '计算失败'
-    } finally {
-      loading.value = false
     }
   }
 
-  async function fitCoefficients(csvText: string) {
-    loading.value = true; error.value = null
+  function fitCoefficients(csvText: string) {
+    error.value = null
     try {
-      const res = await apiFitCoefficients({ csv_text: csvText })
+      const res = engineFitCoefficients(csvText)
       aa.value = res.aa
       ab.value = res.ab
       ac.value = res.ac
-      await calcWaterBinder()
+      calcWaterBinder()
     } catch (e: unknown) {
       error.value = (e instanceof Error) ? e.message : '拟合失败'
-    } finally {
-      loading.value = false
     }
   }
 
@@ -287,11 +284,11 @@ export const useCalcStore = defineStore('calc', () => {
     }
   }
 
-  async function calcAggregate() {
+  function calcAggregate() {
     if (!vg.value || !rhog.value || !sandRatioConfirmed.value || !rhos.value || !sandRatioInput.value) return
-    loading.value = true; error.value = null
+    error.value = null
     try {
-      const res = await apiCalcAggregate({
+      const res = engineCalcAggregate({
         vg: vg.value, rhog: rhog.value,
         beta_s: sandRatioInput.value / 100,
         rhos: rhos.value,
@@ -300,16 +297,14 @@ export const useCalcStore = defineStore('calc', () => {
       ms.value = res.ms
     } catch (e: unknown) {
       error.value = (e instanceof Error) ? e.message : '计算失败'
-    } finally {
-      loading.value = false
     }
   }
 
-  async function calcBinder() {
+  function calcBinder() {
     if (!rhoc.value || !wb.value || !mg.value || !ms.value || !rhog.value || !rhos.value) return
-    loading.value = true; error.value = null
+    error.value = null
     try {
-      const res = await apiCalcBinder({
+      const res = engineCalcBinder({
         b1p: b1p.value ?? 0, rho1: rho1.value ?? 2200,
         b2p: b2p.value ?? 0, rho2: rho2.value ?? 2900,
         b3p: b3p.value ?? 0, rho3: rho3.value ?? 2600,
@@ -327,24 +322,20 @@ export const useCalcStore = defineStore('calc', () => {
       m3.value = res.m3; m4.value = res.m4; mc.value = res.mc
     } catch (e: unknown) {
       error.value = (e instanceof Error) ? e.message : '计算失败'
-    } finally {
-      loading.value = false
     }
   }
 
-  async function calcWaterAdmixture() {
+  function calcWaterAdmixture() {
     if (!alpha.value || !mb.value || !wb.value) return
-    loading.value = true; error.value = null
+    error.value = null
     try {
-      const res = await apiCalcWaterAdmixture({
+      const res = engineCalcWaterAdmixture({
         mb: mb.value, wb: wb.value, alpha: alpha.value,
       })
       mw.value = res.mw
       ma.value = res.ma
     } catch (e: unknown) {
       error.value = (e instanceof Error) ? e.message : '计算失败'
-    } finally {
-      loading.value = false
     }
   }
 
