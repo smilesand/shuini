@@ -105,8 +105,8 @@ const strengthDisplayRows = computed(() =>
   }),
 );
 
-// Per-group admixture refs: [P(+Δ), 0(base), N(-Δ)]
-const strengthMaRefs = [strengthMaP, strengthMa0, strengthMaN] as const
+// Per-group admixture refs: [0(base), 1(+Δ), 2(-Δ)] — must match sourceIndex from strengthMixes
+const strengthMaRefs = [strengthMa0, strengthMaP, strengthMaN] as const
 
 const strengthMixTableRows = computed(() =>
   strengthDisplayRows.value.map(({ sourceIndex, mix, meta }) => {
