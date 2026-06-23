@@ -146,7 +146,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
     <div class="cs-section">
       <div class="cs-section-head">
         <el-icon><SetUp /></el-icon>
-        胶凝材料 28d 强度 f<sub>b</sub> 及影响系数
+        <span>胶凝材料 28d 强度 f<sub>b</sub></span>
       </div>
       <div class="cs-section-body">
         <el-form label-position="top">
@@ -154,7 +154,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
             <el-col :span="8">
               <el-form-item>
                 <template #label>
-                  胶凝材料 28d 强度 f<sub>b</sub>
+                  <span>胶凝材料 28d 强度 f<sub>b</sub></span>
                   <el-button link type="primary" style="margin-left: 8px" @click="store.fbCalcMode = store.fbCalcMode === 'input' ? 'calc' : 'input'">
                     {{ store.fbCalcMode === 'input' ? '无实测值推算' : '手工输入实测值' }}
                   </el-button>
