@@ -184,41 +184,37 @@ function extractTrialValue(record: RecordItem, key: string): number | null {
 }
 
 function strength28dDisplay(record: RecordItem): string {
-  // Try group-based calculation first
-  const groups = getRecordObject(record, 'strengthGroups') || extractTrialValue(record, 'strengthGroups')
-  const rawGroups = (record.record_data as any)?.trial_data?.inputs?.strengthGroups
-    || (record.record_data as any)?.trial_data?.strengthGroups
-  if (Array.isArray(rawGroups) && rawGroups.length > 0) {
-    const avgs: number[] = []
-    for (const g of rawGroups) {
-      const vals = (Array.isArray(g.values) ? g.values : []).filter((v: unknown): v is number => typeof v === 'number' && Number.isFinite(v))
-      if (vals.length < 3) continue
-      const sorted = [...vals].sort((a: number, b: number) => a - b)
-      const mean = (sorted[0] + sorted[1] + sorted[2]) / 3
-      if (mean === 0) { avgs.push(0); continue }
-      const maxDev = Math.abs((sorted[2] - mean) / mean)
-      const minDev = Math.abs((sorted[0] - mean) / mean)
-      if (maxDev > 0.15 || minDev > 0.15) {
-        avgs.push(sorted[1])
-      } else {
-        avgs.push(mean)
-      }
-    }
-    if (avgs.length > 0) {
-      const overall = avgs.reduce((s, v) => s + v, 0) / avgs.length
-      return `${overall.toFixed(1)} MPa`
+  // 强度总体平均值 — 仅来自配合比较正与确认的 strengthGroups
+  const trialData = getRecordObject(record, 'trial_data')
+  if (!trialData) return '—'
+
+  const inputs = trialData.inputs as Record<string, unknown> | undefined
+  const rawGroups = (inputs?.strengthGroups || trialData.strengthGroups) as { id: string; values: (number | null)[] }[] | undefined
+
+  if (!Array.isArray(rawGroups) || rawGroups.length === 0) return '—'
+
+  const avgs: number[] = []
+  for (const g of rawGroups) {
+    const vals = (Array.isArray(g.values) ? g.values : []).filter((v: unknown): v is number => typeof v === 'number' && Number.isFinite(v))
+    if (vals.length < 3) continue
+    const sorted = [...vals].sort((a: number, b: number) => a - b)
+    const mean = (sorted[0] + sorted[1] + sorted[2]) / 3
+    if (mean === 0) { avgs.push(0); continue }
+    const maxDev = Math.abs((sorted[2] - mean) / mean)
+    const minDev = Math.abs((sorted[0] - mean) / mean)
+    if (maxDev > 0.15 || minDev > 0.15) {
+      avgs.push(sorted[1])
+    } else {
+      avgs.push(mean)
     }
   }
-
-  // Legacy fallback
-  const trialVal = extractTrialValue(record, 'evalStrength28d')
-  if (trialVal !== null) return `${trialVal.toFixed(1)} MPa`
-
-  const fcu0 = getRecordNumber(record, 'fcu0')
-  return fcu0 !== null ? `${fcu0.toFixed(1)} MPa` : '—'
+  if (avgs.length === 0) return '—'
+  const overall = avgs.reduce((s, v) => s + v, 0) / avgs.length
+  return `${overall.toFixed(1)} MPa`
 }
 
 function slumpDisplay(record: RecordItem): string {
+  // UHPC 使用 evalSlump，HPC 配合比校正与确认中使用 slumpMeasured
   const evalSlump = extractTrialValue(record, 'evalSlump')
   if (evalSlump !== null) return `${evalSlump.toFixed(0)} mm`
 
@@ -229,6 +225,7 @@ function slumpDisplay(record: RecordItem): string {
 }
 
 function spreadDisplay(record: RecordItem): string {
+  // UHPC 使用 evalSpread，HPC 配合比校正与确认中使用 spreadMeasured
   const evalSpread = extractTrialValue(record, 'evalSpread')
   if (evalSpread !== null) return `${evalSpread.toFixed(0)} mm`
 
@@ -239,16 +236,35 @@ function spreadDisplay(record: RecordItem): string {
 }
 
 function wbDisplay(record: RecordItem): string {
+  // 强度实验回归分析的最终推荐水胶比
+  const wbAdj = extractTrialValue(record, 'wbAdj')
+  if (wbAdj !== null) return wbAdj.toFixed(2)
+
   const wb = getRecordNumber(record, 'wb')
-  return wb !== null ? wb.toFixed(4) : '—'
+  return wb !== null ? wb.toFixed(2) : '—'
 }
 
 function sandRatioDisplay(record: RecordItem): string {
+  // 强度实验回归分析的最终推荐砂率
+  const srAdj = extractTrialValue(record, 'sandRatioAdj')
+  if (srAdj !== null) return `${srAdj.toFixed(1)} %`
+
   const sr = getRecordNumber(record, 'sand_ratio')
   return sr !== null ? `${sr.toFixed(1)} %` : '—'
 }
 
 function totalMassDisplay(record: RecordItem): string {
+  // 配合比校正中调整配合比的合计（优先于实验室配合比）
+  const trialData = getRecordObject(record, 'trial_data')
+  if (trialData) {
+    const calculated = trialData.calculated as Record<string, unknown> | undefined
+    const adaptResult = calculated?.adaptResult || calculated?.adapt_result
+    if (adaptResult && typeof adaptResult === 'object') {
+      const adaptTotal = toFiniteNumber((adaptResult as Record<string, unknown>).total)
+      if (adaptTotal !== null) return adaptTotal.toFixed(0)
+    }
+  }
+
   const finalMix = resolveFinalLabMix(record)
   if (finalMix && finalMix.total !== null) return finalMix.total.toFixed(0)
   const total = getRecordNumber(record, 'total_mass')

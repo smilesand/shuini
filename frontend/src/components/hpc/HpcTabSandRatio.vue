@@ -61,7 +61,7 @@ function getRange(): string | null {
         砂率参考表
       </div>
       <div class="cs-section-body">
-        <p style="font-size:12px;color:#909399;margin:0 0 10px">点击强度等级行或碎石粒径列，交叉高亮参考范围</p>
+        <p style="font-size:12px;color:#909399;margin:0 0 10px">点击强度等级行或粗骨料最大粒径列，交叉高亮参考范围</p>
         <table class="sr-table">
           <thead>
             <tr>

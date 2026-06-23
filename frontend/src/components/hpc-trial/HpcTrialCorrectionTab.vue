@@ -25,6 +25,8 @@ const {
   workabilityEvaluation,
   strengthEvaluation,
   selectedWorkabilityReference,
+  wbAdj,
+  sandRatioAdj,
 } = useHpcTrialContext()
 
 const fmt = formatNullableNumber
@@ -52,6 +54,8 @@ const materialColumns = [
   { key: 'ms', label: '细骨料' },
   { key: 'mw', label: '水' },
   { key: 'ma', label: '外加剂' },
+  { key: 'wb', label: '水胶比' },
+  { key: 'sr', label: '砂率' },
   { key: 'total', label: '合计' },
 ]
 
@@ -74,6 +78,8 @@ const adaptResultRows = computed(() => ([{
   ms: createTableCell(adaptResult.value.ms),
   mw: createTableCell(adaptResult.value.mw),
   ma: createTableCell(adaptResult.value.ma),
+  wb: createTableCell(wbAdj.value, 4),
+  sr: { text: sandRatioAdj.value !== null ? sandRatioAdj.value.toFixed(1) + ' %' : '—' },
   total: createTableCell(adaptResult.value.total, 2, { emphasized: true }),
 }]))
 
@@ -87,6 +93,8 @@ const labMixRows = computed(() => ([{
   ms: createTableCell(labMix.value.ms),
   mw: createTableCell(labMix.value.mw),
   ma: createTableCell(labMix.value.ma),
+  wb: createTableCell(wbAdj.value, 4),
+  sr: { text: sandRatioAdj.value !== null ? sandRatioAdj.value.toFixed(1) + ' %' : '—' },
   total: createTableCell(labMix.value.total, 2, { emphasized: true }),
 }]))
 
