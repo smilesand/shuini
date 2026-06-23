@@ -7,7 +7,6 @@ const strengthN = defineModel<number | null>("strengthN", { required: true });
 const sTargetStrength = defineModel<number | null>("sTargetStrength", {
   required: true,
 });
-const strengthAlpha = defineModel<number | null>("strengthAlpha", { required: true });
 </script>
 
 <template>
@@ -46,23 +45,6 @@ const strengthAlpha = defineModel<number | null>("strengthAlpha", { required: tr
           >
             <template #suffix><span class="unit-suffix">%</span></template>
           </el-input-number>
-        </el-form-item>
-      </el-col>
-      <el-col :span="6">
-        <el-form-item>
-          <template #label>外加剂掺量 α</template>
-          <el-input-number
-            v-model="strengthAlpha"
-            :min="0"
-            :max="10"
-            :step="0.1"
-            :precision="2"
-            placeholder="沿用工作性"
-            style="width: 100%"
-          >
-            <template #suffix><span class="unit-suffix">%</span></template>
-          </el-input-number>
-          <div class="input-hint">留空则沿用工作性确认值</div>
         </el-form-item>
       </el-col>
     </el-row>
