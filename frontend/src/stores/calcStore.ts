@@ -159,6 +159,8 @@ export const useCalcStore = defineStore('calc', () => {
     if (recordData.req_slump != null) reqSlump.value = Number(recordData.req_slump)
     if (recordData.req_spread != null) reqSpread.value = Number(recordData.req_spread)
     if (recordData.max_aggregate_size != null) maxAggregateSize.value = String(recordData.max_aggregate_size)
+    if (recordData.sand_ratio_row != null) sandRatioRow.value = Number(recordData.sand_ratio_row)
+    if (recordData.sand_ratio_col != null) sandRatioCol.value = Number(recordData.sand_ratio_col)
     if (recordData.vg != null) vg.value = Number(recordData.vg)
     if (recordData.rhog != null) rhog.value = Number(recordData.rhog)
     if (recordData.rhos != null) rhos.value = Number(recordData.rhos)
@@ -224,6 +226,8 @@ export const useCalcStore = defineStore('calc', () => {
         vg_reference_code: vgReferenceCode.value,
         req_slump: reqSlump.value,
         req_spread: reqSpread.value,
+        sand_ratio_row: sandRatioRow.value,
+        sand_ratio_col: sandRatioCol.value,
         max_aggregate_size: maxAggregateSize.value,
         vg: vg.value,
         rhog: rhog.value,

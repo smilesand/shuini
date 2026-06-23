@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { ref, watch } from 'vue'
+import { watch } from 'vue'
 import { useCalcStore } from '../../stores/calcStore.ts'
 import { debounce } from '../../utils/debounce.ts'
 import Formula from '../Formula.vue'
@@ -15,9 +15,6 @@ watch(
   (val) => { if (val && val > 0) debouncedConfirm() },
 )
 
-const selectedRow = ref<number | null>(null)
-const selectedCol = ref<number | null>(null)
-
 const srTable = [
   { label: 'C80',  vals: ['45 ~ 49', '44 ~ 48', '43 ~ 47'] },
   { label: 'C90',  vals: ['43 ~ 47', '42 ~ 46', '41 ~ 45'] },
@@ -25,28 +22,29 @@ const srTable = [
 ]
 const colLabels = ['16.0 mm', '20.0 mm', '25.0 mm']
 
-// 恢复已持久化的粗骨料最大粒径选择，保持表格高亮
-const persistedColIdx = colLabels.indexOf(store.maxAggregateSize ?? '')
-if (persistedColIdx >= 0) selectedCol.value = persistedColIdx
+// 恢复已持久化的行列选择
+if (store.sandRatioCol !== null) {
+  // 同时同步 maxAggregateSize（兼容旧数据）
+  store.maxAggregateSize = colLabels[store.sandRatioCol] ?? null
+}
 
 function toggleRow(ri: number) {
-  selectedRow.value = selectedRow.value === ri ? null : ri
+  store.sandRatioRow = store.sandRatioRow === ri ? null : ri
 }
 function toggleCol(ci: number) {
-  selectedCol.value = selectedCol.value === ci ? null : ci
-  // 持久化粗骨料最大粒径，供 PDF / Excel 报告使用
-  store.maxAggregateSize = selectedCol.value === null ? null : colLabels[selectedCol.value]
+  store.sandRatioCol = store.sandRatioCol === ci ? null : ci
+  store.maxAggregateSize = store.sandRatioCol === null ? null : colLabels[store.sandRatioCol]
 }
 function cellClass(ri: number, ci: number) {
-  const rowSel = selectedRow.value === ri
-  const colSel = selectedCol.value === ci
+  const rowSel = store.sandRatioRow === ri
+  const colSel = store.sandRatioCol === ci
   if (rowSel && colSel) return 'cell-cross'
   if (rowSel || colSel) return 'cell-highlight'
   return ''
 }
 function getRange(): string | null {
-  if (selectedRow.value !== null && selectedCol.value !== null) {
-    return srTable[selectedRow.value].vals[selectedCol.value]
+  if (store.sandRatioRow !== null && store.sandRatioCol !== null) {
+    return srTable[store.sandRatioRow].vals[store.sandRatioCol]
   }
   return null
 }
@@ -69,7 +67,7 @@ function getRange(): string | null {
               <th
                 v-for="(col, ci) in colLabels"
                 :key="ci"
-                :class="{ 'head-selected': selectedCol === ci }"
+                :class="{ 'head-selected': store.sandRatioCol === ci }"
                 @click="toggleCol(ci)"
               >{{ col }}</th>
             </tr>
@@ -78,7 +76,7 @@ function getRange(): string | null {
             <tr v-for="(row, ri) in srTable" :key="ri">
               <td
                 class="row-label-cell"
-                :class="{ 'row-selected': selectedRow === ri }"
+                :class="{ 'row-selected': store.sandRatioRow === ri }"
                 @click="toggleRow(ri)"
               >{{ row.label }}</td>
               <td
