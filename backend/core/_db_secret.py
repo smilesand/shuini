@@ -11,8 +11,8 @@ AES-256-GCM 主密钥以 XOR 混淆 + SHA-256 完整性校验的形式编译在�
 
 from __future__ import annotations
 
-_SECRET = b'\xd1\x16\xd1\x04\x06"\xd8\x93\xf5J\xb1\x14\x19\x88\x11\xd2\x16\x1d\x93=\xb5\xa8\x95m\xb1\xed\xe9\x9e\xe2\x85\x13f'
-_BLOB = 'UgxaAwvY3jejsNhTkfXt1tjwzwxJiH+jBxOIhySG164='
+_SECRET = b'\xba\x13\xd4\xc4\x02\xf7\xb40ls\xb3qw\x87\xab#\xda\xfa2\x86"\x829}\xed\x0b\x7fj\xf9R\xd4]'
+_BLOB = 'ZhackNzZ6FDzz5kxIblNeKqkYWilFx5DdA2hLqEWX4Q='
 _DIGEST = 'b99c0357c5416e38d7da68f93e8f33edec796c6e9048d8ad1624723dd6fe8f64'
 
 
