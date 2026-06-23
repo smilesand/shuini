@@ -16,8 +16,15 @@ const saving = ref(false)
 
 const category = computed<'hpc' | 'uhpc'>(() => route.path.includes('/uhpc') ? 'uhpc' : 'hpc')
 const currentProjectId = computed<number | null>(() => {
+  // 优先取路由中的 project_id；从菜单返回计算器时路由可能未带该参数，
+  // 此时回退到 store 中记录的项目，避免保存的记录 project_id 为空而在「配合比记录」中不可见。
   const pid = route.query.project_id
-  return pid ? Number(pid) : null
+  if (pid !== undefined && pid !== null && pid !== '') {
+    const n = Number(Array.isArray(pid) ? pid[0] : pid)
+    if (Number.isInteger(n) && n > 0) return n
+  }
+  if (store.currentRecordProjectId != null) return store.currentRecordProjectId
+  return store.hpcSelectedProjectId ?? null
 })
 const canUpdateCurrentRecord = computed(() => (
   store.currentRecordId !== null
