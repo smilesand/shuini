@@ -225,7 +225,7 @@ async function handleNext() {
                 </el-input>
               </el-form-item>
             </el-col>
-            <el-col :span="8" v-if="store.b1p && store.b1p > 0">
+            <el-col :span="8">
               <el-form-item >
 <template #label>粉煤灰用量 m<sub>1</sub></template>
                 <el-input :value="store.m1 ? store.m1.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
@@ -233,7 +233,7 @@ async function handleNext() {
                 </el-input>
               </el-form-item>
             </el-col>
-            <el-col :span="8" v-if="store.b2p && store.b2p > 0">
+            <el-col :span="8">
               <el-form-item >
 <template #label>矿粉用量 m<sub>2</sub></template>
                 <el-input :value="store.m2 ? store.m2.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
@@ -241,7 +241,7 @@ async function handleNext() {
                 </el-input>
               </el-form-item>
             </el-col>
-            <el-col :span="8" v-if="store.b3p && store.b3p > 0">
+            <el-col :span="8">
               <el-form-item >
 <template #label>微珠用量 m<sub>3</sub></template>
                 <el-input :value="store.m3 ? store.m3.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
@@ -249,7 +249,7 @@ async function handleNext() {
                 </el-input>
               </el-form-item>
             </el-col>
-            <el-col :span="8" v-if="store.b4p && store.b4p > 0">
+            <el-col :span="8">
               <el-form-item >
 <template #label>硅灰用量 m<sub>4</sub></template>
                 <el-input :value="store.m4 ? store.m4.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
