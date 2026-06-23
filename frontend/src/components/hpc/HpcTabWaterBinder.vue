@@ -33,12 +33,22 @@ function getBracket(pct: number | null, tableKey: string): { lo: number; hi: num
   if (pct === null || pct < 0) return null
   const table = COEFF_TABLE[tableKey]
   if (!table) return null
-  let best = table[0]
-  for (const entry of table) {
-    if (pct >= entry[0]) best = entry
+  // threshold=0 仅在 pct=0 时匹配（无掺量基准值）
+  if (pct === 0) {
+    const [lo, hi] = table[0][1]
+    return { lo, hi, mid: parseFloat(((lo + hi) / 2).toFixed(2)), pctKey: 0 }
   }
-  const [lo, hi] = best[1]
-  return { lo, hi, mid: parseFloat(((lo + hi) / 2).toFixed(2)), pctKey: best[0] }
+  // pct > 0：找到第一个 threshold >= pct 的区间（天花板语义）
+  for (const entry of table) {
+    if (entry[0] > 0 && entry[0] >= pct) {
+      const [lo, hi] = entry[1]
+      return { lo, hi, mid: parseFloat(((lo + hi) / 2).toFixed(2)), pctKey: entry[0] }
+    }
+  }
+  // pct 超过所有阈值，使用最后一行
+  const last = table[table.length - 1]
+  const [lo, hi] = last[1]
+  return { lo, hi, mid: parseFloat(((lo + hi) / 2).toFixed(2)), pctKey: last[0] }
 }
 
 const cementPct = computed(() => {
@@ -84,12 +94,34 @@ async function onFileChange(file: UploadFile) {
   }
 }
 
-type RefRow = { pct: number; lo: number; hi: number }
+type RefRow = { pct: number; lo: number; hi: number; label: string }
 const refTables: Record<string, RefRow[]> = {
-  gammaF: [{ pct: 0, lo: 1.00, hi: 1.00 }, { pct: 10, lo: 0.90, hi: 1.00 }, { pct: 20, lo: 0.80, hi: 0.90 }, { pct: 30, lo: 0.70, hi: 0.80 }, { pct: 40, lo: 0.60, hi: 0.70 }],
-  gammaS: [{ pct: 0, lo: 1.00, hi: 1.00 }, { pct: 10, lo: 1.00, hi: 1.00 }, { pct: 20, lo: 0.95, hi: 1.00 }, { pct: 30, lo: 0.90, hi: 1.00 }, { pct: 40, lo: 0.80, hi: 0.90 }],
-  gammaB: [{ pct: 0, lo: 1.00, hi: 1.00 }, { pct: 10, lo: 0.95, hi: 1.05 }, { pct: 20, lo: 0.90, hi: 1.00 }, { pct: 30, lo: 0.85, hi: 0.95 }, { pct: 40, lo: 0.80, hi: 0.90 }],
-  gammaSF: [{ pct: 0, lo: 1.00, hi: 1.00 }, { pct: 5, lo: 1.05, hi: 1.15 }, { pct: 10, lo: 1.10, hi: 1.25 }],
+  gammaF: [
+    { pct: 0,  lo: 1.00, hi: 1.00, label: '0%' },
+    { pct: 10, lo: 0.90, hi: 1.00, label: '0% ~ 10%' },
+    { pct: 20, lo: 0.80, hi: 0.90, label: '10% ~ 20%' },
+    { pct: 30, lo: 0.70, hi: 0.80, label: '20% ~ 30%' },
+    { pct: 40, lo: 0.60, hi: 0.70, label: '30% ~ 40%' },
+  ],
+  gammaS: [
+    { pct: 0,  lo: 1.00, hi: 1.00, label: '0%' },
+    { pct: 10, lo: 1.00, hi: 1.00, label: '0% ~ 10%' },
+    { pct: 20, lo: 0.95, hi: 1.00, label: '10% ~ 20%' },
+    { pct: 30, lo: 0.90, hi: 1.00, label: '20% ~ 30%' },
+    { pct: 40, lo: 0.80, hi: 0.90, label: '30% ~ 40%' },
+  ],
+  gammaB: [
+    { pct: 0,  lo: 1.00, hi: 1.00, label: '0%' },
+    { pct: 10, lo: 0.95, hi: 1.05, label: '0% ~ 10%' },
+    { pct: 20, lo: 0.90, hi: 1.00, label: '10% ~ 20%' },
+    { pct: 30, lo: 0.85, hi: 0.95, label: '20% ~ 30%' },
+    { pct: 40, lo: 0.80, hi: 0.90, label: '30% ~ 40%' },
+  ],
+  gammaSF: [
+    { pct: 0,  lo: 1.00, hi: 1.00, label: '0%' },
+    { pct: 5,  lo: 1.05, hi: 1.15, label: '0% ~ 5%' },
+    { pct: 10, lo: 1.10, hi: 1.25, label: '5% ~ 10%' },
+  ],
 }
 
 function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string): boolean {
@@ -230,7 +262,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
                 <thead><tr><th>掺量</th><th>系数范围</th></tr></thead>
                 <tbody>
                   <tr v-for="r in refTables.gammaF" :key="r.pct" :class="{ 'ref-row--active': isRecommendedRow(store.b1p, r.pct, 'gammaF') }">
-                    <td>{{ r.pct }}%</td>
+                    <td>{{ r.label }}</td>
                     <td>{{ r.lo.toFixed(2) }} ~ {{ r.hi.toFixed(2) }}</td>
                   </tr>
                 </tbody>
@@ -252,7 +284,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
                 <thead><tr><th>掺量</th><th>系数范围</th></tr></thead>
                 <tbody>
                   <tr v-for="r in refTables.gammaS" :key="r.pct" :class="{ 'ref-row--active': isRecommendedRow(store.b2p, r.pct, 'gammaS') }">
-                    <td>{{ r.pct }}%</td>
+                    <td>{{ r.label }}</td>
                     <td>{{ r.lo.toFixed(2) }} ~ {{ r.hi.toFixed(2) }}</td>
                   </tr>
                 </tbody>
@@ -274,7 +306,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
                 <thead><tr><th>掺量</th><th>系数范围</th></tr></thead>
                 <tbody>
                   <tr v-for="r in refTables.gammaB" :key="r.pct" :class="{ 'ref-row--active': isRecommendedRow(store.b3p, r.pct, 'gammaB') }">
-                    <td>{{ r.pct }}%</td>
+                    <td>{{ r.label }}</td>
                     <td>{{ r.lo.toFixed(2) }} ~ {{ r.hi.toFixed(2) }}</td>
                   </tr>
                 </tbody>
@@ -296,7 +328,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
                 <thead><tr><th>掺量</th><th>系数范围</th></tr></thead>
                 <tbody>
                   <tr v-for="r in refTables.gammaSF" :key="r.pct" :class="{ 'ref-row--active': isRecommendedRow(store.b4p, r.pct, 'gammaSF') }">
-                    <td>{{ r.pct }}%</td>
+                    <td>{{ r.label }}</td>
                     <td>{{ r.lo.toFixed(2) }} ~ {{ r.hi.toFixed(2) }}</td>
                   </tr>
                 </tbody>
