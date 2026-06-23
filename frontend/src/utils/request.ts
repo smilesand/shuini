@@ -30,6 +30,9 @@ function durationMs(config?: TraceableRequestConfig): number | null {
   return Number((performance.now() - startedAt).toFixed(2))
 }
 
+// 防止同一页面加载周期内多次触发 401 跳转
+let _authExpiredRedirected = false
+
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE || '/api',
   timeout: 15000,
@@ -96,6 +99,24 @@ request.interceptors.response.use(
         message: msg,
       },
     })
+
+    // 401 未授权：令牌无效或已过期，清除本地认证状态并跳转到登录页
+    if (axiosError.response?.status === 401) {
+      localStorage.removeItem('sc_token')
+      localStorage.removeItem('sc_user')
+      localStorage.removeItem('sc_admin')
+      // 避免重复跳转（例如多个并发请求同时返回 401）
+      if (_authExpiredRedirected) {
+        return Promise.reject(new Error('登录状态已过期，请重新登录'))
+      }
+      _authExpiredRedirected = true
+      // 登录接口本身返回 401 时不跳转（用户名密码错误等）
+      const url = resolveRequestUrl(traceConfig)
+      if (!url.includes('/auth/login')) {
+        window.location.href = '/login?expired=1'
+        return Promise.reject(new Error('登录状态已过期，请重新登录'))
+      }
+    }
 
     return Promise.reject(new Error(msg))
   }

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { useAuthStore } from '../stores/authStore'
 import { login } from '../api/auth'
 
 const router    = useRouter()
+const route     = useRoute()
 const authStore = useAuthStore()
 
 const formRef = ref<FormInstance>()
@@ -20,6 +21,9 @@ const rules: FormRules = {
 
 onMounted(() => {
   document.title = '中国中车风电塔混凝土设计系统'
+  if (route.query.expired === '1') {
+    ElMessage.warning('登录状态已过期，请重新登录')
+  }
 })
 
 async function handleLogin() {
