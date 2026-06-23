@@ -28,6 +28,11 @@ export interface ReportData {
   workabilityPass: boolean | null
   strengthPass: boolean | null
   vgReferenceCode: string | null
+  // Design requirements (设计要求) & raw materials (原材料性能)
+  reqSlump: unknown; reqSpread: unknown
+  maxAggregateSize: string | null
+  fb: unknown
+  rhoc: unknown; rho1: unknown; rho2: unknown; rho3: unknown; rho4: unknown; rhog: unknown; rhos: unknown
   // Strength groups
   strengthGroups: { id: string; values: (number | null)[] }[]
   groupEvals: ReturnType<typeof computeGroupValue>[]
@@ -52,7 +57,7 @@ function passLabel(pass: boolean | null): string {
 // ── Table generation ─────────────────────────────────────────────
 function buildKeyParamsTable(d: ReportData): { head: string; body: string } {
   if (!d.isUHPC) {
-    const head = `<tr><th>类型</th><th>强度<br>等级</th><th>配制<br>强度<br>/MPa</th><th>胶凝总<br>量/kg</th><th>水泥<br>/%</th><th>粉煤灰<br>/%</th><th>矿粉<br>/%</th><th>微珠<br>/%</th><th>硅灰<br>/%</th><th>水胶比</th><th>砂率<br>/%</th><th>外加剂<br>/%</th></tr>`
+    const head = `<tr><th>类型</th><th>强度等级</th><th>配制强度/MPa</th><th>胶凝总量/kg</th><th>水泥/%</th><th>粉煤灰/%</th><th>矿粉/%</th><th>微珠/%</th><th>硅灰/%</th><th>水胶比</th><th>砂率/%</th><th>外加剂/%</th></tr>`
     const body = `<tr>
       <td>HPC</td>
       <td>${d.strengthGrade === '—' ? 'C80' : d.strengthGrade}</td>
@@ -69,7 +74,7 @@ function buildKeyParamsTable(d: ReportData): { head: string; body: string } {
     </tr>`
     return { head, body }
   }
-  const head = `<tr><th>类型</th><th>强度<br>等级</th><th>配制<br>强度<br>/MPa</th><th>胶凝总<br>量/kg</th><th>水泥<br>/%</th><th>粉煤灰<br>/%</th><th>微珠<br>/%</th><th>硅灰<br>/%</th><th>钢纤维<br>/%</th><th>砂胶比</th><th>外加剂<br>/%</th></tr>`
+  const head = `<tr><th>类型</th><th>强度等级</th><th>配制强度/MPa</th><th>胶凝总量/kg</th><th>水泥/%</th><th>粉煤灰/%</th><th>微珠/%</th><th>硅灰/%</th><th>钢纤维/%</th><th>砂胶比</th><th>外加剂/%</th></tr>`
   const body = `<tr>
     <td>UHPC</td>
     <td>${d.strengthGrade === '—' ? 'C130' : d.strengthGrade}</td>
@@ -89,14 +94,57 @@ function buildKeyParamsTable(d: ReportData): { head: string; body: string } {
 function buildFinalMixTable(d: ReportData): { head: string; body1: string; body2: string } {
   if (!d.isUHPC) {
     const head = `<tr><th>状态</th><th>水泥</th><th>粉煤灰</th><th>矿粉</th><th>微珠</th><th>硅灰</th><th>粗骨料</th><th>细骨料</th><th>水</th><th>外加剂</th><th>合计</th></tr>`
-    const body1 = `<tr><td>每方用量(kg)</td><td>${fmtVal(d.mmc)}</td><td>${fmtVal(d.mm1)}</td><td>${fmtVal(d.mm2)}</td><td>${fmtVal(d.mm3)}</td><td>${fmtVal(d.mm4)}</td><td>${fmtVal(d.mmg)}</td><td>${fmtVal(d.mms)}</td><td>${fmtVal(d.mmw)}</td><td>${fmtVal(d.mma)}</td><td>${fmtVal(d.mtot)}</td></tr>`
-    const body2 = `<tr><td>试拌用量(${d.vBatch}L)</td><td>${fmtVal(d.bmc)}</td><td>${fmtVal(d.bm1)}</td><td>${fmtVal(d.bm2)}</td><td>${fmtVal(d.bm3)}</td><td>${fmtVal(d.bm4)}</td><td>${fmtVal(d.bmg)}</td><td>${fmtVal(d.bms)}</td><td>${fmtVal(d.bmw)}</td><td>${fmtVal(d.bma)}</td><td>${fmtVal(d.bmtot)}</td></tr>`
+    const body1 = `<tr><td>每方用量(kg/m³)</td><td>${fmtVal(d.mmc)}</td><td>${fmtVal(d.mm1)}</td><td>${fmtVal(d.mm2)}</td><td>${fmtVal(d.mm3)}</td><td>${fmtVal(d.mm4)}</td><td>${fmtVal(d.mmg)}</td><td>${fmtVal(d.mms)}</td><td>${fmtVal(d.mmw)}</td><td>${fmtVal(d.mma)}</td><td>${fmtVal(d.mtot)}</td></tr>`
+    const body2 = `<tr><td>试拌用量(kg/${d.vBatch}L)</td><td>${fmtVal(d.bmc)}</td><td>${fmtVal(d.bm1)}</td><td>${fmtVal(d.bm2)}</td><td>${fmtVal(d.bm3)}</td><td>${fmtVal(d.bm4)}</td><td>${fmtVal(d.bmg)}</td><td>${fmtVal(d.bms)}</td><td>${fmtVal(d.bmw)}</td><td>${fmtVal(d.bma)}</td><td>${fmtVal(d.bmtot)}</td></tr>`
     return { head, body1, body2 }
   }
   const head = `<tr><th>状态</th><th>水泥</th><th>粉煤灰</th><th>微珠</th><th>硅灰</th><th>细骨料(砂)</th><th>钢纤维</th><th>水</th><th>外加剂</th><th>合计</th></tr>`
-  const body1 = `<tr><td>每方用量(kg)</td><td>${fmtVal(d.mmc)}</td><td>${fmtVal(d.mm1)}</td><td>${fmtVal(d.mm3)}</td><td>${fmtVal(d.mm4)}</td><td>${fmtVal(d.mms)}</td><td>${fmtVal(d.msf)}</td><td>${fmtVal(d.mmw)}</td><td>${fmtVal(d.mma)}</td><td>${fmtVal(d.mtot)}</td></tr>`
-  const body2 = `<tr><td>试拌用量(${d.vBatch}L)</td><td>${fmtVal(d.bmc)}</td><td>${fmtVal(d.bm1)}</td><td>${fmtVal(d.bm3)}</td><td>${fmtVal(d.bm4)}</td><td>${fmtVal(d.bms)}</td><td>${fmtVal(d.bmsf)}</td><td>${fmtVal(d.bmw)}</td><td>${fmtVal(d.bma)}</td><td>${fmtVal(d.bmtot)}</td></tr>`
+  const body1 = `<tr><td>每方用量(kg/m³)</td><td>${fmtVal(d.mmc)}</td><td>${fmtVal(d.mm1)}</td><td>${fmtVal(d.mm3)}</td><td>${fmtVal(d.mm4)}</td><td>${fmtVal(d.mms)}</td><td>${fmtVal(d.msf)}</td><td>${fmtVal(d.mmw)}</td><td>${fmtVal(d.mma)}</td><td>${fmtVal(d.mtot)}</td></tr>`
+  const body2 = `<tr><td>试拌用量(kg/${d.vBatch}L)</td><td>${fmtVal(d.bmc)}</td><td>${fmtVal(d.bm1)}</td><td>${fmtVal(d.bm3)}</td><td>${fmtVal(d.bm4)}</td><td>${fmtVal(d.bms)}</td><td>${fmtVal(d.bmsf)}</td><td>${fmtVal(d.bmw)}</td><td>${fmtVal(d.bma)}</td><td>${fmtVal(d.bmtot)}</td></tr>`
   return { head, body1, body2 }
+}
+
+// ── 性能要求 / 原材料性能 表 ──────────────────────────────────────
+function buildPerfReqTable(d: ReportData): string {
+  const grade = d.strengthGrade && d.strengthGrade !== '—' ? d.strengthGrade : '—'
+  const spread = fmtVal(d.reqSpread, 0)
+  const slump = fmtVal(d.reqSlump, 0)
+  return `<table>
+    <thead>
+      <tr><th>项目</th><th>强度等级/MPa</th><th>扩展度/mm</th><th>坍落度/mm</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>要求</td><td>${grade}</td><td>${spread}</td><td>${slump}</td></tr>
+    </tbody>
+  </table>`
+}
+
+function buildRawMaterialTable(d: ReportData): string {
+  return `<table>
+    <thead>
+      <tr>
+        <th rowspan="2">胶材28d强度/MPa</th>
+        <th colspan="7">表观密度/kg/m³</th>
+        <th rowspan="2">粗骨料最大粒径/mm</th>
+      </tr>
+      <tr>
+        <th>水泥</th><th>粉煤灰</th><th>矿粉</th><th>微珠</th><th>硅灰</th><th>粗骨料</th><th>细骨料</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${fmtVal(d.fb, 1)}</td>
+        <td>${fmtVal(d.rhoc, 0)}</td>
+        <td>${fmtVal(d.rho1, 0)}</td>
+        <td>${fmtVal(d.rho2, 0)}</td>
+        <td>${fmtVal(d.rho3, 0)}</td>
+        <td>${fmtVal(d.rho4, 0)}</td>
+        <td>${fmtVal(d.rhog, 0)}</td>
+        <td>${fmtVal(d.rhos, 0)}</td>
+        <td>${d.maxAggregateSize ?? '—'}</td>
+      </tr>
+    </tbody>
+  </table>`
 }
 
 // ── Main export ──────────────────────────────────────────────────
@@ -104,7 +152,6 @@ export function generateReportHtml(d: ReportData): string {
   const table1 = buildKeyParamsTable(d)
   const table2 = buildFinalMixTable(d)
   const printTimeStr = new Date().toLocaleString('zh-CN')
-
   const strengthDesc = '每组 3 个试件。当最大值或最小值中有一个与中间值的差值超过中间值的15%时，剔除最大及最小值取中间值；当最大值和最小值与中间值的差值均超过中间值的15%时，该组试验结果无效。'
 
   const workabilityRef = getHpcWorkabilityReference(d.vgReferenceCode)
@@ -114,29 +161,31 @@ export function generateReportHtml(d: ReportData): string {
 <meta charset="UTF-8">
 <title>配合比记录 - ${d.record.name}</title>
 <style>
-  @page { size: A4; margin: 15mm; }
+  @page { size: A4; margin: 10mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; font-size: 11pt; color: #000; background: #fff; line-height: 1.4; }
+  body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; font-size: 10.5pt; color: #000; background: #fff; line-height: 1.2; }
   .page-container { max-width: 210mm; margin: 0 auto; }
-  .report-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 15px; }
-  .report-title { font-size: 20pt; font-weight: bold; letter-spacing: 2px; margin-bottom: 8px; }
-  .report-subtitle { font-size: 10pt; color: #555; }
-  .section-title { font-size: 12pt; font-weight: bold; margin: 20px 0 10px; border-left: 5px solid #1e3c72; padding-left: 8px; color: #1e3c72; background: #f4f6f9; padding-top: 4px; padding-bottom: 4px; }
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; margin-bottom: 15px; font-size: 10pt; }
-  .info-item { display: flex; border-bottom: 1px dashed #ccc; padding-bottom: 4px; }
+  .report-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 8px; }
+  .report-title { font-size: 17pt; font-weight: bold; letter-spacing: 2px; margin-bottom: 3px; }
+  .report-subtitle { font-size: 9.5pt; color: #555; }
+  .section-title { font-size: 11pt; font-weight: bold; margin: 9px 0 4px; border-left: 5px solid #1e3c72; padding-left: 8px; color: #1e3c72; background: #f4f6f9; padding-top: 2px; padding-bottom: 2px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 20px; margin-bottom: 8px; font-size: 9.5pt; }
+  .info-item { display: flex; border-bottom: 1px dashed #ccc; padding-bottom: 2px; }
   .info-label { font-weight: bold; width: 100px; color: #333; }
   .info-value { flex: 1; color: #000; }
-  table { width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 15px; }
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 8px; }
   tr { page-break-inside: avoid; }
-  th, td { border: 1px solid #000; padding: 5px 8px; text-align: center; vertical-align: middle; }
+  th, td { border: 1px solid #000; padding: 3px 6px; text-align: center; vertical-align: middle; }
   th { background: #f0f0f0; font-weight: bold; }
   .kv-key { width: 55%; font-weight: 500; text-align: left; }
-  .kv-val { font-family: Consolas, monospace; font-size: 11pt; }
+  .kv-val { font-family: Consolas, monospace; font-size: 10.5pt; }
   .unit { font-size: 8pt; color: #666; margin-left: 4px; font-weight: normal; }
   .section-sub { background: #f9f9f9; }
   .cat-cell { font-weight: bold; background: #f5f7fa; width: 70px; }
+  .key-params th, .key-params td { font-size: 7.5pt; white-space: nowrap; padding: 3px 3px; }
   .eval-table td:nth-child(5), .eval-table th:nth-child(5) { width: 80px; }
-  .footer { margin-top: 30px; font-size: 9pt; color: #777; text-align: center; border-top: 1px solid #ccc; padding-top: 10px; }
+  b { display: inline-block; margin: 2px 0 1px; }
+  .footer { margin-top: 12px; font-size: 8.5pt; color: #777; text-align: center; border-top: 1px solid #ccc; padding-top: 6px; }
   @media print {
     body { font-size: 10pt; }
     .page-container { width: 100%; }
@@ -160,20 +209,24 @@ export function generateReportHtml(d: ReportData): string {
     <div class="info-item"><div class="info-label">创建人</div><div class="info-value">${d.record.created_by}</div></div>
     <div class="info-item"><div class="info-label">创建时间</div><div class="info-value">${d.fmtDate}</div></div>
   </div>
-  <div class="section-title">二、 配合比及相关记录</div>
+  <div class="section-title">二、 性能要求与原材料性能</div>
+  <b>性能要求</b>
+  ${buildPerfReqTable(d)}
+  <b>原材料性能</b>
+  ${buildRawMaterialTable(d)}
+  <div class="section-title">三、 配合比及相关记录</div>
   <b>配合比关键参数</b>
-  <table>
+  <table class="key-params">
     <thead>${table1.head}</thead>
     <tbody>${table1.body}</tbody>
   </table>
-  <br/>
   <b>最终配合比</b>
   <table>
     <thead>${table2.head}</thead>
     <tbody>${table2.body1}
 ${table2.body2}</tbody>
   </table>
-  <div class="section-title">三、 混凝土性能评价</div>
+  <div class="section-title">四、 混凝土性能评价</div>
   <table class="eval-table">
     <thead>
       <tr><th colspan="2">指标</th><th>实测值</th><th>要求</th><th>评价</th></tr>
@@ -183,13 +236,13 @@ ${table2.body2}</tbody>
         <td class="cat-cell" rowspan="3">工作性能</td>
         <td>坍落度/mm</td>
         <td>${d.evalSlump || '—'}</td>
-        <td>${workabilityRef?.metric === 'slump' ? workabilityRef.desc : ''}</td>
+        <td>${d.reqSlump != null ? fmtVal(d.reqSlump, 0) + ' mm' : (workabilityRef?.metric === 'slump' ? workabilityRef.desc : '')}</td>
         <td rowspan="3">${passLabel(d.workabilityPass)}</td>
       </tr>
       <tr>
         <td>扩展度/mm</td>
         <td>${d.evalSpread || '—'}</td>
-        <td>${workabilityRef?.metric === 'spread' ? workabilityRef.desc : ''}</td>
+        <td>${d.reqSpread != null ? fmtVal(d.reqSpread, 0) + ' mm' : (workabilityRef?.metric === 'spread' ? workabilityRef.desc : '')}</td>
       </tr>
       <tr>
         <td>综合性描述</td>

@@ -2,7 +2,12 @@
 import { computed, watch } from 'vue'
 import { useCalcStore } from '../../stores/calcStore.ts'
 import { debounce } from '../../utils/debounce.ts'
-import { HPC_WORKABILITY_REFERENCES, getHpcWorkabilityReference } from '../../utils/hpcWorkability.ts'
+import {
+  HPC_WORKABILITY_REFERENCES,
+  getHpcWorkabilityReference,
+  matchHpcWorkabilityReferences,
+  resolveHpcWorkabilityCode,
+} from '../../utils/hpcWorkability.ts'
 import Formula from '../Formula.vue'
 import '../../style/calc-tabs.css'
 
@@ -28,6 +33,19 @@ async function handleNext() {
 
 const vgTableData = HPC_WORKABILITY_REFERENCES
 
+// 根据用户输入的工作性能要求（坍落度 / 扩展度）自动匹配工作性等级
+const matchedCodes = computed(() =>
+  matchHpcWorkabilityReferences(store.reqSlump, store.reqSpread),
+)
+
+// 输入变化时自动确定 Vg 参考等级（取第一个命中项）
+watch(
+  () => [store.reqSlump, store.reqSpread] as const,
+  () => {
+    store.vgReferenceCode = resolveHpcWorkabilityCode(store.reqSlump, store.reqSpread)
+  },
+)
+
 const selectedVgReference = computed(() => getHpcWorkabilityReference(store.vgReferenceCode))
 
 const selectedVgRange = computed(() => {
@@ -36,12 +54,8 @@ const selectedVgRange = computed(() => {
 
 const vgPlaceholder = computed(() => selectedVgRange.value ?? '如 0.35')
 
-function handleWorkabilityRowClick(row: (typeof vgTableData)[number]) {
-  store.vgReferenceCode = store.vgReferenceCode === row.code ? null : row.code
-}
-
 function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[number] }) {
-  return row.code === store.vgReferenceCode ? 'is-selected-row' : ''
+  return matchedCodes.value.includes(row.code) ? 'is-selected-row' : ''
 }
 </script>
 
@@ -69,37 +83,66 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
       </div>
     </div>
 
-    <!-- Vg 参考范围 -->
+    <!-- 工作性能要求 -->
     <div class="cs-section">
       <div class="cs-section-head">
         <el-icon><Grid /></el-icon>
-        Vg 参考范围选取
+        工作性能要求
       </div>
       <div class="cs-section-body">
+        <el-form label-position="top">
+          <el-row :gutter="20" style="margin-bottom:8px">
+            <el-col :span="12">
+              <el-form-item label="坍落度">
+                <el-input-number
+                  :model-value="store.reqSlump ?? undefined"
+                  @update:model-value="v => store.reqSlump = v ?? null"
+                  :step="10" :precision="0" :min="0"
+                  style="width:100%"
+                >
+                  <template #suffix><span class="unit-suffix">mm</span></template>
+                </el-input-number>
+                <div class="input-hint">参考值 180~220 mm（SF0 大流动度）</div>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="扩展度">
+                <el-input-number
+                  :model-value="store.reqSpread ?? undefined"
+                  @update:model-value="v => store.reqSpread = v ?? null"
+                  :step="10" :precision="0" :min="0"
+                  style="width:100%"
+                >
+                  <template #suffix><span class="unit-suffix">mm</span></template>
+                </el-input-number>
+                <div class="input-hint">参考值 500~800 mm（SF1~SF3）</div>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
         <el-table
           :data="vgTableData"
           border
           size="small"
           style="margin-bottom:8px"
           :row-class-name="resolveWorkabilityRowClassName"
-          @row-click="handleWorkabilityRowClick"
           class="vg-ref-table"
         >
           <el-table-column prop="code"  label="工作性等级"        width="110"  align="center" />
           <el-table-column prop="desc"  label="坍落度/扩展度范围" align="center" />
           <el-table-column prop="range" label="Vg 范围 (m³)" width="160" align="center" />
         </el-table>
-        <p style="font-size:11px;color:#909399;margin-bottom:8px">空隙率 &gt;41% 取偏小值，&lt;41% 取偏大值</p>
+        <p style="font-size:11px;color:#909399;margin-bottom:8px">表格依据输入的坍落度/扩展度自动高亮匹配的工作性等级；空隙率 &gt;41% 取偏小值，&lt;41% 取偏大值</p>
         <el-alert
           v-if="selectedVgRange"
-          :title="`当前选择的 Vg 参考范围：${selectedVgRange} m³`"
+          :title="`当前匹配的 Vg 参考范围：${selectedVgRange} m³`"
           type="success"
           :closable="false"
           show-icon
         />
         <el-alert
           v-else
-          title="请在上方表格中点击选取 Vg 参考范围"
+          title="请在上方输入坍落度或扩展度以自动匹配 Vg 参考范围"
           type="error"
           :closable="false"
           show-icon
@@ -225,9 +268,5 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
 .el-table :deep(.is-selected-row td) {
   background: #e8f0fb !important;
   font-weight: 700;
-}
-
-.vg-ref-table :deep(tbody tr) {
-  cursor: pointer;
 }
 </style>

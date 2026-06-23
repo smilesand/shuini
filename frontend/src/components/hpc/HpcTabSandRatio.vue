@@ -25,11 +25,17 @@ const srTable = [
 ]
 const colLabels = ['16.0 mm', '20.0 mm', '25.0 mm']
 
+// 恢复已持久化的粗骨料最大粒径选择，保持表格高亮
+const persistedColIdx = colLabels.indexOf(store.maxAggregateSize ?? '')
+if (persistedColIdx >= 0) selectedCol.value = persistedColIdx
+
 function toggleRow(ri: number) {
   selectedRow.value = selectedRow.value === ri ? null : ri
 }
 function toggleCol(ci: number) {
   selectedCol.value = selectedCol.value === ci ? null : ci
+  // 持久化粗骨料最大粒径，供 PDF / Excel 报告使用
+  store.maxAggregateSize = selectedCol.value === null ? null : colLabels[selectedCol.value]
 }
 function cellClass(ri: number, ci: number) {
   const rowSel = selectedRow.value === ri

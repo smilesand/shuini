@@ -205,6 +205,19 @@ function exportReport(record: RecordItem) {
   const sf_vol = flatData.steelFiberVolumeRatio ?? flatData.steel_fiber_volume_ratio ?? flatData.steelFiberVolume ?? '—'
   const vgReferenceCode = (flatData.vg_reference_code as string) ?? null
 
+  // ── 性能要求 / 原材料性能（新增表格）─────────────────────────
+  const reqSlump = flatData.req_slump ?? flatData.reqSlump ?? null
+  const reqSpread = flatData.req_spread ?? flatData.reqSpread ?? null
+  const maxAggregateSize = (flatData.max_aggregate_size ?? flatData.maxAggregateSize ?? null) as string | null
+  const fb = flatData.fb ?? flatData.binderStrength28d ?? null
+  const rhoc = flatData.rhoc ?? null
+  const rho1 = flatData.rho1 ?? null
+  const rho2 = flatData.rho2 ?? null
+  const rho3 = flatData.rho3 ?? null
+  const rho4 = flatData.rho4 ?? null
+  const rhog = flatData.rhog ?? null
+  const rhos = flatData.rhos ?? null
+
   // ── Strength pass/fail: 总体均值 ≥ 1.15×强度等级 且 组最小值 ≥ 0.95×强度等级
   const targetForEval = sTargetStr || flatData.fcu0 || flatData.designStrength || flatData.design_strength
   const strengthGradeNum = Number(flatData.fcuk || flatData.strengthGrade || flatData.strength_grade || NaN)
@@ -267,6 +280,8 @@ function exportReport(record: RecordItem) {
     workabilityPass,
     strengthPass,
     vgReferenceCode,
+    reqSlump, reqSpread, maxAggregateSize,
+    fb, rhoc, rho1, rho2, rho3, rho4, rhog, rhos,
     strengthGroups,
     groupEvals,
     strengthOverallAvg,

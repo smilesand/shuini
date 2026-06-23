@@ -142,12 +142,12 @@ function getItemStatus(item: ValidationItem): 'success' | 'danger' | 'warning' {
 }
 
 function formatDiff(item: ValidationItem): string {
-  if (item.diff === null) return '—'
+  if (item.diff == null) return '—'
   return item.diff.toFixed(4)
 }
 
-function formatValue(val: number | null): string {
-  if (val === null) return '—'
+function formatValue(val: number | null | undefined): string {
+  if (val == null) return '—'
   return val.toFixed(4)
 }
 </script>
@@ -163,7 +163,7 @@ function formatValue(val: number | null): string {
     <!-- ── Step 1: 文件上传 ───────────────────────────────────────────── -->
     <div v-if="step === 'upload'" class="import-upload">
       <p class="import-desc">
-        请选择从本系统导出的 Excel 配比文件（.xlsx），系统将自动校验水胶比、砂率和粗骨料体积用量三个关键参数。
+        请选择 Excel 配比文件（.xlsx）。模板为横排版面，导入仅需填写「配合比关键参数」区中的关键参数（强度等级、水胶比、砂率、Vg、外加剂掺量），其余参数由系统按默认值补全。
       </p>
 
       <div class="upload-area" @click="() => {}">

@@ -38,6 +38,37 @@ export function getHpcWorkabilityReference(code: string | null | undefined) {
   return HPC_WORKABILITY_REFERENCES.find((item) => item.code === code) ?? null
 }
 
+/**
+ * 根据用户输入的设计要求（坍落度 / 扩展度）匹配工作性能参考等级。
+ * - 坍落度落在 SF0 范围内 → SF0
+ * - 扩展度落在 SF1/SF2/SF3 范围内 → 对应等级
+ * 返回所有命中的等级（用于表格高亮）。
+ */
+export function matchHpcWorkabilityReferences(
+  slump: number | null | undefined,
+  spread: number | null | undefined,
+): HpcWorkabilityReferenceCode[] {
+  const matched: HpcWorkabilityReferenceCode[] = []
+  for (const ref of HPC_WORKABILITY_REFERENCES) {
+    const measured = ref.metric === 'slump' ? slump : spread
+    if (measured === null || measured === undefined || !Number.isFinite(measured)) {
+      continue
+    }
+    if (measured >= ref.min && measured <= ref.max) {
+      matched.push(ref.code)
+    }
+  }
+  return matched
+}
+
+/** 返回第一个命中的工作性能等级（用于自动确定 Vg 参考范围）。 */
+export function resolveHpcWorkabilityCode(
+  slump: number | null | undefined,
+  spread: number | null | undefined,
+): HpcWorkabilityReferenceCode | null {
+  return matchHpcWorkabilityReferences(slump, spread)[0] ?? null
+}
+
 export function evaluateHpcWorkability(
   code: HpcWorkabilityReferenceCode | null | undefined,
   slump: number | null | undefined,

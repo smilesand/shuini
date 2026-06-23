@@ -48,7 +48,10 @@ export const useCalcStore = defineStore('calc', () => {
   const sandRatioCol       = ref<number | null>(null) // 砂率参考表选中粒径列
   const sandRatioInput     = ref<number | null>(null) // 砂率 βs
   const sandRatioConfirmed = ref(false) // 砂率已确认
-  const vgReferenceCode    = ref<HpcWorkabilityReferenceCode | null>(null) // Vg 参考范围选中工作性等级
+  const maxAggregateSize   = ref<string | null>(null) // 粗骨料最大粒径（砂率参考表选中的粒径列）
+  const vgReferenceCode    = ref<HpcWorkabilityReferenceCode | null>(null) // Vg 参考范围选中工作性等级（由坍落度/扩展度要求自动匹配）
+  const reqSlump           = ref<number | null>(null) // 设计要求坍落度 (mm)
+  const reqSpread          = ref<number | null>(null) // 设计要求扩展度 (mm)
 
   // ── Tab 3: 骨料用量 ───────────────────────────────────────────────────
   const vg   = ref<number | null>(null) // 粗骨料绝对体积 Vg
@@ -153,6 +156,9 @@ export const useCalcStore = defineStore('calc', () => {
     if (typeof recordData.vg_reference_code === 'string') {
       vgReferenceCode.value = getHpcWorkabilityReference(recordData.vg_reference_code)?.code ?? null
     }
+    if (recordData.req_slump != null) reqSlump.value = Number(recordData.req_slump)
+    if (recordData.req_spread != null) reqSpread.value = Number(recordData.req_spread)
+    if (recordData.max_aggregate_size != null) maxAggregateSize.value = String(recordData.max_aggregate_size)
     if (recordData.vg != null) vg.value = Number(recordData.vg)
     if (recordData.rhog != null) rhog.value = Number(recordData.rhog)
     if (recordData.rhos != null) rhos.value = Number(recordData.rhos)
@@ -216,6 +222,9 @@ export const useCalcStore = defineStore('calc', () => {
         ac: ac.value,
         sand_ratio: sandRatioConfirmed.value ? sandRatioInput.value : null,
         vg_reference_code: vgReferenceCode.value,
+        req_slump: reqSlump.value,
+        req_spread: reqSpread.value,
+        max_aggregate_size: maxAggregateSize.value,
         vg: vg.value,
         rhog: rhog.value,
         rhos: rhos.value,
@@ -351,7 +360,9 @@ export const useCalcStore = defineStore('calc', () => {
     fcu0.value = null; wb.value = null
     sandRatioRow.value = null; sandRatioCol.value = null
     sandRatioInput.value = null; sandRatioConfirmed.value = false
+    maxAggregateSize.value = null
     vgReferenceCode.value = null
+    reqSlump.value = null; reqSpread.value = null
     vg.value = null; rhog.value = null; rhos.value = null
     mg.value = null; ms.value = null
     b1p.value = null; b2p.value = null; b3p.value = null; b4p.value = null
@@ -368,7 +379,8 @@ export const useCalcStore = defineStore('calc', () => {
     currentTrialData,
     hpcSelectedProjectId, hpcShowCalculator,
     fcuk, fb, fbCalcMode, fceG, gammaC, gammaF, gammaS, gammaB, gammaSF, aa, ab, ac, fcu0, wb,
-    sandRatioRow, sandRatioCol, sandRatioInput, sandRatioConfirmed, vgReferenceCode,
+    sandRatioRow, sandRatioCol, sandRatioInput, sandRatioConfirmed, maxAggregateSize, vgReferenceCode,
+    reqSlump, reqSpread,
     vg, rhog, rhos, mg, ms,
     b1p, rho1, b2p, rho2, b3p, rho3, b4p, rho4,
     rhoc, va, bc, rhob, vp, mb, m1, m2, m3, m4, mc,

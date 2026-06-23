@@ -109,13 +109,13 @@ function getItemStatus(item: ValidationItem): 'success' | 'danger' | 'warning' {
   return 'danger'
 }
 
-function formatValue(val: number | null): string {
-  if (val === null) return '—'
+function formatValue(val: number | null | undefined): string {
+  if (val == null) return '—'
   return val.toFixed(4)
 }
 
 function formatDiff(item: ValidationItem): string {
-  if (item.diff === null) return '—'
+  if (item.diff == null) return '—'
   return item.diff.toFixed(4)
 }
 </script>
