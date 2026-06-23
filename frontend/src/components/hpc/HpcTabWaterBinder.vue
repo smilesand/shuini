@@ -307,37 +307,39 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
 
         <div v-else class="estimation-panel">
           <div class="estimation-panel__title">胶凝材料质量分数</div>
-          <p style="font-size:12px;color:#909399;margin:0 0 12px">水泥质量分数 = 100% − Σ(其他四组分)</p>
-          <el-row :gutter="16">
-            <el-col :span="8">
-              <el-form-item class="small-label">
+          <!-- 第一行：水泥 + 提示 -->
+          <div style="display:flex;align-items:flex-end;gap:16px;margin-bottom:12px">
+            <div style="flex:0 0 200px">
+              <el-form-item class="small-label" style="margin-bottom:0">
                 <template #label>水泥 β<sub>c</sub></template>
                 <el-input :value="cementPct.toFixed(1)" readonly class="computed-input">
                   <template #suffix><span class="unit-suffix">%</span></template>
                 </el-input>
               </el-form-item>
-            </el-col>
-            <el-col :span="8">
+            </div>
+            <p style="font-size:12px;color:#909399;margin:0 0 4px">水泥质量分数 = 100% − Σ(其他四组分)</p>
+          </div>
+          <!-- 第二行：粉煤灰、矿粉、微珠、硅灰 -->
+          <el-row :gutter="16">
+            <el-col :span="6">
               <el-form-item class="small-label">
                 <template #label>粉煤灰 β<sub>1</sub></template>
                 <el-input-number :model-value="n(store.b1p)" @update:model-value="v => store.b1p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
               </el-form-item>
             </el-col>
-            <el-col :span="8">
+            <el-col :span="6">
               <el-form-item class="small-label">
                 <template #label>矿粉 β<sub>2</sub></template>
                 <el-input-number :model-value="n(store.b2p)" @update:model-value="v => store.b2p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
               </el-form-item>
             </el-col>
-          </el-row>
-          <el-row :gutter="16" style="margin-top:8px">
-            <el-col :span="8">
+            <el-col :span="6">
               <el-form-item class="small-label">
                 <template #label>微珠 β<sub>3</sub></template>
                 <el-input-number :model-value="n(store.b3p)" @update:model-value="v => store.b3p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
               </el-form-item>
             </el-col>
-            <el-col :span="8">
+            <el-col :span="6">
               <el-form-item class="small-label">
                 <template #label>硅灰 β<sub>4</sub></template>
                 <el-input-number :model-value="n(store.b4p)" @update:model-value="v => store.b4p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
