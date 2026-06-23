@@ -1,4 +1,5 @@
-import request from '../utils/request'
+// 说明：所有混凝土配比计算已迁移到前端集中式引擎（src/calc）。
+// 服务端仅负责数据持久化，因此此文件只保留供引擎复用的请求/响应类型定义，不再发起计算接口请求。
 
 // ── Request / Response Types ────────────────────────────────────────────────
 
@@ -230,29 +231,6 @@ export interface HpcTrialRes {
   lab_mix: HpcTrialMaterialResultRes
 }
 
-// ── API Calls ───────────────────────────────────────────────────────────────
-
-export const calcWaterBinder = (data: WaterBinderReq): Promise<WaterBinderRes> =>
-  request.post('/water-binder', data)
-
-export const fitCoefficients = (data: FitCoefficientsReq): Promise<FitCoefficientsRes> =>
-  request.post('/fit-coefficients', data)
-
-export const calcAggregate = (data: AggregateReq): Promise<AggregateRes> =>
-  request.post('/aggregate', data)
-
-export const calcBinder = (data: BinderReq): Promise<BinderRes> =>
-  request.post('/binder', data)
-
-export const calcWaterAdmixture = (data: WaterAdmixtureReq): Promise<WaterAdmixtureRes> =>
-  request.post('/water-admixture', data)
-
-export const calcUhpcMix = (data: UhpcMixReq): Promise<UhpcMixRes> =>
-  request.post('/uhpc-mix', data)
-
-export const calcHpcTrial = (data: HpcTrialReq): Promise<HpcTrialRes> =>
-  request.post('/hpc-trial', data)
-
 // ── UHPC Trial ─────────────────────────────────────────────────────────────
 
 export interface UhpcTrialReq {
@@ -314,9 +292,6 @@ export interface UhpcTrialRes {
   lab_mix: UhpcTrialMixRowRes
 }
 
-export const calcUhpcTrial = (data: UhpcTrialReq): Promise<UhpcTrialRes> =>
-  request.post('/uhpc-trial', data)
-
 // ── Adapt ──────────────────────────────────────────────────────────────────
 
 export interface AdaptReq {
@@ -332,15 +307,4 @@ export interface AdaptRes {
   mb: number; mc: number
   m1: number; m2: number; m3: number; m4: number
   mg: number; ms: number; mw: number; ma: number
-}
-
-export const calcAdapt = (data: AdaptReq): Promise<AdaptRes> =>
-  request.post('/adapt', data)
-
-export const uploadFitFile = (file: File): Promise<FitCoefficientsRes> => {
-  const form = new FormData()
-  form.append('file', file)
-  return request.post('/upload-fit', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
 }

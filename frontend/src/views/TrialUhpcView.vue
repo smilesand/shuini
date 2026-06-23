@@ -8,6 +8,7 @@ import { saveRecord } from '../api/records'
 import { getProject } from '../api/projects'
 import { calcUhpcTrial } from '../calc'
 import type { UhpcTrialRes, UhpcTrialMixRowRes } from '../api/calc'
+import { useAutoSave } from '../composables/useAutoSave'
 import { debounce } from '../utils/debounce'
 import UhpcTrialWorkabilityTab from '../components/uhpc-trial/UhpcTrialWorkabilityTab.vue'
 import UhpcTrialStrengthTab from '../components/uhpc-trial/UhpcTrialStrengthTab.vue'
@@ -93,6 +94,30 @@ const saveVisible = ref(false)
 const saveName = ref('')
 const saving = ref(false)
 
+// 定时自动保存：仅在已保存过的试配记录上，将试配改动（含最终配合比快照）定时同步到服务端。
+useAutoSave({
+  resolve: () => {
+    if (!store.hasResults) return null
+    if (store.currentRecordId == null) return null
+    if (!store.currentRecordName.trim()) return null
+    const projectId = currentProjectId.value
+    if (projectId == null || store.currentRecordProjectId !== projectId) return null
+    const base = store.buildRecordPayload(
+      store.currentRecordName,
+      projectId,
+      store.currentRecordId,
+    )
+    const snapshot = buildTrialSnapshot()
+    return { ...base, record_data: { ...base.record_data, trial_data: snapshot } }
+  },
+  onSaved: (id, payload) => {
+    store.markRecordSaved(id, store.currentRecordName, store.currentRecordProjectId)
+    const rd = payload.record_data as Record<string, unknown> | undefined
+    if (rd?.trial_data) store.setCurrentTrialData(rd.trial_data as object)
+    if (rd?.design_data) store.setCurrentDesignData(rd.design_data as object)
+  },
+})
+
 function buildTrialSnapshot() {
   return {
     adjustedSB: adjustedSB.value,
@@ -112,6 +137,8 @@ function buildTrialSnapshot() {
     evalSlump: evalSlump.value,
     evalSpread: evalSpread.value,
     evalWorkabilityDesc: evalWorkabilityDesc.value,
+    // 持久化“调整适配后最终的实验室配合比”，供配合比记录表格展示最终配合比。
+    lab_mix: trialResult.value?.lab_mix ?? null,
   }
 }
 

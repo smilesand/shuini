@@ -11,6 +11,7 @@ import { getProject } from '../api/projects'
 import { hpcTrialKey } from '../composables/context'
 import { useHpcTrial, type HpcTrialTab } from '../composables/useHpcTrial'
 import { useCalcStore } from '../stores/calcStore'
+import { useAutoSave } from '../composables/useAutoSave'
 import { debounce } from '../utils/debounce'
 import '../components/hpc-trial/styles.css'
 
@@ -70,6 +71,32 @@ const debouncedCalc = debounce(() => {
 }, 500)
 
 provide(hpcTrialKey, trial)
+
+// 定时自动保存：仅在已保存过的试配记录上，将试配改动（含试配快照）定时同步到服务端。
+useAutoSave({
+  resolve: () => {
+    if (!trial.hasData.value) return null
+    if (store.currentRecordId == null) return null
+    if (!store.currentRecordName.trim()) return null
+    const projectId = currentProjectId.value
+    if (projectId == null || store.currentRecordProjectId !== projectId) return null
+    const base = store.buildRecordPayload(
+      'hpc',
+      store.currentRecordName,
+      projectId,
+      store.currentRecordId,
+    )
+    const snapshot = trial.buildTrialSnapshot()
+    return { ...base, record_data: { ...base.record_data, trial_data: snapshot } }
+  },
+  onSaved: (id, payload) => {
+    store.markRecordSaved(id, store.currentRecordName, store.currentRecordProjectId)
+    const trialData = (payload.record_data as Record<string, unknown> | undefined)?.trial_data
+    if (trialData) {
+      store.setCurrentTrialData(trialData as object)
+    }
+  },
+})
 
 watch(currentProjectId, async (projectId) => {
   if (projectId === null) {

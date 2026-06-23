@@ -15,11 +15,36 @@ import type { Project } from "../api/projects";
 import { exportRecord, downloadBlob } from "../api/exchange";
 import ImportDialog from "../components/ImportDialog.vue";
 import RecordTable from "../components/RecordTable.vue";
+import { useAutoSave } from "../composables/useAutoSave";
 
 const store = useCalcStore();
 const route = useRoute();
 const router = useRouter();
 const activeTab = ref("wb");
+
+// 定时自动保存：仅在已保存过的记录上，将主计算页改动定时同步到服务端。
+useAutoSave({
+  resolve: () => {
+    if (store.currentRecordId == null) return null;
+    if (!store.currentRecordName.trim()) return null;
+    const projectId = store.currentRecordProjectId;
+    if (projectId == null) return null;
+    const base = store.buildRecordPayload(
+      "hpc",
+      store.currentRecordName,
+      projectId,
+      store.currentRecordId,
+    );
+    // 保留已存在的试配数据，避免主计算页自动保存覆盖掉试配快照。
+    const record_data = store.currentTrialData
+      ? { ...base.record_data, trial_data: store.currentTrialData }
+      : base.record_data;
+    return { ...base, record_data };
+  },
+  onSaved: (id) => {
+    store.markRecordSaved(id, store.currentRecordName, store.currentRecordProjectId);
+  },
+});
 
 const tabOrder = ["wb", "sand", "agg", "binder", "admix"] as const;
 

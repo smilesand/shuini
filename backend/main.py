@@ -15,7 +15,7 @@ from core.logging_utils import (
     summarize_request_body,
     to_log_text,
 )
-from routers import auth, calc, diagnostics, exchange, license, projects, records, recycle_bin
+from routers import auth, diagnostics, exchange, license, projects, records, recycle_bin
 from core.config import get_settings
 from database import init_db
 
@@ -130,7 +130,6 @@ async def trace_requests(request: Request, call_next):
     reset_request_id(request_context)
     return response
 
-app.include_router(calc.router,     prefix="/api", tags=["calculation"])
 app.include_router(auth.router,     prefix="/api", tags=["auth"])
 app.include_router(diagnostics.router, prefix="/api", tags=["diagnostics"])
 app.include_router(records.router,  prefix="/api", tags=["records"])
