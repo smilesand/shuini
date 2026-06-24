@@ -202,6 +202,9 @@ export interface HpcTrialStrengthRegressionRes {
   b: number
   r2: number
   recommend_wb: number | null
+  recommend_bs: number | null
+  /** 推荐值匹配的对照组索引 (0=基准,1=+Δ,2=-Δ)，-1 表示无匹配 */
+  match_group_index: number
   predict_strength: number | null
 }
 

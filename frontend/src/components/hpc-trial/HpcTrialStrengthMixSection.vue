@@ -56,7 +56,7 @@ const fmtKg = formatKg;
   </div>
   <div class="formula-row" style="margin-bottom: 8px">
     <span class="formula-label">水胶比 W/B：</span>
-    <span class="formula-val">{{ fmt(props.baseWb, 4) }}</span>
+    <span class="formula-val">{{ fmt(props.baseWb, 2) }}</span>
     <span class="formula-label" style="margin-left: 20px">砂率 β<sub>s</sub>：</span>
     <span class="formula-val">{{ fmt(props.baseBs) }} %</span>
     <span class="formula-label" style="margin-left: 20px">胶材用量 m<sub>b</sub>：</span>

@@ -55,6 +55,8 @@ export interface StrengthRegression {
   b: number
   r2: number
   recommendWb: NullableNumber
+  recommendBs: NullableNumber
+  matchGroupIndex: number
   predictStrength: NullableNumber
 }
 
@@ -333,6 +335,8 @@ function mapTrialResponse(response: HpcTrialRes): TrialCalculatedState {
       b: response.strength_regression.b,
       r2: response.strength_regression.r2,
       recommendWb: normalizeRecommendedWb(response.strength_regression.recommend_wb),
+      recommendBs: response.strength_regression.recommend_bs ?? null,
+      matchGroupIndex: response.strength_regression.match_group_index ?? -1,
       predictStrength: response.strength_regression.predict_strength,
     } : null,
     chartData: response.chart_data ? {
@@ -837,14 +841,17 @@ export function useHpcTrial() {
     if (workabilityResult.value.mb !== null) {
       mbAdj.value = workabilityResult.value.mb
     }
-    if (baseBs.value !== null) {
+    if (regression.recommendBs !== null && regression.recommendBs !== undefined) {
+      sandRatioAdj.value = regression.recommendBs
+    } else if (baseBs.value !== null) {
       sandRatioAdj.value = baseBs.value
     }
     if (baseAlpha.value !== null) {
       alphaAdj.value = baseAlpha.value
     }
 
-    ElMessage.success(`已同步推荐水胶比 ${recommendedWb.toFixed(2)}`)
+    const bsMsg = regression.recommendBs !== null ? `，推荐砂率 ${regression.recommendBs.toFixed(2)}%` : ''
+    ElMessage.success(`已同步推荐水胶比 ${recommendedWb.toFixed(2)}${bsMsg}`)
     return true
   }
 
@@ -863,7 +870,10 @@ export function useHpcTrial() {
       if (workabilityResult.value.mb !== null) {
         mbAdj.value = workabilityResult.value.mb
       }
-      if (baseBs.value !== null) {
+      const recBs = strengthRegression.value?.recommendBs ?? null
+      if (recBs !== null && recBs !== undefined) {
+        sandRatioAdj.value = recBs
+      } else if (baseBs.value !== null) {
         sandRatioAdj.value = baseBs.value
       }
       if (baseAlpha.value !== null) {

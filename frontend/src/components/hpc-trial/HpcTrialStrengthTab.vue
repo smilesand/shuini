@@ -120,7 +120,7 @@ const strengthMixTableRows = computed(() =>
     return {
       headerLabel: meta.headerLabel,
       headerType: meta.tagType,
-      summary: `W/B=${fmt(mix.wb, 4)}  βs=${fmt(mix.bs)}%`,
+      summary: `W/B=${fmt(mix.wb, 2)}  βs=${fmt(mix.bs)}%`,
       rows: [
         {
           mc: createTableCell(mix.mc, 2),
@@ -155,7 +155,7 @@ const strengthRelationRows = computed(() =>
   strengthDisplayRows.value.map(({ mix, meta, strengthValue }) => ({
     label: meta.relationLabel,
     tagType: meta.tagType,
-    wb: fmt(mix.wb, 4),
+    wb: fmt(mix.wb, 2),
     cw: mix.wb ? fmt(1 / mix.wb, 4) : "—",
     strength: fmt(strengthValue, 1),
   })),

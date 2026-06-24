@@ -34,7 +34,7 @@ const recommendStrengthText = computed(() => {
 
 <template>
   <el-divider content-position="left">
-    <span style="font-size: 13px; color: #666">胶水比 - 抗压强度关系</span>
+    <span style="font-size: 13px; color: #666">胶水比 C/W — 抗压强度关系</span>
   </el-divider>
 
   <div class="materials-table-wrap">
@@ -80,13 +80,14 @@ const recommendStrengthText = computed(() => {
     <div class="regression-grid">
       <div class="regression-card">
         <div class="regression-formula">
-          f<sub>cu,0</sub> = {{ props.strengthRegression.a.toFixed(4) }} × (C/W)
+          f<sub>cu</sub> = {{ props.strengthRegression.a.toFixed(4) }} × (C/W)
           {{ props.strengthRegression.b >= 0 ? "+" : "" }}{{
             props.strengthRegression.b.toFixed(2)
           }}
         </div>
         <div style="font-size: 11px; color: #909399; margin-top: 4px">
-          R² = {{ (props.strengthRegression.r2 * 100).toFixed(2) }}%
+          R² = {{ (props.strengthRegression.r2 * 100).toFixed(2) }}% &nbsp;|&nbsp;
+          标准 Bolomey 形式
         </div>
       </div>
 
@@ -94,15 +95,23 @@ const recommendStrengthText = computed(() => {
         v-if="props.strengthRegression.recommendWb !== null"
         class="regression-card recommend"
       >
-        <span class="recommend-label">推荐水胶比</span>
+        <span class="recommend-label">推荐水胶比 W/B</span>
         <span class="recommend-val">{{ props.strengthRegression.recommendWb.toFixed(2) }}</span>
         <span style="font-size: 11px; color: #909399">
           <template v-if="recommendStrengthText !== null">
             按 {{ recommendStrengthText }} MPa 取值（目标 {{ fmt(props.sTargetStrength, 1) }} MPa）
           </template>
-          <template v-else>
-            目标 {{ fmt(props.sTargetStrength, 1) }} MPa
-          </template>
+        </span>
+      </div>
+
+      <div
+        v-if="props.strengthRegression.recommendBs !== null"
+        class="regression-card recommend"
+      >
+        <span class="recommend-label">推荐砂率 β<sub>s</sub></span>
+        <span class="recommend-val">{{ props.strengthRegression.recommendBs.toFixed(2) }}%</span>
+        <span style="font-size: 11px; color: #909399">
+          由 C/W—砂率线性插值推导
         </span>
       </div>
 
@@ -110,11 +119,13 @@ const recommendStrengthText = computed(() => {
         v-if="props.strengthRegression.predictStrength !== null"
         class="regression-card predict"
       >
-        <span class="recommend-label">推荐 W/B 强度预测</span>
+        <span class="recommend-label">推荐组合强度预测</span>
         <span class="recommend-val"
           >{{ props.strengthRegression.predictStrength.toFixed(1) }} MPa</span
         >
-        <span style="font-size: 11px; color: #909399">W/B = {{ fmt(props.strengthRegression.recommendWb, 4) }}</span>
+        <span style="font-size: 11px; color: #909399">
+          W/B={{ fmt(props.strengthRegression.recommendWb, 2) }} &nbsp; βs={{ fmt(props.strengthRegression.recommendBs, 2) }}%
+        </span>
       </div>
     </div>
 
@@ -163,9 +174,9 @@ const recommendStrengthText = computed(() => {
     <template #default>
       <p style="margin: 0; line-height: 1.8; font-size: 12px">
         以基准配合比为中心，按水胶比步长 {{ props.deltaWb }} 和砂率步长
-        {{ props.deltaBs }}% 形成三组实验点。 水胶比调整时固定用水量，通过增减胶材总量并按原胶材比例分配到各胶凝材料来满足目标
-        W/B；砂率调整时保持粗骨料与细骨料总量不变，一增一降完成调整。 根据三组
-        (C/W, f<sub>cu</sub>) 数据进行线性回归，得到推荐水胶比，为后续“配合比校正与确认”提供依据。
+        {{ props.deltaBs }}% 形成三组实验点。根据 Bolomey 公式
+        f<sub>cu</sub> = a·(C/W) + b 做线性回归，由目标强度反推推荐胶水比 C/W，
+        再由 C/W 线性插值得到推荐砂率。若推荐 C/W 恰等于某对照组，直接取该组精确数值。
       </p>
     </template>
   </el-alert>

@@ -252,7 +252,7 @@ function calculateStrengthMixes(
 
     mixes.push({
       label: variant.label,
-      wb: jsRound(variant.wb, 4),
+      wb: jsRound(variant.wb, 2),
       bs: jsRound(variant.bs, 2),
       mc: jsRound(cement, 2),
       m1: jsRound(flyAsh, 2),
@@ -271,7 +271,9 @@ function calculateStrengthMixes(
   return mixes
 }
 
-/** 强度线性回归：强度 vs (1/wb)，并按目标强度给出推荐水胶比。 */
+/** 强度线性回归（Bolomey 公式形式）：f_cu = a × (C/W) + b。
+ *  由目标强度反推推荐胶水比 C/W_rec，再线性插值得推荐砂率。
+ *  若推荐 C/W 恰等于某对照组 C/W（容差 1e-6），直接取该组的 wb/bs 精确值。 */
 function calculateStrengthRegression(
   strengthMixes: HpcTrialStrengthMixRes[],
   strength0: number | null,
@@ -282,40 +284,70 @@ function calculateStrengthRegression(
   const strengths = [strength0, strengthP, strengthN]
   if (strengthMixes.length < 3 || strengths.some((v) => v === null)) return null
 
-  const pairs: Array<[number, number]> = []
+  // 提取三组 C/W 和 bs
+  const cwVals: number[] = []
+  const bsVals: number[] = []
   for (let i = 0; i < 3; i++) {
-    const mixWb = strengthMixes[i].wb
-    if (mixWb === null || mixWb <= 0) return null
-    pairs.push([1.0 / mixWb, strengths[i] as number])
+    const wb = strengthMixes[i].wb
+    const bs = strengthMixes[i].bs
+    if (wb === null || wb <= 0 || bs === null) return null
+    cwVals.push(1.0 / wb)
+    bsVals.push(bs)
   }
 
-  const count = pairs.length
-  const sumX = pairs.reduce((s, p) => s + p[0], 0)
-  const sumY = pairs.reduce((s, p) => s + p[1], 0)
-  const sumXy = pairs.reduce((s, p) => s + p[0] * p[1], 0)
-  const sumX2 = pairs.reduce((s, p) => s + p[0] * p[0], 0)
-  const denominator = count * sumX2 - sumX * sumX
-  if (Math.abs(denominator) < 1e-9) return null
+  // Bolomey 线性回归: f_cu = a·(C/W) + b
+  const sVals = strengths as number[]
+  const n = 3
+  const sumX = cwVals.reduce((s, v) => s + v, 0)
+  const sumY = sVals.reduce((s, v) => s + v, 0)
+  const sumXY = cwVals.reduce((s, cw, i) => s + cw * sVals[i], 0)
+  const sumX2 = cwVals.reduce((s, cw) => s + cw * cw, 0)
+  const denom = n * sumX2 - sumX * sumX
+  if (Math.abs(denom) < 1e-9) return null
 
-  const a = (count * sumXy - sumX * sumY) / denominator
-  const b = (sumY - a * sumX) / count
-  const averageY = sumY / count
-  const ssTot = pairs.reduce((s, p) => s + (p[1] - averageY) ** 2, 0)
-  const ssRes = pairs.reduce((s, p) => s + (p[1] - (a * p[0] + b)) ** 2, 0)
+  const a = (n * sumXY - sumX * sumY) / denom
+  const b = (sumY - a * sumX) / n
+  const avgY = sumY / n
+  const ssTot = sVals.reduce((s, v) => s + (v - avgY) ** 2, 0)
+  const ssRes = sVals.reduce((s, v, i) => s + (v - (a * cwVals[i] + b)) ** 2, 0)
   const r2 = ssTot === 0 ? 1.0 : 1.0 - ssRes / ssTot
 
   let recommendWb: number | null = null
+  let recommendBs: number | null = null
+  let predictStrength: number | null = null
+  let matchGroupIndex = -1
+
   if (targetStrength !== null && Math.abs(a) > 1e-9) {
     const recommendedStrength = targetStrength + RECOMMEND_STRENGTH_MARGIN
-    const targetCw = (recommendedStrength - b) / a
-    if (targetCw > 0) {
-      recommendWb = truncDigits(1.0 / targetCw, RECOMMEND_WB_DIGITS)
-    }
-  }
+    // Bolomey: C/W_rec = (target - b) / a
+    const cwRec = (recommendedStrength - b) / a
+    if (cwRec > 0) {
+      recommendWb = jsRound(1.0 / cwRec, 2)
 
-  let predictStrength: number | null = null
-  if (recommendWb !== null && recommendWb > 0) {
-    predictStrength = jsRound(a / recommendWb + b, 1)
+      // 用 W/B 保留两位小数后的值匹配对照组（而非浮点 C/W），
+      // 消除回归系数浮点误差导致的匹配失败。容差 0.005 覆盖 2dp 舍入边界。
+      const wbRounded = recommendWb
+      const matchIdx = strengthMixes.findIndex(
+        (mix) => mix.wb !== null && Math.abs(mix.wb - wbRounded) < 0.005,
+      )
+      if (matchIdx >= 0) {
+        // 精确匹配：取对照组 wb/bs 并标记
+        recommendBs = jsRound(strengthMixes[matchIdx].bs!, 2)
+        matchGroupIndex = matchIdx
+      } else {
+        // 无匹配：线性插值砂率 bs = c·(C/W) + d
+        const sumBs = bsVals.reduce((s, v) => s + v, 0)
+        const sumCwBs = cwVals.reduce((s, cw, i) => s + cw * bsVals[i], 0)
+        const denomBs = n * sumX2 - sumX * sumX
+        if (Math.abs(denomBs) > 1e-9) {
+          const c_coef = (n * sumCwBs - sumX * sumBs) / denomBs
+          const d_coef = (sumBs - c_coef * sumX) / n
+          recommendBs = jsRound(c_coef * cwRec + d_coef, 2)
+        }
+      }
+
+      predictStrength = jsRound(a * cwRec + b, 1)
+    }
   }
 
   return {
@@ -323,6 +355,8 @@ function calculateStrengthRegression(
     b: jsRound(b, 2),
     r2: jsRound(r2, 4),
     recommend_wb: recommendWb,
+    recommend_bs: recommendBs,
+    match_group_index: matchGroupIndex,
     predict_strength: predictStrength,
   }
 }
@@ -487,6 +521,24 @@ export function calcHpcTrial(req: HpcTrialReq): HpcTrialRes {
     req.mg, req.alpha,
     req.wb_adj, req.mb_adj, req.sand_ratio_adj, req.alpha_adj,
   )
+
+  // 当推荐值与对照组匹配时，调整配合比应直接取对照组数据确保一致
+  if (strengthRegression && strengthRegression.match_group_index >= 0) {
+    const matchedMix = strengthMixes[strengthRegression.match_group_index]
+    if (matchedMix && matchedMix.mc !== null) {
+      adaptResult.mc = matchedMix.mc
+      adaptResult.m1 = matchedMix.m1
+      adaptResult.m2 = matchedMix.m2
+      adaptResult.m3 = matchedMix.m3
+      adaptResult.m4 = matchedMix.m4
+      adaptResult.mg = matchedMix.mg
+      adaptResult.ms = matchedMix.ms
+      adaptResult.mw = matchedMix.mw
+      adaptResult.ma = matchedMix.ma
+      adaptResult.total = matchedMix.total
+    }
+  }
+
   const calculatedDensity = adaptResult.total
   const densityCorrectionFactor = calculateDensityCorrectionFactor(req.measured_density, calculatedDensity)
   const labMix = calculateLabMix(adaptResult, densityCorrectionFactor)
