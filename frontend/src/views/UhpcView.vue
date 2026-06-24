@@ -6,7 +6,6 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { deleteRecord, type RecordItem } from '../api/records'
 import { listProjectRecords, listProjects } from '../api/projects'
 import type { Project } from '../api/projects'
-import { exportRecord, downloadBlob } from '../api/exchange'
 import ImportDialog from '../components/ImportDialog.vue'
 import RecordTable from '../components/RecordTable.vue'
 import UhpcSidebarSummary from '../components/uhpc/UhpcSidebarSummary.vue'
@@ -82,7 +81,6 @@ const showCalculator = computed<boolean>({
 })
 // ── 导入导出 ──
 const importDialogVisible = ref(false)
-const exportingId = ref<number | null>(null)
 
 const showProjectSelect = computed(() => !showCalculator.value)
 const hasSelectedProject = computed(() => selectedProjectId.value !== null)
@@ -277,20 +275,6 @@ async function handleReset() {
   activeTab.value = 'wb'
 }
 
-// ── 导入导出 ──
-async function handleExportRecord(record: RecordItem) {
-  exportingId.value = record.id
-  try {
-    const blob = await exportRecord(record.id)
-    downloadBlob(blob, `${record.name}_${new Date().toISOString().slice(0, 10)}.xlsx`)
-    ElMessage.success('导出成功')
-  } catch (e: unknown) {
-    ElMessage.error(e instanceof Error ? e.message : '导出失败')
-  } finally {
-    exportingId.value = null
-  }
-}
-
 function handleImportLoad(data: Record<string, unknown>, _category: string) {
   store.importFromExcel(data)
   if (selectedProjectId.value) {
@@ -366,17 +350,6 @@ function handleImportLoad(data: Record<string, unknown>, _category: string) {
                 <el-icon><Delete /></el-icon>
               </el-button>
             </el-tooltip>
-            <el-tooltip content="导出" :show-after="300">
-              <el-button
-                size="small"
-                text
-                type="success"
-                :loading="exportingId === row.id"
-                @click="handleExportRecord(row)"
-              >
-                <el-icon><Download /></el-icon>
-              </el-button>
-            </el-tooltip>
           </template>
         </RecordTable>
 
@@ -445,6 +418,7 @@ function handleImportLoad(data: Record<string, unknown>, _category: string) {
     <ImportDialog
       v-model:visible="importDialogVisible"
       :project-id="selectedProjectId"
+      category="uhpc"
       @load="handleImportLoad"
     />
   </div>

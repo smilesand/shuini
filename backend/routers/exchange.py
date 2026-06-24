@@ -1,21 +1,16 @@
 """
-导入/导出路由
+Excel 导入路由
 ============
-提供 Excel 模板下载、单条/项目导出、导入校验等功能。
+提供 Excel 导入模板下载、导入校验和导入保存功能。
 """
 
 from typing import Any
-from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Depends
 from fastapi.responses import Response
-from starlette.responses import StreamingResponse
 
 from models.schemas import ok
 from database import (
-    get_project,
-    list_project_records,
-    get_record,
     save_record,
     create_project,
     is_admin_user,
@@ -23,9 +18,6 @@ from database import (
 from routers.auth import get_current_user
 from services.excel_export import (
     generate_template_bytes,
-    generate_record_export_bytes,
-    generate_project_export_bytes,
-    _export_filename,
 )
 from services.excel_import import parse_and_validate_excel, parse_project_import_excel
 
@@ -48,64 +40,6 @@ def download_template(category: str = Query("hpc", description="配比类别: hp
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"模板生成失败: {e}")
-
-
-# ── 导出 ──────────────────────────────────────────────────────────────────────
-
-@router.get("/export/record/{record_id}", summary="导出单条记录")
-def export_record(record_id: int, username=Depends(get_current_user)):
-    record = get_record(
-        record_id,
-        username=username,
-        is_admin=is_admin_user(username),
-    )
-    if not record:
-        raise HTTPException(status_code=404, detail="记录不存在")
-
-    try:
-        project_name = ""
-        pid = record.get("project_id")
-        if pid:
-            project = get_project(pid, username=username, is_admin=is_admin_user(username))
-            if project:
-                project_name = project.get("project_name", "")
-
-        content = generate_record_export_bytes(record, project_name)
-        name = record.get("name", "record")
-        filename = _export_filename(name)
-        encoded_filename = quote(filename, safe="")
-        return Response(
-            content=content,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={
-                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
-            },
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"导出失败: {e}")
-
-
-@router.get("/export/project/{project_id}", summary="导出项目及其所有记录")
-def export_project(project_id: int, username=Depends(get_current_user)):
-    project = get_project(project_id, username=username, is_admin=is_admin_user(username))
-    if not project:
-        raise HTTPException(status_code=404, detail="项目不存在")
-
-    try:
-        records = list_project_records(project_id, username=username, is_admin=is_admin_user(username))
-        content = generate_project_export_bytes(project, records)
-        code = project.get("project_code", "project")
-        filename = _export_filename(code)
-        encoded_filename = quote(filename, safe="")
-        return Response(
-            content=content,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={
-                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
-            },
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"导出失败: {e}")
 
 
 # ── 导入校验 ──────────────────────────────────────────────────────────────────

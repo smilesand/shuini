@@ -6,7 +6,6 @@ import { deleteRecord } from '../api/records'
 import type { RecordItem } from '../api/records'
 import { getProject, updateProject, listProjectRecords } from '../api/projects'
 import type { Project } from '../api/projects'
-import { exportProject, exportRecord, downloadBlob } from '../api/exchange'
 import ImportDialog from '../components/ImportDialog.vue'
 import { useCalcStore } from '../stores/calcStore'
 import { useUhpcStore } from '../stores/uhpcStore'
@@ -28,8 +27,6 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 // ── 导入导出 ──
 const importDialogVisible = ref(false)
-const exporting = ref(false)
-const exportingRecordId = ref<number | null>(null)
 
 const pagedRecords = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
@@ -128,34 +125,6 @@ async function handleDeleteRecord(record: RecordItem) {
 
 onMounted(loadProject)
 
-// ── 导入导出 ──
-async function handleExportProject() {
-  exporting.value = true
-  try {
-    const blob = await exportProject(projectId)
-    const name = project.value?.project_code || 'project'
-    downloadBlob(blob, `${name}_${new Date().toISOString().slice(0, 10)}.xlsx`)
-    ElMessage.success('项目导出成功')
-  } catch (e: unknown) {
-    ElMessage.error(e instanceof Error ? e.message : '导出失败')
-  } finally {
-    exporting.value = false
-  }
-}
-
-async function handleExportRecord(record: RecordItem) {
-  exportingRecordId.value = record.id
-  try {
-    const blob = await exportRecord(record.id)
-    downloadBlob(blob, `${record.name}_${new Date().toISOString().slice(0, 10)}.xlsx`)
-    ElMessage.success('导出成功')
-  } catch (e: unknown) {
-    ElMessage.error(e instanceof Error ? e.message : '导出失败')
-  } finally {
-    exportingRecordId.value = null
-  }
-}
-
 function handleImportLoad(data: Record<string, unknown>, category: string) {
   if (category === 'uhpc') {
     uhpcStore.importFromExcel(data)
@@ -185,9 +154,6 @@ function handleImportLoad(data: Record<string, unknown>, category: string) {
           <div style="display:flex;gap:8px">
             <el-button size="small" @click="editVisible = true">
               <el-icon><Edit /></el-icon> 编辑
-            </el-button>
-            <el-button size="small" type="primary" :loading="exporting" @click="handleExportProject">
-              <el-icon><Download /></el-icon> 导出项目
             </el-button>
           </div>
         </div>
@@ -238,17 +204,6 @@ function handleImportLoad(data: Record<string, unknown>, category: string) {
             <el-tooltip content="删除" :show-after="300">
               <el-button size="small" text type="danger" @click="handleDeleteRecord(row)">
                 <el-icon><Delete /></el-icon>
-              </el-button>
-            </el-tooltip>
-            <el-tooltip content="导出" :show-after="300">
-              <el-button
-                size="small"
-                text
-                type="success"
-                :loading="exportingRecordId === row.id"
-                @click="handleExportRecord(row)"
-              >
-                <el-icon><Download /></el-icon>
               </el-button>
             </el-tooltip>
           </div>

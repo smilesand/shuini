@@ -2,10 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listProjects, deleteProject, createProject } from '../api/projects'
+import { listProjects, deleteProject, createProject, listProjectRecords } from '../api/projects'
 import type { Project, ProjectCreateReq } from '../api/projects'
-import { exportProject, downloadBlob } from '../api/exchange'
 import ImportProjectDialog from '../components/ImportProjectDialog.vue'
+import { exportProjectReportPdf } from '../utils/projectReportPdf'
 
 const router = useRouter()
 const loading = ref(false)
@@ -19,7 +19,7 @@ const dialogVisible = ref(false)
 const creating = ref(false)
 const form = ref<ProjectCreateReq>({ project_code: '', project_name: '', requirements: '' })
 const importProjectVisible = ref(false)
-const exportingId = ref<number | null>(null)
+const exportingProjectId = ref<number | null>(null)
 
 async function fetchProjects() {
   loading.value = true
@@ -62,16 +62,20 @@ async function handleCreate() {
   }
 }
 
-async function handleExportProject(project: Project) {
-  exportingId.value = project.id
+async function handleExportProjectPdf(project: Project) {
+  exportingProjectId.value = project.id
   try {
-    const blob = await exportProject(project.id)
-    downloadBlob(blob, `${project.project_code}_${new Date().toISOString().slice(0, 10)}.xlsx`)
-    ElMessage.success('导出成功')
+    const records = await listProjectRecords(project.id)
+    if (records.length === 0) {
+      ElMessage.warning('该项目下暂无配比记录可导出')
+      return
+    }
+
+    await exportProjectReportPdf(project, records)
   } catch (e: unknown) {
-    ElMessage.error(e instanceof Error ? e.message : '导出失败')
+    ElMessage.error(e instanceof Error ? e.message : '导出项目PDF失败')
   } finally {
-    exportingId.value = null
+    exportingProjectId.value = null
   }
 }
 
@@ -115,7 +119,7 @@ onMounted(fetchProjects)
         <el-table-column prop="created_by" label="创建人" width="100" />
         <el-table-column prop="record_count" label="配比数" width="80" align="center" />
         <el-table-column prop="created_at" label="创建时间" width="170" />
-        <el-table-column label="操作" width="180" fixed="right" align="center">
+        <el-table-column label="操作" width="220" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-group">
               <el-tooltip content="详情" :show-after="300">
@@ -123,15 +127,15 @@ onMounted(fetchProjects)
                   <el-icon><InfoFilled /></el-icon>
                 </el-button>
               </el-tooltip>
-              <el-tooltip content="导出" :show-after="300">
+              <el-tooltip content="导出项目PDF" :show-after="300">
                 <el-button
                   size="small"
                   text
                   type="success"
-                  :loading="exportingId === row.id"
-                  @click="handleExportProject(row)"
+                  :loading="exportingProjectId === row.id"
+                  @click="handleExportProjectPdf(row)"
                 >
-                  <el-icon><Download /></el-icon>
+                  <el-icon><Printer /></el-icon>
                 </el-button>
               </el-tooltip>
               <el-tooltip content="删除" :show-after="300">

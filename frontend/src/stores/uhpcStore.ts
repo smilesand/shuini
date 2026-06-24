@@ -613,7 +613,7 @@ export const useUhpcStore = defineStore('uhpc', () => {
     if (recordData.fcu0 != null) calculated.value.designStrength = Number(recordData.fcu0)
   }
 
-  /** 从 Excel 导入数据直接载入（支持 Excel 导出格式的字段名映射） */
+  /** 从 Excel 导入数据直接载入（兼容导入模板和历史字段名） */
   function importFromExcel(data: Record<string, unknown>) {
     resetAll()
 
@@ -621,7 +621,7 @@ export const useUhpcStore = defineStore('uhpc', () => {
     const name = typeof data.record_name === 'string' ? data.record_name : ''
     setCurrentRecord(null, name, null)
 
-    // ── 主要参数（兼容 Excel 导出字段名） ──
+    // ── 主要参数（兼容导入模板和历史字段名） ──
     if (data.strength_grade != null) strengthGrade.value = Number(data.strength_grade)
     else if (data.fcuk != null) strengthGrade.value = Number(data.fcuk)
 

@@ -14,6 +14,7 @@ import {
 const props = defineProps<{
   visible: boolean
   projectId?: number | null
+  category?: 'hpc' | 'uhpc'
   /** 导入后是否自动保存到数据库（默认 false = 仅校验 + 载入） */
   autoSave?: boolean
 }>()
@@ -124,10 +125,10 @@ function handleLoad() {
   dialogVisible.value = false
 }
 
-function handleDownloadTemplate() {
-  const base = import.meta.env?.VITE_API_BASE || '/api'
-  const category = parsedCategory.value || 'hpc'
-  const url = `${base}/exchange/template?category=${category}`
+function handleDownloadTemplate(category: 'hpc' | 'uhpc' = props.category ?? 'hpc') {
+  const base = import.meta.env.BASE_URL || '/'
+  const templateName = category === 'uhpc' ? 'uhpc_import_template.xlsx' : 'hpc_import_template.xlsx'
+  const url = `${base}${templateName}`
   window.open(url, '_blank')
 }
 
@@ -143,12 +144,12 @@ function getItemStatus(item: ValidationItem): 'success' | 'danger' | 'warning' {
 
 function formatDiff(item: ValidationItem): string {
   if (item.diff == null) return '—'
-  return item.diff.toFixed(4)
+  return item.diff.toFixed(2)
 }
 
 function formatValue(val: number | null | undefined): string {
   if (val == null) return '—'
-  return val.toFixed(4)
+  return val.toFixed(2)
 }
 </script>
 
@@ -163,7 +164,7 @@ function formatValue(val: number | null | undefined): string {
     <!-- ── Step 1: 文件上传 ───────────────────────────────────────────── -->
     <div v-if="step === 'upload'" class="import-upload">
       <p class="import-desc">
-        请选择 Excel 配比文件（.xlsx）。模板为横排版面，导入仅需填写「配合比关键参数」区中的关键参数（强度等级、水胶比、砂率、Vg、外加剂掺量），其余参数由系统按默认值补全。
+        请选择 Excel 配比文件（.xlsx）。导入文件需采用「混凝土配合比记录 · 导入模板」版面，系统将校验水胶比、砂率和粗骨料体积用量等关键参数。
       </p>
 
       <div class="upload-area" @click="() => {}">
@@ -182,7 +183,14 @@ function formatValue(val: number | null | undefined): string {
           <template #tip>
             <div class="el-upload__tip">
               仅支持 .xlsx 格式。可先
-              <el-link type="primary" @click="handleDownloadTemplate">下载模板</el-link>
+              <template v-if="props.category">
+                <el-link type="primary" @click.stop="handleDownloadTemplate()">下载模板</el-link>
+              </template>
+              <template v-else>
+                <el-link type="primary" @click.stop="handleDownloadTemplate('hpc')">下载HPC模板</el-link>
+                / 
+                <el-link type="primary" @click.stop="handleDownloadTemplate('uhpc')">下载UHPC模板</el-link>
+              </template>
               参考格式。
             </div>
           </template>
@@ -209,7 +217,7 @@ function formatValue(val: number | null | undefined): string {
       <el-result
         :icon="allPassed ? 'success' : 'error'"
         :title="allPassed ? '校验全部通过' : '校验未完全通过'"
-        :sub-title="allPassed ? '所有关键参数均在容差范围内' : '部分参数超出容差范围，请检查后重新导入'"
+        :sub-title="allPassed ? '关键参数合理性评价通过' : '部分关键参数偏高或偏低，请检查后重新导入'"
       >
         <template v-if="!allPassed && hasWarning" #extra>
           <el-alert
@@ -233,17 +241,17 @@ function formatValue(val: number | null | undefined): string {
         style="margin-top: 16px"
       >
         <el-table-column prop="param" label="校验项" width="140" />
-        <el-table-column label="重算值" width="100" align="center">
+        <el-table-column label="计算值" width="100" align="center">
           <template #default="{ row }">
             {{ formatValue(row.expected) }}
           </template>
         </el-table-column>
-        <el-table-column label="导入值" width="100" align="center">
+        <el-table-column label="输入值" width="100" align="center">
           <template #default="{ row }">
             {{ formatValue(row.actual) }}
           </template>
         </el-table-column>
-        <el-table-column label="差值" width="100" align="center">
+        <el-table-column label="偏差值" width="100" align="center">
           <template #default="{ row }">
             {{ formatDiff(row) }}
           </template>
@@ -254,13 +262,13 @@ function formatValue(val: number | null | undefined): string {
             <span v-if="row.tolerance_unit">{{ row.tolerance_unit }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="结果" width="80" align="center">
+        <el-table-column label="评价" width="80" align="center">
           <template #default="{ row }">
             <el-tag
               :type="getItemStatus(row)"
               size="small"
             >
-              {{ row.passed ? '通过' : '未通过' }}
+              {{ row.passed ? '合理' : '偏离' }}
             </el-tag>
           </template>
         </el-table-column>

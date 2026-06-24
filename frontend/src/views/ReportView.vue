@@ -3,7 +3,6 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listProjects, listProjectRecords, type Project } from '../api/projects'
 import { type RecordItem } from '../api/records'
-import { exportRecord, exportProject, downloadBlob } from '../api/exchange'
 import RecordTable from '../components/RecordTable.vue'
 import ImportDialog from '../components/ImportDialog.vue'
 import ImportProjectDialog from '../components/ImportProjectDialog.vue'
@@ -22,8 +21,6 @@ const loadingRecords = ref(false)
 const projectSearch = ref('')
 const importDialogVisible = ref(false)
 const importProjectVisible = ref(false)
-const exportingId = ref<number | null>(null)
-const exportingProject = ref(false)
 
 async function fetchProjects() {
   loadingProjects.value = true
@@ -68,33 +65,6 @@ async function refreshRecords() {
   }
 }
 
-async function handleExportRecord(record: RecordItem) {
-  exportingId.value = record.id
-  try {
-    const blob = await exportRecord(record.id)
-    downloadBlob(blob, `${record.name}_${new Date().toISOString().slice(0, 10)}.xlsx`)
-    ElMessage.success('导出成功')
-  } catch (e: unknown) {
-    ElMessage.error(e instanceof Error ? e.message : '导出失败')
-  } finally {
-    exportingId.value = null
-  }
-}
-
-async function handleExportProject() {
-  if (!selectedProject.value) return
-  exportingProject.value = true
-  try {
-    const blob = await exportProject(selectedProject.value.id)
-    downloadBlob(blob, `${selectedProject.value.project_code}_${new Date().toISOString().slice(0, 10)}.xlsx`)
-    ElMessage.success('项目导出成功')
-  } catch (e: unknown) {
-    ElMessage.error(e instanceof Error ? e.message : '导出失败')
-  } finally {
-    exportingProject.value = false
-  }
-}
-
 function handleImportLoad(_data: Record<string, unknown>, _category: string) {
   ElMessage.success('导入成功')
   void refreshRecords()
@@ -123,6 +93,36 @@ function extractEval(record: RecordItem, key: string) {
   const val = trialData.inputs ? trialData.inputs[key] : trialData[key];
   if (val === null || val === undefined) return '';
   return val;
+}
+
+function pickObject(...candidates: unknown[]): Record<string, unknown> | null {
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+      return candidate as Record<string, unknown>
+    }
+  }
+  return null
+}
+
+function resolveFinalMix(record: RecordItem, flatData: Record<string, unknown>): Record<string, unknown> {
+  const recordData = record.record_data as Record<string, unknown> | undefined
+  const trialData = recordData?.trial_data as Record<string, unknown> | undefined
+  const trialCalc = trialData?.calculated as Record<string, unknown> | undefined
+  const calc = recordData?.calculated as Record<string, unknown> | undefined
+  return pickObject(
+    trialCalc?.labMix,
+    trialCalc?.lab_mix,
+    trialData?.lab_mix,
+    trialCalc?.adaptResult,
+    trialCalc?.adapt_result,
+    calc?.labMix,
+    calc?.lab_mix,
+    calc?.adaptResult,
+    calc?.adapt_result,
+    calc?.mixProportion,
+    calc,
+    flatData,
+  ) ?? flatData
 }
 
 // ── Export report ─────────────────────────────────────────────
@@ -188,6 +188,8 @@ function exportReport(record: RecordItem) {
   }
   flattenObj(data)
 
+  const isUHPC = record.category === 'uhpc' || record.category === 'uhpc_trial'
+
   const strengthGrade = flatData.strengthGrade || flatData.strength_grade || flatData.fcuk || '—'
   const designStrength = flatData.fcu0 || flatData.designStrength || flatData.design_strength || flatData.sTargetStrength || '—'
   const totalBinder = flatData.mb || flatData.total_binder || (flatData.binder && typeof flatData.binder === 'number' ? flatData.binder : null) || '—'
@@ -217,23 +219,27 @@ function exportReport(record: RecordItem) {
   const rho4 = flatData.rho4 ?? null
   const rhog = flatData.rhog ?? null
   const rhos = flatData.rhos ?? null
+  const tensileStrength = flatData.tensile_strength ?? flatData.tensileStrength ?? null
+  const maxParticleSize = flatData.max_particle_size ?? flatData.maxParticleSize ?? null
+  const flyAshPeakSize = flatData.fly_ash_peak_size ?? flatData.flyAshPeakSize ?? null
+  const microBeadPeakSize = flatData.micro_bead_peak_size ?? flatData.microBeadPeakSize ?? null
+  const airContent = flatData.air_content ?? flatData.va ?? null
+  const vg = flatData.vg ?? null
 
   // ── Strength pass/fail: 总体均值 ≥ multiplier × 强度等级 且 组最小值 ≥ 0.95×强度等级
   const targetForEval = sTargetStr || flatData.fcu0 || flatData.designStrength || flatData.design_strength
   const strengthGradeNum = Number(flatData.fcuk || flatData.strengthGrade || flatData.strength_grade || NaN)
 
   if (strengthOverallAvg !== null && Number.isFinite(strengthGradeNum)) {
-    const cat = record.category
-    const strengthMult = (cat === 'uhpc' || cat === 'uhpc_trial') ? 1.10 : 1.15
+    const strengthMult = isUHPC ? 1.10 : 1.15
     const overallOk = strengthOverallAvg >= strengthGradeNum * strengthMult
     const minThreshold = strengthGradeNum * 0.95
     const minGroupOk = strengthMinGroupAvg !== null ? strengthMinGroupAvg >= minThreshold : null
     strengthPass = overallOk && (minGroupOk !== false)
   }
 
-  // Lab Mix
-  const calc = record.record_data?.calculated as Record<string, unknown> | undefined
-  const mix: Record<string, unknown> = (calc?.labMix || calc?.lab_mix || calc?.mixProportion || calc || flatData) as Record<string, unknown>
+  // Lab Mix: prefer final mix from 配合比校正与确认 trial snapshots.
+  const mix = resolveFinalMix(record, flatData)
   const mmc = mix.mc ?? mix.cement ?? '—'
   const mm1 = mix.m1 ?? mix.flyAsh ?? mix.fly_ash ?? '—'
   const mm2 = mix.m2 ?? mix.slagPowder ?? mix.slag_powder ?? '—'
@@ -261,8 +267,6 @@ function exportReport(record: RecordItem) {
   const bmsf = msf !== '—' ? (toNum(msf) * vScale) : '—'
   const bmtot = mtot !== '—' ? (toNum(mtot) * vScale) : '—'
 
-  const isUHPC = record.category === 'uhpc' || record.category === 'uhpc_trial'
-
   const html = generateReportHtml({
     project,
     record,
@@ -284,6 +288,7 @@ function exportReport(record: RecordItem) {
     vgReferenceCode,
     reqSlump, reqSpread, maxAggregateSize,
     fb, rhoc, rho1, rho2, rho3, rho4, rhog, rhos,
+    tensileStrength, maxParticleSize, flyAshPeakSize, microBeadPeakSize, vg, airContent,
     strengthGroups,
     groupEvals,
     strengthOverallAvg,
@@ -296,11 +301,11 @@ function exportReport(record: RecordItem) {
   el.innerHTML = html
   html2pdf()
     .set({
-      margin: [10, 10, 10, 10],
+      margin: [8, 8, 8, 8],
       filename: `${record.name}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
     })
     .from(el)
     .save()
@@ -389,10 +394,6 @@ onMounted(fetchProjects)
                 <el-icon><Upload /></el-icon>
                 导入项目
               </el-button>
-              <el-button size="small" :loading="exportingProject" @click="handleExportProject">
-                <el-icon><Download /></el-icon>
-                导出项目
-              </el-button>
             </div>
           </div>
           <div class="cs-section-body">
@@ -436,17 +437,6 @@ onMounted(fetchProjects)
                 <el-tooltip content="导出PDF" :show-after="300">
                   <el-button size="small" text type="primary" @click="exportReport(row)">
                     <el-icon><Printer /></el-icon>
-                  </el-button>
-                </el-tooltip>
-                <el-tooltip content="导出Excel" :show-after="300">
-                  <el-button
-                    size="small"
-                    text
-                    type="success"
-                    :loading="exportingId === row.id"
-                    @click="handleExportRecord(row)"
-                  >
-                    <el-icon><Download /></el-icon>
                   </el-button>
                 </el-tooltip>
               </template>

@@ -1,9 +1,7 @@
 """
-Excel 导出服务
+Excel 模板服务
 =============
-生成配比导入模板、单条记录导出、项目导出（多 sheet）。
-版面与 PDF 报告一致：分节横排（性能要求 / 原材料性能 / 配合比关键参数 / 最终配合比）。
-导入只需填写「配合比关键参数（填写区）」中的少量关键参数，其余由系统按默认值补全。
+生成配比导入模板。模板版面与 PDF 报告一致：分节横排（配合比信息 / 混凝土性能要求 / 原材料性能 / 配合比关键参数 / 实验室配合比）。
 使用 openpyxl 生成 .xlsx 文件。
 """
 
@@ -24,6 +22,7 @@ HEADER_FONT = Font(name="微软雅黑", size=10, bold=True, color="FFFFFF")
 SECTION_FILL = PatternFill(start_color="D6E4F0", end_color="D6E4F0", fill_type="solid")
 SECTION_FONT = Font(name="微软雅黑", size=11, bold=True, color="1F4E79")
 INPUT_FILL = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+VALUE_FILL = PatternFill(start_color="92D050", end_color="92D050", fill_type="solid")
 VALUE_FONT = Font(name="微软雅黑", size=10)
 LABEL_FONT = Font(name="微软雅黑", size=10, bold=True)
 THIN_BORDER = Border(
@@ -117,35 +116,40 @@ def _write_row(ws, row: int, values: list[Any], header: bool = False,
             _style(cell, font=VALUE_FONT, alignment=CENTER_ALIGN)
 
 
+def _write_filled_row(ws, row: int, values: list[Any], fill: PatternFill) -> None:
+    for i, val in enumerate(values, start=1):
+        _style(ws.cell(row=row, column=i, value=val), font=VALUE_FONT, fill=fill, alignment=CENTER_ALIGN)
+
+
 # ── 区块构建 ──────────────────────────────────────────────────────────────────
 def _build_hpc_sheet(ws, name: str, flat: dict[str, Any]) -> None:
-    ncol = 11  # 最终配合比最宽 11 列
+    ncol = 11
     for i in range(1, ncol + 1):
         ws.column_dimensions[get_column_letter(i)].width = 12
     ws.column_dimensions["A"].width = 16
 
-    # 标题
-    cell = ws.cell(row=1, column=1, value=f"混凝土配合比记录 · {name}")
-    _style(cell, font=TITLE_FONT, alignment=LEFT_ALIGN, border=None)
+    cell = ws.cell(row=1, column=1, value="混凝土配合比记录 · 导入模板")
+    _style(cell, font=TITLE_FONT, alignment=CENTER_ALIGN, border=THIN_BORDER)
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=ncol)
-    # 类别标记（供导入识别）
-    _style(ws.cell(row=2, column=1, value="配比类别"), font=LABEL_FONT, alignment=CENTER_ALIGN)
-    _style(ws.cell(row=2, column=2, value="hpc"), font=VALUE_FONT, alignment=CENTER_ALIGN)
-    row = 4
+    row = 2
 
     fcuk = _num(_first(flat, "fcuk", "strengthGrade", "strength_grade"), 1)
+    created_by = _first(flat, "created_by") or "admin"
+    created_at = _first(flat, "created_at") or datetime.now().strftime("%Y.%m.%d")
 
-    # 一、性能要求
-    row = _section_bar(ws, row, 4, "一、性能要求")
-    _write_row(ws, row, ["项目", "强度等级/MPa", "扩展度/mm", "坍落度/mm"], header=True)
+    row = _section_bar(ws, row, ncol, "一、 配合比信息")
+    _write_row(ws, row, ["配合比名称", "配合比类型", "创建人", "创建时间"], header=True)
     row += 1
-    _write_row(ws, row, ["要求", fcuk,
-                         _num(_first(flat, "req_spread", "reqSpread"), 0),
-                         _num(_first(flat, "req_slump", "reqSlump"), 0)])
+    _write_filled_row(ws, row, [name, "HPC", created_by, created_at], VALUE_FILL)
     row += 2
 
-    # 二、原材料性能
-    row = _section_bar(ws, row, 9, "二、原材料性能")
+    row = _section_bar(ws, row, ncol, "二、 混凝土性能要求")
+    _write_row(ws, row, ["强度等级/MPa", "扩展度/mm", "坍落度/mm", "其他"], header=True)
+    row += 1
+    _write_filled_row(ws, row, [fcuk, _num(_first(flat, "req_spread", "reqSpread"), 0), _num(_first(flat, "req_slump", "reqSlump"), 0), ""], VALUE_FILL)
+    row += 2
+
+    row = _section_bar(ws, row, ncol, "三、 原材料性能")
     _style(ws.cell(row=row, column=1, value="胶材28d强度/MPa"), font=HEADER_FONT, fill=HEADER_FILL, alignment=CENTER_ALIGN)
     ws.merge_cells(start_row=row, start_column=1, end_row=row + 1, end_column=1)
     _style(ws.cell(row=row, column=2, value="表观密度/kg/m³"), font=HEADER_FONT, fill=HEADER_FILL, alignment=CENTER_ALIGN)
@@ -161,40 +165,44 @@ def _build_hpc_sheet(ws, name: str, flat: dict[str, Any]) -> None:
             continue
         _style(ws.cell(row=row, column=i, value=sub), font=HEADER_FONT, fill=HEADER_FILL, alignment=CENTER_ALIGN)
     row += 1
-    _write_row(ws, row, [
+    _write_filled_row(ws, row, [
         _num(_first(flat, "fb", "binderStrength28d"), 1),
         _num(flat.get("rhoc"), 0), _num(flat.get("rho1"), 0), _num(flat.get("rho2"), 0),
         _num(flat.get("rho3"), 0), _num(flat.get("rho4"), 0), _num(flat.get("rhog"), 0),
         _num(flat.get("rhos"), 0),
         _first(flat, "max_aggregate_size", "maxAggregateSize"),
-    ])
+    ], VALUE_FILL)
     row += 2
 
-    # 三、配合比关键参数（导入填写区）
-    row = _section_bar(ws, row, 5, "三、配合比关键参数（导入仅需填写本区）")
-    _write_row(ws, row, ["强度等级/MPa", "水胶比 W/B", "砂率 βs/%", "粗骨料体积 Vg/m³", "外加剂掺量 α/%"], header=True)
+    row = _section_bar(ws, row, ncol, "四、 配合比关键参数")
+    _write_row(ws, row, ["水胶比 W/B", "水泥/%", "粉煤灰/%", "矿粉/%", "微珠/%", "硅灰/%", "胶材总量", "砂率/%", "粗骨料体积 /m³", "外加剂/%", "含气量/m3"], header=True)
     row += 1
-    _write_row(ws, row, [
-        fcuk,
+    _write_filled_row(ws, row, [
         _num(_first(flat, "wb", "water_binder_ratio"), 3),
+        _pct(_first(flat, "bc", "bcp", "cement_pct")),
+        _pct(_first(flat, "b1p", "fly_ash_pct")),
+        _pct(_first(flat, "b2p", "slag_powder_pct")),
+        _pct(_first(flat, "b3p", "micro_bead_pct")),
+        _pct(_first(flat, "b4p", "silica_fume_pct")),
+        _num(_first(flat, "mb", "total_binder"), 0),
         _pct(_first(flat, "sand_ratio", "sandRatio")),
-        _num(flat.get("vg"), 3),
+        _num(flat.get("vg"), 2),
         _pct(_first(flat, "alpha", "admixture_ratio"), 2),
-    ], input_cells={1, 2, 3, 4, 5})
+        _num(_first(flat, "air_content", "va"), 2),
+    ], INPUT_FILL)
     row += 2
 
-    # 四、最终配合比
-    row = _section_bar(ws, row, 11, "四、最终配合比")
-    _write_row(ws, row, ["状态", "水泥", "粉煤灰", "矿粉", "微珠", "硅灰", "粗骨料", "细骨料", "水", "外加剂", "合计"], header=True)
+    row = _section_bar(ws, row, ncol, "五、 实验室配合比")
+    _write_row(ws, row, ["用量", "水泥", "粉煤灰", "矿粉", "微珠", "硅灰", "粗骨料", "细骨料", "水", "外加剂", "合计"], header=True)
     row += 1
     keys = ["mc", "m1", "m2", "m3", "m4", "mg", "ms", "mw", "ma", "total_mass"]
     per_m3 = [_num(_first(flat, k, "totalMass") if k == "total_mass" else flat.get(k), 2) for k in keys]
-    _write_row(ws, row, ["每方用量(kg/m³)", *per_m3])
+    _write_filled_row(ws, row, ["每方用量(kg/m³)", *per_m3], VALUE_FILL)
     row += 1
     v_batch = _num(_first(flat, "batchVolume", "batch_volume"), 0) or 20
     scale = v_batch / 1000.0
     batch = [round(x * scale, 3) if isinstance(x, (int, float)) and not isinstance(x, bool) else None for x in per_m3]
-    _write_row(ws, row, [f"试拌用量(kg/{int(v_batch)}L)", *batch])
+    _write_filled_row(ws, row, [f"试拌用量(kg/{int(v_batch)}L)", *batch], INPUT_FILL)
 
 
 def _build_uhpc_sheet(ws, name: str, flat: dict[str, Any]) -> None:
@@ -203,49 +211,79 @@ def _build_uhpc_sheet(ws, name: str, flat: dict[str, Any]) -> None:
         ws.column_dimensions[get_column_letter(i)].width = 12
     ws.column_dimensions["A"].width = 16
 
-    cell = ws.cell(row=1, column=1, value=f"UHPC 配合比记录 · {name}")
-    _style(cell, font=TITLE_FONT, alignment=LEFT_ALIGN, border=None)
+    cell = ws.cell(row=1, column=1, value="混凝土配合比记录 · 导入模板")
+    _style(cell, font=TITLE_FONT, alignment=CENTER_ALIGN, border=THIN_BORDER)
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=ncol)
-    _style(ws.cell(row=2, column=1, value="配比类别"), font=LABEL_FONT, alignment=CENTER_ALIGN)
-    _style(ws.cell(row=2, column=2, value="uhpc"), font=VALUE_FONT, alignment=CENTER_ALIGN)
-    row = 4
+    row = 2
 
     grade = _num(_first(flat, "strengthGrade", "strength_grade", "fcuk"), 0)
+    created_by = _first(flat, "created_by") or "admin"
+    created_at = _first(flat, "created_at") or datetime.now().strftime("%Y.%m.%d")
 
-    # 一、性能要求
-    row = _section_bar(ws, row, 4, "一、性能要求")
-    _write_row(ws, row, ["项目", "强度等级/MPa", "扩展度/mm", "坍落度/mm"], header=True)
+    row = _section_bar(ws, row, ncol, "一、 配合比信息")
+    _write_row(ws, row, ["配合比名称", "配合比类型", "创建人", "创建时间"], header=True)
     row += 1
-    _write_row(ws, row, ["要求", grade,
-                         _num(_first(flat, "req_spread", "reqSpread"), 0),
-                         _num(_first(flat, "req_slump", "reqSlump"), 0)])
+    _write_filled_row(ws, row, [name, "UHPC", created_by, created_at], VALUE_FILL)
     row += 2
 
-    # 二、配合比关键参数（导入填写区）
-    row = _section_bar(ws, row, 5, "二、配合比关键参数（导入仅需填写本区）")
-    _write_row(ws, row, ["强度等级/MPa", "水胶比 W/B", "胶砂比", "钢纤维体积掺量/%", "外加剂掺量 α/%"], header=True)
+    row = _section_bar(ws, row, ncol, "二、 混凝土性能要求")
+    _write_row(ws, row, ["强度等级/MPa", "扩展度/mm", "抗拉强度/MPa", "其他"], header=True)
     row += 1
-    _write_row(ws, row, [
-        grade,
+    _write_filled_row(ws, row, [grade, _num(_first(flat, "req_spread", "reqSpread"), 0), _num(_first(flat, "tensile_strength"), 1), ""], VALUE_FILL)
+    row += 2
+
+    row = _section_bar(ws, row, ncol, "三、 原材料性能")
+    _style(ws.cell(row=row, column=1, value="表观密度/kg/m³"), font=HEADER_FONT, fill=HEADER_FILL, alignment=CENTER_ALIGN)
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=5)
+    for c in range(1, 6):
+        _style(ws.cell(row=row, column=c), font=HEADER_FONT, fill=HEADER_FILL)
+    _style(ws.cell(row=row, column=6, value="粒径/μm"), font=HEADER_FONT, fill=HEADER_FILL, alignment=CENTER_ALIGN)
+    ws.merge_cells(start_row=row, start_column=6, end_row=row, end_column=8)
+    for c in range(6, 9):
+        _style(ws.cell(row=row, column=c), font=HEADER_FONT, fill=HEADER_FILL)
+    row += 1
+    _write_row(ws, row, ["水泥", "粉煤灰", "微珠", "硅灰", "细骨料", "体系最大粒径", "粉煤灰峰值粒径", "微珠峰值粒径"], header=True)
+    row += 1
+    _write_filled_row(ws, row, [
+        _num(_first(flat, "cement_density", "rhoc"), 0),
+        _num(_first(flat, "fly_ash_density", "rho1"), 0),
+        _num(_first(flat, "micro_bead_density", "rho3"), 0),
+        _num(_first(flat, "silica_fume_density", "rho4"), 0),
+        _num(_first(flat, "sand_density", "rhos"), 0),
+        _num(_first(flat, "max_particle_size"), 0),
+        _num(_first(flat, "fly_ash_peak_size"), 0),
+        _num(_first(flat, "micro_bead_peak_size"), 0),
+    ], VALUE_FILL)
+    row += 2
+
+    row = _section_bar(ws, row, ncol, "四、 配合比关键参数")
+    _write_row(ws, row, ["水胶比 W/B", "水泥/%", "粉煤灰/%", "微珠/%", "硅灰/%", "胶材总量", "钢纤维/%", "砂胶比", "外加剂/%", ""], header=True)
+    row += 1
+    _write_filled_row(ws, row, [
         _num(_first(flat, "waterBinderRatio", "water_binder_ratio", "wb"), 3),
-        _num(_first(flat, "sandBinderRatio", "sand_binder_ratio"), 3),
+        _pct(_first(flat, "bc", "bcp", "cement_pct")),
+        _pct(_first(flat, "b1p", "fly_ash_pct")),
+        _pct(_first(flat, "b3p", "micro_bead_pct")),
+        _pct(_first(flat, "b4p", "silica_fume_pct")),
+        _num(_first(flat, "mb", "total_binder"), 0),
         _pct(_first(flat, "steelFiberVolumeRatio", "steel_fiber_volume_ratio"), 2),
+        _num(_first(flat, "sandBinderRatio", "sand_binder_ratio", "sand_ratio"), 2),
         _pct(_first(flat, "admixtureRatio", "admixture_ratio", "alpha"), 2),
-    ], input_cells={1, 2, 3, 4, 5})
+        "",
+    ], INPUT_FILL)
     row += 2
 
-    # 三、最终配合比
-    row = _section_bar(ws, row, 10, "三、最终配合比")
-    _write_row(ws, row, ["状态", "水泥", "粉煤灰", "微珠", "硅灰", "细骨料(砂)", "钢纤维", "水", "外加剂", "合计"], header=True)
+    row = _section_bar(ws, row, ncol, "五、 实验室配合比")
+    _write_row(ws, row, ["用量", "水泥", "粉煤灰", "微珠", "硅灰", "细骨料", "钢纤维", "水", "外加剂", "合计"], header=True)
     row += 1
     keys = ["mc", "m1", "m3", "m4", "ms", "msf", "mw", "ma", "total"]
     per_m3 = [_num(_first(flat, "total", "totalMass", "total_mass") if k == "total" else flat.get(k), 2) for k in keys]
-    _write_row(ws, row, ["每方用量(kg/m³)", *per_m3])
+    _write_filled_row(ws, row, ["每方用量(kg/m³)", *per_m3], VALUE_FILL)
     row += 1
     v_batch = _num(_first(flat, "batchVolume", "batch_volume"), 0) or 20
     scale = v_batch / 1000.0
     batch = [round(x * scale, 3) if isinstance(x, (int, float)) and not isinstance(x, bool) else None for x in per_m3]
-    _write_row(ws, row, [f"试拌用量(kg/{int(v_batch)}L)", *batch])
+    _write_filled_row(ws, row, [f"试拌用量(kg/{int(v_batch)}L)", *batch], INPUT_FILL)
 
 
 def _build_record_sheet(ws, record: dict[str, Any]) -> None:

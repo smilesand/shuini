@@ -1,13 +1,10 @@
 """
 Excel 导入与校验服务
 ===================
-解析上传的 .xlsx 文件（横排分节版面，与 PDF/导出一致）。
+解析上传的 .xlsx 文件（横排分节版面，与 PDF 模板一致）。
 
-版面采用「表头行 + 数值行」的横排结构，导入只需填写
-「配合比关键参数（填写区）」中的少量关键参数：
-  HPC : 强度等级、水胶比、砂率、Vg、外加剂掺量
-  UHPC: 强度等级、水胶比、胶砂比、钢纤维体积掺量、外加剂掺量
-其余派生/计算字段允许缺省，由前端按默认值补全，校验从宽处理。
+版面采用截图模板中的五个分节：配合比信息、混凝土性能要求、原材料性能、
+配合比关键参数、实验室配合比。导入后校验弹窗只展示关键合理性评价项。
 """
 
 from __future__ import annotations
@@ -20,12 +17,13 @@ from openpyxl import load_workbook
 from services.water_binder import calculate_water_binder_ratio, calculate_fcu0
 
 # 校验容差
-WB_TOLERANCE = 0.01      # 水胶比容差
+WB_TOLERANCE = 0.02      # 水胶比容差（图三要求）
 
-# 配比计算合理范围（导入范围校验：值缺省不校验，超范围视为不合格）
-SLUMP_RANGE = (10.0, 300.0)     # 坍落度 mm
-SPREAD_RANGE = (200.0, 900.0)   # 扩展度 mm
-AGG_SIZE_RANGE = (5.0, 40.0)    # 粗骨料最大粒径 mm
+# 导入合理性范围（缺省不阻断；有值则按范围评价）
+SAND_RATIO_RANGE = (35.0, 50.0)          # 砂率 %
+VG_FALLBACK_RANGE = (0.30, 0.40)         # 粗骨料体积用量 m³
+SAND_BINDER_RATIO_RANGE = (0.80, 1.60)   # UHPC 砂胶比
+STEEL_FIBER_RANGE = (0.0, 4.0)           # UHPC 钢纤维体积掺量 %
 
 
 def _item(param: str, actual: Any, *, expected: Any = None, diff: Any = None,
@@ -74,17 +72,95 @@ def _range_check(param: str, raw: Any, lo: float, hi: float, unit: str,
     return ok
 
 
+def _range_item(param: str, actual: Any, lo: float, hi: float, unit: str = "") -> dict[str, Any]:
+    val = _num_from(actual)
+    if val is None:
+        return _item(param, None, expected=None, diff=None, tolerance=f"{_fmt_num(lo)}~{_fmt_num(hi)}{unit}", passed=False)
+    passed = lo <= val <= hi
+    mid = round((lo + hi) / 2, 4)
+    diff = abs(val - mid)
+    return _item(
+        param,
+        _round(val, 4),
+        expected=mid,
+        diff=_round(diff, 4),
+        tolerance=f"{_fmt_num(lo)}~{_fmt_num(hi)}{unit}",
+        passed=passed,
+    )
+
+
+def _as_percent(value: Any) -> float | None:
+    val = _num_from(value)
+    if val is None:
+        return None
+    return val * 100 if 0 < val < 1 else val
+
+
+def _vg_from_materials(data: dict[str, Any]) -> float | None:
+    vg = _num_from(data.get("vg"))
+    if vg is not None:
+        return vg
+    mg = _num_from(data.get("mg"))
+    rhog = _num_from(data.get("rhog"))
+    if mg is None or rhog is None or rhog <= 0:
+        return None
+    return mg / rhog
+
+
+def _vg_range_from_requirement(data: dict[str, Any]) -> tuple[float, float]:
+    slump = _num_from(data.get("req_slump"))
+    spread = _num_from(data.get("req_spread"))
+    if slump is not None and 180 <= slump <= 220:
+        return 0.37, 0.40
+    if spread is not None:
+        if 500 <= spread <= 600:
+            return 0.35, 0.38
+        if 600 < spread <= 700:
+            return 0.32, 0.36
+        if 700 < spread <= 800:
+            return 0.30, 0.32
+    return VG_FALLBACK_RANGE
+
+
+def _sand_range_from_aggregate(data: dict[str, Any]) -> tuple[float, float]:
+    max_size = _num_from(data.get("max_aggregate_size"))
+    if max_size is None:
+        return SAND_RATIO_RANGE
+    if max_size <= 16:
+        return 40.0, 50.0
+    if max_size <= 20:
+        return 38.0, 46.0
+    if max_size <= 25:
+        return 35.0, 44.0
+    return 32.0, 42.0
+
+
 # ── 横排表头映射：表头标签 → 内部字段名（可多键）──────────────────────────────
 _HEADER_MAP: dict[str, list[str]] = {
     "强度等级/mpa": ["fcuk", "strength_grade"],
+    "抗拉强度/mpa": ["tensile_strength"],
     "扩展度/mm": ["req_spread"],
     "坍落度/mm": ["req_slump"],
     "胶材28d强度/mpa": ["fb"],
     "粗骨料最大粒径/mm": ["max_aggregate_size"],
     "水胶比 w/b": ["wb", "water_binder_ratio"],
+    "水胶比 w/b": ["wb", "water_binder_ratio"],
+    "水胶比w/b": ["wb", "water_binder_ratio"],
+    "水泥/%": ["bc", "bcp", "cement_pct"],
+    "粉煤灰/%": ["b1p", "fly_ash_pct"],
+    "矿粉/%": ["b2p", "slag_powder_pct"],
+    "微珠/%": ["b3p", "micro_bead_pct"],
+    "硅灰/%": ["b4p", "silica_fume_pct"],
+    "胶材总量": ["mb", "total_binder"],
+    "砂率/%": ["sand_ratio"],
     "砂率 βs/%": ["sand_ratio"],
+    "粗骨料体积 /m³": ["vg"],
     "粗骨料体积 vg/m³": ["vg"],
+    "外加剂/%": ["alpha", "admixture_ratio"],
     "外加剂掺量 α/%": ["alpha", "admixture_ratio"],
+    "含气量/m3": ["air_content"],
+    "钢纤维/%": ["steel_fiber_volume_ratio"],
+    "砂胶比": ["sand_binder_ratio"],
     "胶砂比": ["sand_binder_ratio"],
     "钢纤维体积掺量/%": ["steel_fiber_volume_ratio"],
 }
@@ -124,6 +200,120 @@ def _store(result: dict[str, Any], keys: list[str], raw: Any) -> None:
         text = str(raw).strip()
         for k in keys:
             result.setdefault(k, text)
+
+
+def _norm_label(value: Any) -> str:
+    if value is None:
+        return ""
+    return str(value).strip().replace(" ", "").lower()
+
+
+def _is_section(row: list[Any], title: str) -> bool:
+    return any(title in str(cell) for cell in row if cell is not None)
+
+
+def _store_cell(result: dict[str, Any], key: str, raw: Any) -> None:
+    _store(result, [key], raw)
+
+
+def _find_value_row(rows: list[list[Any]], start: int, label: str) -> int | None:
+    for idx in range(start, min(start + 8, len(rows))):
+        if rows[idx] and str(rows[idx][0]).strip().startswith(label):
+            return idx
+    return None
+
+
+def _parse_sections(rows: list[list[Any]], result: dict[str, Any]) -> None:
+    category = str(result.get("category") or "").lower()
+
+    for i, row in enumerate(rows):
+        if _is_section(row, "配合比信息") and i + 2 < len(rows):
+            headers = rows[i + 1]
+            values = rows[i + 2]
+            for c, header in enumerate(headers):
+                label = _norm_label(header)
+                raw = values[c] if c < len(values) else None
+                if label == "配合比名称":
+                    _store_cell(result, "record_name", raw)
+                elif label == "配合比类型":
+                    if raw is not None:
+                        result["category"] = str(raw).strip().lower()
+                        category = result["category"]
+                elif label == "创建人":
+                    _store_cell(result, "created_by", raw)
+                elif label == "创建时间":
+                    _store_cell(result, "created_at", raw)
+
+        elif _is_section(row, "混凝土性能要求") and i + 2 < len(rows):
+            headers = rows[i + 1]
+            values = rows[i + 2]
+            for c, header in enumerate(headers):
+                label = _norm_label(header)
+                raw = values[c] if c < len(values) else None
+                if label == "强度等级/mpa":
+                    _store(result, ["fcuk", "strength_grade"], raw)
+                elif label == "扩展度/mm":
+                    _store_cell(result, "req_spread", raw)
+                elif label == "坍落度/mm":
+                    _store_cell(result, "req_slump", raw)
+                elif label == "抗拉强度/mpa":
+                    _store_cell(result, "tensile_strength", raw)
+
+        elif _is_section(row, "原材料性能"):
+            value_idx = i + 3 if i + 3 < len(rows) else None
+            values = rows[value_idx] if value_idx is not None else []
+            if category == "uhpc":
+                mapping = [
+                    "cement_density", "fly_ash_density", "micro_bead_density", "silica_fume_density",
+                    "sand_density", "max_particle_size", "fly_ash_peak_size", "micro_bead_peak_size",
+                ]
+            else:
+                mapping = ["fb", "rhoc", "rho1", "rho2", "rho3", "rho4", "rhog", "rhos", "max_aggregate_size"]
+            for c, key in enumerate(mapping):
+                if c < len(values):
+                    _store_cell(result, key, values[c])
+
+        elif _is_section(row, "配合比关键参数") and i + 2 < len(rows):
+            headers = rows[i + 1]
+            values = rows[i + 2]
+            for c, header in enumerate(headers):
+                label = _norm_label(header)
+                raw = values[c] if c < len(values) else None
+                keys = _HEADER_MAP.get(label)
+                if keys:
+                    _store(result, keys, raw)
+
+        elif _is_section(row, "实验室配合比") and i + 1 < len(rows):
+            headers = rows[i + 1]
+            value_idx = _find_value_row(rows, i + 2, "每方用量")
+            if value_idx is None:
+                continue
+            values = rows[value_idx]
+            for c, header in enumerate(headers):
+                label = _norm_label(header)
+                raw = values[c] if c < len(values) else None
+                if label == "水泥":
+                    _store_cell(result, "mc", raw)
+                elif label == "粉煤灰":
+                    _store_cell(result, "m1", raw)
+                elif label == "矿粉":
+                    _store_cell(result, "m2", raw)
+                elif label == "微珠":
+                    _store_cell(result, "m3", raw)
+                elif label == "硅灰":
+                    _store_cell(result, "m4", raw)
+                elif label == "粗骨料":
+                    _store_cell(result, "mg", raw)
+                elif label in ("细骨料", "细骨料(砂)"):
+                    _store_cell(result, "ms", raw)
+                elif label == "钢纤维":
+                    _store_cell(result, "msf", raw)
+                elif label == "水":
+                    _store_cell(result, "mw", raw)
+                elif label == "外加剂":
+                    _store_cell(result, "ma", raw)
+                elif label == "合计":
+                    _store_cell(result, "total_mass", raw)
 
 
 def parse_template_sheet(worksheet) -> dict[str, Any]:
@@ -172,14 +362,15 @@ def parse_template_sheet(worksheet) -> dict[str, Any]:
                         break
                 _store(result, keys, value)
 
+    _parse_sections(rows, result)
+
     return result
 
 
 def validate_hpc(data: dict[str, Any]) -> dict[str, Any]:
     """
-    HPC 导入校验（从宽）。
-    只要核心关键参数（强度等级、水胶比、砂率）齐备即视为有效；
-    其余派生参数缺省不阻断导入。若提供了胶材强度 fb，则对水胶比做一致性提示（不阻断）。
+    HPC 导入校验。
+    图三要求弹窗只评价水胶比、砂率、粗骨料体积用量三个关键参数。
     """
     items: list[dict[str, Any]] = []
     warnings: list[str] = []
@@ -187,57 +378,46 @@ def validate_hpc(data: dict[str, Any]) -> dict[str, Any]:
     fcuk = data.get("fcuk")
     fb = data.get("fb")
     wb = data.get("wb")
-    sand_ratio = data.get("sand_ratio")
-    vg = data.get("vg")
-    alpha = data.get("alpha")
+    sand_ratio = _as_percent(data.get("sand_ratio"))
 
-    if fcuk is not None:
-        items.append(_item("强度等级", _round(fcuk, 1)))
-    else:
-        warnings.append("缺少强度等级（fcu,k）")
-
-    if wb is not None:
-        expected = None
-        diff = None
-        # 若可重算，给出参考期望值（仅提示，不阻断）
-        if fcuk is not None and fb is not None:
+    expected_wb = None
+    wb_diff = None
+    wb_passed = wb is not None
+    if wb is None:
+        warnings.append("缺少水胶比（W/B）")
+    elif fcuk is not None and fb is not None:
+        try:
             aa = data.get("aa", 0.33)
             ab = data.get("ab", 1.09)
             ac = data.get("ac", -49.54)
-            try:
-                ev = calculate_water_binder_ratio(calculate_fcu0(fcuk), fb, aa, ab, ac)
-                expected = round(ev, 4)
-                diff = round(abs(ev - float(wb)), 4)
-                if diff > WB_TOLERANCE:
-                    warnings.append(f"水胶比与按 fcu,k/fb 重算值相差 {diff}（仅提示）")
-            except (ValueError, TypeError):
-                pass
-        items.append(_item("水胶比", _round(wb, 4), expected=expected, diff=diff, tolerance=WB_TOLERANCE))
+            expected_wb = round(calculate_water_binder_ratio(calculate_fcu0(fcuk), fb, aa, ab, ac), 4)
+            wb_diff = round(abs(expected_wb - float(wb)), 4)
+            wb_passed = wb_diff <= WB_TOLERANCE
+        except (ValueError, TypeError):
+            warnings.append("水胶比重算失败，请检查强度等级和胶材28d强度")
     else:
-        warnings.append("缺少水胶比（W/B）")
+        warnings.append("缺少强度等级或胶材28d强度，水胶比仅按已填写值载入")
+    items.append(_item("水胶比", _round(wb, 4), expected=expected_wb, diff=wb_diff, tolerance=WB_TOLERANCE, passed=wb_passed))
 
-    if sand_ratio is not None:
-        items.append(_item("砂率", _round(sand_ratio, 2)))
-    else:
+    sand_lo, sand_hi = _sand_range_from_aggregate(data)
+    sand_item = _range_item("砂率", sand_ratio, sand_lo, sand_hi, "%")
+    if sand_ratio is None:
         warnings.append("缺少砂率（βs）")
+    items.append(sand_item)
 
-    if vg is not None:
-        items.append(_item("粗骨料体积 Vg", _round(vg, 4)))
-    if alpha is not None:
-        items.append(_item("外加剂掺量", _round(alpha, 2)))
+    vg_value = _vg_from_materials(data)
+    vg_lo, vg_hi = _vg_range_from_requirement(data)
+    vg_item = _range_item("粗骨料体积用量/m³", vg_value, vg_lo, vg_hi)
+    if vg_value is None:
+        warnings.append("缺少粗骨料体积用量，且无法由粗骨料质量和密度推算")
+    items.append(vg_item)
 
-    # 范围校验：坍落度 / 扩展度 / 粗骨料最大粒径
-    range_ok = True
-    range_ok &= _range_check("坍落度", data.get("req_slump"), *SLUMP_RANGE, "mm", items, warnings)
-    range_ok &= _range_check("扩展度", data.get("req_spread"), *SPREAD_RANGE, "mm", items, warnings)
-    range_ok &= _range_check("粗骨料最大粒径", data.get("max_aggregate_size"), *AGG_SIZE_RANGE, "mm", items, warnings)
-
-    valid = (fcuk is not None and wb is not None and sand_ratio is not None) and range_ok
+    valid = all(item.get("passed") for item in items)
     return {"valid": valid, "items": items, "warnings": warnings}
 
 
 def validate_uhpc(data: dict[str, Any]) -> dict[str, Any]:
-    """UHPC 导入校验（从宽）。强度等级 + 水胶比齐备即有效。"""
+    """UHPC 导入校验。UHPC 模板无粗骨料，按水胶比和 UHPC 关键参数评价。"""
     items: list[dict[str, Any]] = []
     warnings: list[str] = []
 
@@ -247,27 +427,25 @@ def validate_uhpc(data: dict[str, Any]) -> dict[str, Any]:
     sf = data.get("steel_fiber_volume_ratio")
     alpha = data.get("admixture_ratio") or data.get("alpha")
 
-    if grade is not None:
-        items.append(_item("强度等级", _round(grade, 0)))
-    else:
+    if grade is None:
         warnings.append("缺少强度等级")
-    if wb is not None:
-        items.append(_item("水胶比", _round(wb, 4), tolerance=WB_TOLERANCE))
-    else:
+    wb_passed = wb is not None
+    if wb is None:
         warnings.append("缺少水胶比")
-    if sb is not None:
-        items.append(_item("胶砂比", _round(sb, 4)))
-    if sf is not None:
-        items.append(_item("钢纤维体积掺量", _round(sf, 2)))
-    if alpha is not None:
-        items.append(_item("外加剂掺量", _round(alpha, 2)))
+    items.append(_item("水胶比", _round(wb, 4), expected=None, diff=None, tolerance=WB_TOLERANCE, passed=wb_passed))
 
-    # 范围校验：坍落度 / 扩展度
-    range_ok = True
-    range_ok &= _range_check("坍落度", data.get("req_slump"), *SLUMP_RANGE, "mm", items, warnings)
-    range_ok &= _range_check("扩展度", data.get("req_spread"), *SPREAD_RANGE, "mm", items, warnings)
+    if sb is None:
+        warnings.append("缺少砂胶比")
+    items.append(_range_item("砂胶比", sb, *SAND_BINDER_RATIO_RANGE))
 
-    valid = (grade is not None and wb is not None) and range_ok
+    if sf is None:
+        warnings.append("缺少钢纤维体积掺量")
+    items.append(_range_item("钢纤维/%", sf, *STEEL_FIBER_RANGE, "%"))
+
+    if alpha is None:
+        warnings.append("缺少外加剂掺量")
+
+    valid = grade is not None and all(item.get("passed") for item in items)
     return {"valid": valid, "items": items, "warnings": warnings}
 
 

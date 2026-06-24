@@ -131,7 +131,7 @@ function formatDiff(item: ValidationItem): string {
     <!-- ── Step 1: 上传 ───────────────────────────────────────────────── -->
     <div v-if="step === 'upload'" class="import-upload">
       <p class="import-desc">
-        选择从本系统导出的项目 Excel 文件（.xlsx），系统将自动解析项目信息和所有配比记录，校验关键参数后一并导入。
+        选择按导入模板整理的项目 Excel 文件（.xlsx），系统将自动解析项目信息和配比记录，并按关键参数合理性规则校验后一并导入。
       </p>
       <el-upload
         drag
@@ -212,13 +212,13 @@ function formatDiff(item: ValidationItem): string {
               size="small"
             >
               <el-table-column prop="param" label="校验项" width="140" />
-              <el-table-column label="重算值" width="90" align="center">
+              <el-table-column label="计算值" width="90" align="center">
                 <template #default="{ row: item }">{{ formatValue(item.expected) }}</template>
               </el-table-column>
-              <el-table-column label="导入值" width="90" align="center">
+              <el-table-column label="输入值" width="90" align="center">
                 <template #default="{ row: item }">{{ formatValue(item.actual) }}</template>
               </el-table-column>
-              <el-table-column label="差值" width="90" align="center">
+              <el-table-column label="偏差值" width="90" align="center">
                 <template #default="{ row: item }">{{ formatDiff(item) }}</template>
               </el-table-column>
               <el-table-column label="容差" width="90" align="center">
@@ -226,10 +226,10 @@ function formatDiff(item: ValidationItem): string {
                   {{ item.tolerance }}{{ item.tolerance_unit || '' }}
                 </template>
               </el-table-column>
-              <el-table-column label="结果" width="80" align="center">
+              <el-table-column label="评价" width="80" align="center">
                 <template #default="{ row: item }">
                   <el-tag :type="getItemStatus(item)" size="small">
-                    {{ item.passed ? '通过' : '未通过' }}
+                    {{ item.passed ? '合理' : '偏离' }}
                   </el-tag>
                 </template>
               </el-table-column>
