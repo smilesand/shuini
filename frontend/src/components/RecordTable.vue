@@ -31,8 +31,8 @@ const materialColumns: RecordColumnDefinition[] = [
   { key: 'm2', label: '矿粉', digits: 1, width: 96 },
   { key: 'm3', label: '微珠', digits: 1, width: 96 },
   { key: 'm4', label: '硅灰', digits: 1, width: 96 },
-  { key: 'ms', label: '细骨料', digits: 1, width: 104 },
   { key: 'mg', label: '粗骨料', digits: 1, width: 104 },
+  { key: 'ms', label: '细骨料', digits: 1, width: 104 },
   { key: 'mw', label: '水', digits: 1, width: 96 },
   { key: 'ma', label: '外加剂', digits: 1, width: 96 },
   { key: 'steel_fiber', label: '钢纤维', digits: 1, width: 104 },
@@ -78,12 +78,12 @@ function getSteelFiberValue(record: RecordItem): number | null {
 }
 
 /**
- * 解析“调整适配后最终的实验室配合比”。
+ * 解析“配合比校正与确认”的最终实验室配合比。
  *
  * 配合比记录在 `record_data.trial_data` 中保存试配快照：
  *  - HPC 试配：`trial_data.calculated.labMix`（表观密度校正后的实验室配合比）优先，
  *    若未做密度校正则退回 `trial_data.calculated.adaptResult`（调整适配后的配合比）。
- *  - UHPC 试配：`trial_data.lab_mix`（校正后的最终配合比）。
+ *  - UHPC 试配：`trial_data.lab_mix` / `trial_data.labMix`（校正后的最终配合比）。
  * 统一映射为表格列键（mc/m1/m2/m3/m4/mg/ms/mw/ma/steel_fiber/total）。
  * 若记录没有试配数据，则返回 null，沿用 record_data 顶层的基准配合比。
  */
@@ -99,8 +99,16 @@ function buildFinalLabMix(record: RecordItem): FinalMix | null {
   // ── HPC 试配 ──
   const calculated = isRecordObject(trial.calculated) ? trial.calculated : null
   if (calculated) {
-    const labMix = isRecordObject(calculated.labMix) ? calculated.labMix : null
-    const adaptResult = isRecordObject(calculated.adaptResult) ? calculated.adaptResult : null
+    const labMix = isRecordObject(calculated.labMix)
+      ? calculated.labMix
+      : isRecordObject(calculated.lab_mix)
+        ? calculated.lab_mix
+        : null
+    const adaptResult = isRecordObject(calculated.adaptResult)
+      ? calculated.adaptResult
+      : isRecordObject(calculated.adapt_result)
+        ? calculated.adapt_result
+        : null
     const hpcMix =
       labMix && toFiniteNumber(labMix.mc) !== null ? labMix
         : adaptResult && toFiniteNumber(adaptResult.mc) !== null ? adaptResult
@@ -123,24 +131,36 @@ function buildFinalLabMix(record: RecordItem): FinalMix | null {
   }
 
   // ── UHPC 试配 ──
-  const uhpcLab = isRecordObject(trial.lab_mix) ? trial.lab_mix : null
-  if (uhpcLab && toFiniteNumber(uhpcLab.cement) !== null) {
+  const uhpcLab = isRecordObject(trial.lab_mix)
+    ? trial.lab_mix
+    : isRecordObject(trial.labMix)
+      ? trial.labMix
+      : null
+  if (uhpcLab && (toFiniteNumber(uhpcLab.cement) !== null || toFiniteNumber(uhpcLab.mc) !== null)) {
     return {
-      mc: toFiniteNumber(uhpcLab.cement),
-      m1: toFiniteNumber(uhpcLab.fly_ash),
+      mc: toFiniteNumber(uhpcLab.cement) ?? toFiniteNumber(uhpcLab.mc),
+      m1: toFiniteNumber(uhpcLab.fly_ash) ?? toFiniteNumber(uhpcLab.m1),
       m2: null,
-      m3: toFiniteNumber(uhpcLab.micro_bead),
-      m4: toFiniteNumber(uhpcLab.silica_fume),
+      m3: toFiniteNumber(uhpcLab.micro_bead) ?? toFiniteNumber(uhpcLab.m3),
+      m4: toFiniteNumber(uhpcLab.silica_fume) ?? toFiniteNumber(uhpcLab.m4),
       mg: null,
-      ms: toFiniteNumber(uhpcLab.sand),
-      mw: toFiniteNumber(uhpcLab.water),
-      ma: toFiniteNumber(uhpcLab.admixture),
-      steel_fiber: toFiniteNumber(uhpcLab.steel_fiber),
+      ms: toFiniteNumber(uhpcLab.sand) ?? toFiniteNumber(uhpcLab.ms),
+      mw: toFiniteNumber(uhpcLab.water) ?? toFiniteNumber(uhpcLab.mw),
+      ma: toFiniteNumber(uhpcLab.admixture) ?? toFiniteNumber(uhpcLab.ma),
+      steel_fiber: toFiniteNumber(uhpcLab.steel_fiber) ?? toFiniteNumber(uhpcLab.steelFiber),
       total: toFiniteNumber(uhpcLab.total),
     }
   }
 
   return null
+}
+
+function sumFinalMixMaterials(mix: FinalMix): number | null {
+  const values = ['mc', 'm1', 'm2', 'm3', 'm4', 'mg', 'ms', 'mw', 'ma', 'steel_fiber']
+    .map((key) => mix[key as keyof FinalMix])
+    .filter((value): value is number => value !== null)
+  if (values.length === 0) return null
+  return values.reduce((sum, value) => sum + value, 0)
 }
 
 function resolveFinalLabMix(record: RecordItem): FinalMix | null {
@@ -254,19 +274,11 @@ function sandRatioDisplay(record: RecordItem): string {
 }
 
 function totalMassDisplay(record: RecordItem): string {
-  // 配合比校正中调整配合比的合计（优先于实验室配合比）
-  const trialData = getRecordObject(record, 'trial_data')
-  if (trialData) {
-    const calculated = trialData.calculated as Record<string, unknown> | undefined
-    const adaptResult = calculated?.adaptResult || calculated?.adapt_result
-    if (adaptResult && typeof adaptResult === 'object') {
-      const adaptTotal = toFiniteNumber((adaptResult as Record<string, unknown>).total)
-      if (adaptTotal !== null) return adaptTotal.toFixed(0)
-    }
-  }
-
   const finalMix = resolveFinalLabMix(record)
-  if (finalMix && finalMix.total !== null) return finalMix.total.toFixed(0)
+  if (finalMix) {
+    const total = finalMix.total ?? sumFinalMixMaterials(finalMix)
+    return total !== null ? total.toFixed(0) : '—'
+  }
   const total = getRecordNumber(record, 'total_mass')
   return total !== null ? total.toFixed(0) : '—'
 }
