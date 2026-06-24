@@ -218,12 +218,14 @@ function exportReport(record: RecordItem) {
   const rhog = flatData.rhog ?? null
   const rhos = flatData.rhos ?? null
 
-  // ── Strength pass/fail: 总体均值 ≥ 1.15×强度等级 且 组最小值 ≥ 0.95×强度等级
+  // ── Strength pass/fail: 总体均值 ≥ multiplier × 强度等级 且 组最小值 ≥ 0.95×强度等级
   const targetForEval = sTargetStr || flatData.fcu0 || flatData.designStrength || flatData.design_strength
   const strengthGradeNum = Number(flatData.fcuk || flatData.strengthGrade || flatData.strength_grade || NaN)
 
   if (strengthOverallAvg !== null && Number.isFinite(strengthGradeNum)) {
-    const overallOk = strengthOverallAvg >= strengthGradeNum * 1.15
+    const cat = record.category
+    const strengthMult = (cat === 'uhpc' || cat === 'uhpc_trial') ? 1.10 : 1.15
+    const overallOk = strengthOverallAvg >= strengthGradeNum * strengthMult
     const minThreshold = strengthGradeNum * 0.95
     const minGroupOk = strengthMinGroupAvg !== null ? strengthMinGroupAvg >= minThreshold : null
     strengthPass = overallOk && (minGroupOk !== false)

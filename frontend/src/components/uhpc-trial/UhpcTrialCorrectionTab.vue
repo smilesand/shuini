@@ -21,7 +21,6 @@ const props = defineProps<{
   designStr: number
   strengthGrade: number | null
   strengthGroups: StrengthGroup[]
-  evalSlump: number | null
   evalSpread: number | null
   evalWorkabilityDesc: string
 }>()
@@ -30,7 +29,6 @@ const emit = defineEmits<{
   (e: 'update:corrBase', v: 'trial' | 'wbRec' | 'sfRec'): void
   (e: 'update:measuredDensity', v: number | null): void
   (e: 'update:strengthGroups', v: StrengthGroup[]): void
-  (e: 'update:evalSlump', v: number | null): void
   (e: 'update:evalSpread', v: number | null): void
   (e: 'update:evalWorkabilityDesc', v: string): void
 }>()
@@ -293,26 +291,13 @@ const strengthEvaluation = computed(() => {
           :groups="strengthGroups"
           :target-strength="designStr"
           :strength-grade="strengthGrade"
+          :strength-multiplier="1.10"
           @update:groups="v => emit('update:strengthGroups', v)"
         />
 
         <el-divider style="margin: 20px 0" />
 
         <el-row :gutter="20" style="margin-bottom:12px">
-          <el-col :span="12">
-            <div class="density-field">
-              <div class="density-field__label">坍落度</div>
-              <el-input-number
-                :model-value="evalSlump ?? undefined"
-                @update:model-value="v => emit('update:evalSlump', v ?? null)"
-                :min="0" :max="300" :step="5" :precision="0"
-                placeholder=""
-                style="width: 100%"
-              />
-              <div class="density-field__unit">mm</div>
-              <div class="input-hint">参考值 260 mm</div>
-            </div>
-          </el-col>
           <el-col :span="12">
             <div class="density-field">
               <div class="density-field__label">扩展度</div>

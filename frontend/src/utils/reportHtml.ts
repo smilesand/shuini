@@ -152,6 +152,8 @@ export function generateReportHtml(d: ReportData): string {
   const table1 = buildKeyParamsTable(d)
   const table2 = buildFinalMixTable(d)
   const printTimeStr = new Date().toLocaleString('zh-CN')
+  const strengthMult = d.isUHPC ? 1.10 : 1.15
+  const multLabel = strengthMult.toFixed(2)
   const strengthDesc = '每组 3 个试件。当最大值或最小值中有一个与中间值的差值超过中间值的15%时，剔除最大及最小值取中间值；当最大值和最小值与中间值的差值均超过中间值的15%时，该组试验结果无效。'
 
   const workabilityRef = getHpcWorkabilityReference(d.vgReferenceCode)
@@ -253,7 +255,7 @@ ${table2.body2}</tbody>
         <td class="cat-cell" rowspan="2">抗压强度</td>
         <td>平均值/MPa</td>
         <td>${d.strengthOverallAvg !== null ? d.strengthOverallAvg.toFixed(1) : '—'}</td>
-        <td style="font-size:9pt">≥ 1.15×强度等级${Number.isFinite(d.strengthGradeNum) ? '(' + (d.strengthGradeNum * 1.15).toFixed(1) + ' MPa)' : ''}</td>
+        <td style="font-size:9pt">≥ ${multLabel}×强度等级${Number.isFinite(d.strengthGradeNum) ? '(' + (d.strengthGradeNum * strengthMult).toFixed(1) + ' MPa)' : ''}</td>
         <td rowspan="2">${passLabel(d.strengthPass)}</td>
       </tr>
       <tr>

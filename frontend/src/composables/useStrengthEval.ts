@@ -160,8 +160,9 @@ export function useStrengthEval(
 
   // ── Computed: evaluation against targets ────────────────────
   function evaluate(
-    _targetStrength: number | null,   // 配制强度 (保留参数兼容性，实际使用1.15×强度等级)
+    _targetStrength: number | null,   // 配制强度 (保留参数兼容性，实际使用 multiplier × 强度等级)
     strengthGrade: number | null,    // 强度等级 (e.g., C80 → 80)
+    strengthMultiplier: number = 1.15,  // HPC=1.15, UHPC=1.10
   ) {
     const ov = overallAvg.value
     const minG = minGroupAvg.value
@@ -182,8 +183,8 @@ export function useStrengthEval(
       }
     }
 
-    // 六组试块强度平均值 ≥ 1.15 × 强度等级
-    const avgThreshold = strengthGrade !== null ? strengthGrade * 1.15 : null
+    // 六组试块强度平均值 ≥ multiplier × 强度等级
+    const avgThreshold = strengthGrade !== null ? strengthGrade * strengthMultiplier : null
     const overallPass = avgThreshold !== null ? ov >= avgThreshold : null
 
     // 最小值 ≥ 0.95 × 强度等级
@@ -192,12 +193,14 @@ export function useStrengthEval(
 
     const allPass = overallPass !== false && (minGroupPass !== false)
 
+    const multLabel = strengthMultiplier.toFixed(2)
+
     let detail = `总体平均值 ${ov.toFixed(1)} MPa`
     if (avgThreshold !== null) {
       if (overallPass) {
-        detail += ` ≥ 1.15×强度等级(${avgThreshold.toFixed(1)} MPa)`
+        detail += ` ≥ ${multLabel}×强度等级(${avgThreshold.toFixed(1)} MPa)`
       } else {
-        detail += ` < 1.15×强度等级(${avgThreshold.toFixed(1)} MPa)，差值 ${(avgThreshold - ov).toFixed(1)} MPa`
+        detail += ` < ${multLabel}×强度等级(${avgThreshold.toFixed(1)} MPa)，差值 ${(avgThreshold - ov).toFixed(1)} MPa`
       }
     }
 

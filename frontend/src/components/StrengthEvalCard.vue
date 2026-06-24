@@ -7,8 +7,12 @@ const props = defineProps<{
   groups: StrengthGroup[]
   targetStrength: number | null   // 配制强度 fcu,0
   strengthGrade: number | null    // 强度等级数值 (e.g., 80)
+  /** 总平均抗压强度倍数：HPC=1.15, UHPC=1.10 */
+  strengthMultiplier?: number
   readonly?: boolean
 }>()
+
+const multiplier = computed(() => props.strengthMultiplier ?? 1.15)
 
 const emit = defineEmits<{
   (e: 'update:groups', v: StrengthGroup[]): void
@@ -116,8 +120,8 @@ const evaluation = computed(() => {
     }
   }
 
-  // 六组试块强度平均值 ≥ 1.15 × 强度等级
-  const avgThreshold = sg !== null ? sg * 1.15 : null
+  // 六组试块强度平均值 ≥ multiplier × 强度等级
+  const avgThreshold = sg !== null ? sg * multiplier.value : null
   const overallPass = avgThreshold !== null ? ov >= avgThreshold : null
 
   // 最小值 ≥ 0.95 × 强度等级
@@ -128,10 +132,11 @@ const evaluation = computed(() => {
 
   // Build detail message
   const parts: string[] = []
+  const multLabel = multiplier.value.toFixed(2)
 
   if (avgThreshold !== null) {
     if (overallPass === false) {
-      parts.push(`总体平均值 ${ov.toFixed(1)} MPa 不足 1.15×强度等级(${avgThreshold.toFixed(1)} MPa)，差值 ${(avgThreshold - ov).toFixed(1)} MPa`)
+      parts.push(`总体平均值 ${ov.toFixed(1)} MPa 不足 ${multLabel}×强度等级(${avgThreshold.toFixed(1)} MPa)，差值 ${(avgThreshold - ov).toFixed(1)} MPa`)
     }
   }
 
@@ -140,7 +145,7 @@ const evaluation = computed(() => {
   }
 
   if (allPass) {
-    parts.unshift(`总体平均值 ${ov.toFixed(1)} MPa ≥ 1.15×强度等级(${avgThreshold!.toFixed(1)} MPa)，组均值最小值 ${minG!.toFixed(1)} MPa ≥ 0.95×强度等级(${minThreshold!.toFixed(1)} MPa)`)
+    parts.unshift(`总体平均值 ${ov.toFixed(1)} MPa ≥ ${multLabel}×强度等级(${avgThreshold!.toFixed(1)} MPa)，组均值最小值 ${minG!.toFixed(1)} MPa ≥ 0.95×强度等级(${minThreshold!.toFixed(1)} MPa)`)
   }
 
   return {
@@ -282,8 +287,8 @@ function fmt(v: number | null, d = 1): string {
         <span class="summary-val">{{ fmt(minGroupAvg, 1) }} MPa</span>
       </div>
       <div class="summary-item">
-        <span class="summary-label">1.15 × 强度等级</span>
-        <span class="summary-val summary-val--primary">{{ strengthGrade !== null ? fmt(strengthGrade * 1.15, 1) : '—' }} MPa</span>
+        <span class="summary-label">{{ multiplier.toFixed(2) }} × 强度等级</span>
+        <span class="summary-val summary-val--primary">{{ strengthGrade !== null ? fmt(strengthGrade * multiplier, 1) : '—' }} MPa</span>
       </div>
       <div class="summary-item">
         <span class="summary-label">0.95 × 强度等级</span>
