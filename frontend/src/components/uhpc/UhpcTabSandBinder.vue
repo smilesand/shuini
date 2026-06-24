@@ -72,6 +72,7 @@ function handleGuideSelect(grade: number) {
                   style="width:100%"
                 />
                 <div class="input-hint">参考值 {{ UHPC_INPUT_PLACEHOLDERS.sandBinderRatio }}</div>
+                <div v-if="store.importedValueText('sand_ratio', '', 2) || store.importedValueText('sand_binder_ratio', '', 2)" class="input-hint">{{ store.importedValueText('sand_ratio', '', 2) || store.importedValueText('sand_binder_ratio', '', 2) }}</div>
               </el-form-item>
             </el-col>
           </el-row>

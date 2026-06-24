@@ -56,6 +56,7 @@ export interface StrengthRegression {
   r2: number
   recommendWb: NullableNumber
   recommendBs: NullableNumber
+  recommendMa: NullableNumber
   matchGroupIndex: number
   predictStrength: NullableNumber
 }
@@ -336,6 +337,7 @@ function mapTrialResponse(response: HpcTrialRes): TrialCalculatedState {
       r2: response.strength_regression.r2,
       recommendWb: normalizeRecommendedWb(response.strength_regression.recommend_wb),
       recommendBs: response.strength_regression.recommend_bs ?? null,
+      recommendMa: response.strength_regression.recommend_ma ?? null,
       matchGroupIndex: response.strength_regression.match_group_index ?? -1,
       predictStrength: response.strength_regression.predict_strength,
     } : null,

@@ -116,6 +116,17 @@ const recommendStrengthText = computed(() => {
       </div>
 
       <div
+        v-if="props.strengthRegression.recommendMa !== null"
+        class="regression-card recommend"
+      >
+        <span class="recommend-label">推荐减水剂用量 m<sub>a</sub></span>
+        <span class="recommend-val">{{ props.strengthRegression.recommendMa.toFixed(2) }} kg</span>
+        <span style="font-size: 11px; color: #909399">
+          由 C/W—减水剂用量线性插值推导
+        </span>
+      </div>
+
+      <div
         v-if="props.strengthRegression.predictStrength !== null"
         class="regression-card predict"
       >

@@ -287,12 +287,15 @@ function calculateStrengthRegression(
   // 提取三组 C/W 和 bs
   const cwVals: number[] = []
   const bsVals: number[] = []
+  const maVals: number[] = []
   for (let i = 0; i < 3; i++) {
     const wb = strengthMixes[i].wb
     const bs = strengthMixes[i].bs
+    const ma = strengthMixes[i].ma
     if (wb === null || wb <= 0 || bs === null) return null
     cwVals.push(1.0 / wb)
     bsVals.push(bs)
+    if (ma !== null) maVals.push(ma)
   }
 
   // Bolomey 线性回归: f_cu = a·(C/W) + b
@@ -314,6 +317,7 @@ function calculateStrengthRegression(
 
   let recommendWb: number | null = null
   let recommendBs: number | null = null
+  let recommendMa: number | null = null
   let predictStrength: number | null = null
   let matchGroupIndex = -1
 
@@ -333,9 +337,10 @@ function calculateStrengthRegression(
       if (matchIdx >= 0) {
         // 精确匹配：取对照组 wb/bs 并标记
         recommendBs = jsRound(strengthMixes[matchIdx].bs!, 2)
+        recommendMa = strengthMixes[matchIdx].ma === null ? null : jsRound(strengthMixes[matchIdx].ma!, 2)
         matchGroupIndex = matchIdx
       } else {
-        // 无匹配：线性插值砂率 bs = c·(C/W) + d
+        // 无匹配：线性插值砂率 bs = c·(C/W) + d，外加剂用量同理
         const sumBs = bsVals.reduce((s, v) => s + v, 0)
         const sumCwBs = cwVals.reduce((s, cw, i) => s + cw * bsVals[i], 0)
         const denomBs = n * sumX2 - sumX * sumX
@@ -343,6 +348,16 @@ function calculateStrengthRegression(
           const c_coef = (n * sumCwBs - sumX * sumBs) / denomBs
           const d_coef = (sumBs - c_coef * sumX) / n
           recommendBs = jsRound(c_coef * cwRec + d_coef, 2)
+        }
+        if (maVals.length === 3) {
+          const sumMa = maVals.reduce((s, v) => s + v, 0)
+          const sumCwMa = cwVals.reduce((s, cw, i) => s + cw * maVals[i], 0)
+          const denomMa = n * sumX2 - sumX * sumX
+          if (Math.abs(denomMa) > 1e-9) {
+            const maCoef = (n * sumCwMa - sumX * sumMa) / denomMa
+            const maIntercept = (sumMa - maCoef * sumX) / n
+            recommendMa = jsRound(maCoef * cwRec + maIntercept, 2)
+          }
         }
       }
 
@@ -356,6 +371,7 @@ function calculateStrengthRegression(
     r2: jsRound(r2, 4),
     recommend_wb: recommendWb,
     recommend_bs: recommendBs,
+    recommend_ma: recommendMa,
     match_group_index: matchGroupIndex,
     predict_strength: predictStrength,
   }
@@ -400,16 +416,17 @@ function calculateChartData(
   }
 }
 
-/** 配合比校正「调整配合比」：以设计胶材总量算分项比例，粗骨料不变。 */
+/** 配合比校正「调整配合比」：以设计胶材总量算分项比例，砂石总量不变。 */
 function calculateAdaptResult(
   wb: number, betaS: number, mb: number,
   mc: number, m1: number, m2: number, m3: number, m4: number,
-  mg: number, alpha: number,
+  mg: number, ms: number, alpha: number,
   wbAdj: number | null, mbAdj: number | null,
   sandRatioAdj: number | null, alphaAdj: number | null,
 ): HpcTrialMaterialResultRes {
   const fractions = componentFractionsFromBinderTotal(mb, mc, m1, m2, m3, m4)
-  if (fractions === null || mg <= 0) return emptyMaterialResult()
+  const totalAggregate = mg + ms
+  if (fractions === null || totalAggregate <= 0) return emptyMaterialResult()
 
   const resolvedWb = wbAdj === null ? wb : wbAdj
   const resolvedMb = mbAdj === null ? mb : mbAdj
@@ -429,11 +446,12 @@ function calculateAdaptResult(
   const slag = resolvedMb * fractions.m2
   const microBead = resolvedMb * fractions.m3
   const silicaFume = resolvedMb * fractions.m4
-  const sand = (sandRatioDecimal / (1.0 - sandRatioDecimal)) * mg
+  const sand = totalAggregate * sandRatioDecimal
+  const coarse = totalAggregate - sand
   const water = resolvedMb * resolvedWb
   const admixture = resolvedMb * (resolvedAlpha / 100.0)
   const total =
-    cementMass + flyAsh + slag + microBead + silicaFume + mg + sand + water + admixture
+    cementMass + flyAsh + slag + microBead + silicaFume + coarse + sand + water + admixture
 
   return {
     mc: jsRound(cementMass, 2),
@@ -441,7 +459,7 @@ function calculateAdaptResult(
     m2: jsRound(slag, 2),
     m3: jsRound(microBead, 2),
     m4: jsRound(silicaFume, 2),
-    mg: jsRound(mg, 2),
+    mg: jsRound(coarse, 2),
     ms: jsRound(sand, 2),
     mw: jsRound(water, 2),
     ma: jsRound(admixture, 2),
@@ -518,7 +536,7 @@ export function calcHpcTrial(req: HpcTrialReq): HpcTrialRes {
   const adaptResult = calculateAdaptResult(
     req.wb, req.beta_s, req.mb,
     req.mc, req.m1, req.m2, req.m3, req.m4,
-    req.mg, req.alpha,
+    req.mg, req.ms, req.alpha,
     req.wb_adj, req.mb_adj, req.sand_ratio_adj, req.alpha_adj,
   )
 

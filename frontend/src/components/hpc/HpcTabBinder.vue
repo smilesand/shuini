@@ -84,6 +84,7 @@ async function handleNext() {
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 2200 kg/m³</div>
+                <div v-if="store.importedValueText('rho1', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rho1', ' kg/m³', 0) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -104,6 +105,7 @@ async function handleNext() {
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 2900 kg/m³</div>
+                <div v-if="store.importedValueText('rho2', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rho2', ' kg/m³', 0) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -124,6 +126,7 @@ async function handleNext() {
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 2100 kg/m³</div>
+                <div v-if="store.importedValueText('rho3', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rho3', ' kg/m³', 0) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -144,6 +147,7 @@ async function handleNext() {
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 2400 kg/m³</div>
+                <div v-if="store.importedValueText('rho4', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rho4', ' kg/m³', 0) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -164,6 +168,7 @@ async function handleNext() {
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 3100 kg/m³</div>
+                <div v-if="store.importedValueText('rhoc', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rhoc', ' kg/m³', 0) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -173,6 +178,7 @@ async function handleNext() {
                   <template #suffix><span class="unit-suffix">m³</span></template>
                 </el-input-number>
                 <div class="input-hint">非引气混凝土参考 0.010</div>
+                <div v-if="store.importedValueText('va', ' m³', 3) || store.importedValueText('air_content', ' m³', 3)" class="input-hint">{{ store.importedValueText('va', ' m³', 3) || store.importedValueText('air_content', ' m³', 3) }}</div>
               </el-form-item>
             </el-col>
           </el-row>

@@ -239,20 +239,22 @@ export function generateReportHtml(d: ReportData): string {
 <style>
   @page { size: A4 landscape; margin: 8mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif; font-size: 7.8pt; color: #000; background: #fff; line-height: 1.05; }
-  .page-container { width: 277mm; margin: 0 auto; }
-  .report-title { text-align: center; font-size: 12.5pt; font-weight: 800; color: #1f4e79; padding: 1.5px 0; border: 1px solid #000; border-bottom: 0; letter-spacing: 1px; }
-  .section-title { text-align: center; font-size: 9.5pt; font-weight: 800; color: #1f4e79; background: #d6e4f0; border: 1px solid #000; border-bottom: 0; padding: 1px 0; }
-  table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 0; }
-  th, td { border: 1px solid #000; padding: 1.5px 2px; text-align: center; vertical-align: middle; word-break: break-word; }
-  th { background: #4472c4; color: #fff; font-weight: 700; }
-  .green td, tr.green td { background: #92d050; }
-  .yellow td, tr.yellow td { background: #ffff00; }
-  .compact th, .compact td { font-size: 7.2pt; padding: 1.2px 1.5px; }
-  .cat { background: #f2f2f2; font-weight: 700; }
+  body { font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif; font-size: 8pt; color: #1f2933; background: #fff; line-height: 1.22; }
+  .page-container { width: 277mm; margin: 0 auto; padding: 1mm 2mm 0; }
+  .report-header { border-bottom: 2px solid #2f5597; margin-bottom: 5px; padding-bottom: 4px; }
+  .report-title { text-align: center; font-size: 15pt; font-weight: 800; color: #1f4e79; letter-spacing: 1px; }
+  .report-subtitle { margin-top: 2px; text-align: center; font-size: 7.2pt; color: #667085; }
+  .section-title { margin: 5px 0 3px; padding: 3px 7px; border-left: 4px solid #2f5597; background: #f1f4f8; color: #1f4e79; font-size: 8.5pt; font-weight: 800; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 3px; border: 1px solid #c9d2df; }
+  th, td { border: 1px solid #d6dde8; padding: 2.4px 3px; text-align: center; vertical-align: middle; word-break: break-word; }
+  th { background: #eef2f7; color: #344054; font-weight: 700; }
+  .green td, tr.green td { background: #fbfcfe; }
+  .yellow td, tr.yellow td { background: #fffdf3; }
+  .compact th, .compact td { font-size: 7.4pt; padding: 2px 2.2px; }
+  .cat { background: #f4f6f8; font-weight: 700; }
   .pass { color: #0f5132; font-weight: 700; }
   .fail { color: #842029; font-weight: 700; }
-  .footer { margin-top: 3px; font-size: 6.8pt; color: #555; text-align: right; }
+  .footer { margin-top: 4px; padding-top: 3px; border-top: 1px solid #d6dde8; font-size: 6.8pt; color: #667085; text-align: right; }
   @media print {
     th, .green td, .yellow td, .section-title { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
@@ -260,7 +262,10 @@ export function generateReportHtml(d: ReportData): string {
 </head>
 <body>
 <div class="page-container">
-  <div class="report-title">混凝土配合比记录 · 导入模板</div>
+  <div class="report-header">
+    <div class="report-title">混凝土配合比记录报告</div>
+    <div class="report-subtitle">${d.record.name} · ${d.categoryLabel} · ${d.fmtDate}</div>
+  </div>
   ${buildInfoSection(d)}
   ${buildRequirementSection(d)}
   ${buildRawMaterialSection(d)}

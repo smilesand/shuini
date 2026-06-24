@@ -124,15 +124,26 @@ def _vg_range_from_requirement(data: dict[str, Any]) -> tuple[float, float]:
 
 def _sand_range_from_aggregate(data: dict[str, Any]) -> tuple[float, float]:
     max_size = _num_from(data.get("max_aggregate_size"))
-    if max_size is None:
+    fcuk = _num_from(data.get("fcuk") or data.get("strength_grade"))
+    if fcuk is None or max_size is None:
         return SAND_RATIO_RANGE
+
+    rows = [
+        (80.0, [(45.0, 49.0), (44.0, 48.0), (43.0, 47.0)]),
+        (90.0, [(43.0, 47.0), (42.0, 46.0), (41.0, 45.0)]),
+        (100.0, [(41.0, 45.0), (40.0, 44.0), (39.0, 43.0)]),
+    ]
+    row_ranges = rows[-1][1]
+    for strength_limit, ranges in rows:
+        if fcuk <= strength_limit:
+            row_ranges = ranges
+            break
+
     if max_size <= 16:
-        return 40.0, 50.0
+        return row_ranges[0]
     if max_size <= 20:
-        return 38.0, 46.0
-    if max_size <= 25:
-        return 35.0, 44.0
-    return 32.0, 42.0
+        return row_ranges[1]
+    return row_ranges[2]
 
 
 # ── 横排表头映射：表头标签 → 内部字段名（可多键）──────────────────────────────
@@ -158,7 +169,7 @@ _HEADER_MAP: dict[str, list[str]] = {
     "粗骨料体积 vg/m³": ["vg"],
     "外加剂/%": ["alpha", "admixture_ratio"],
     "外加剂掺量 α/%": ["alpha", "admixture_ratio"],
-    "含气量/m3": ["air_content"],
+    "含气量/m3": ["air_content", "va"],
     "钢纤维/%": ["steel_fiber_volume_ratio"],
     "砂胶比": ["sand_binder_ratio"],
     "胶砂比": ["sand_binder_ratio"],
@@ -251,7 +262,7 @@ def _parse_sections(rows: list[list[Any]], result: dict[str, Any]) -> None:
                 label = _norm_label(header)
                 raw = values[c] if c < len(values) else None
                 if label == "强度等级/mpa":
-                    _store(result, ["fcuk", "strength_grade"], raw)
+                    _store(result, ["fcuk", "strength_grade"], _num_from(raw) if _num_from(raw) is not None else raw)
                 elif label == "扩展度/mm":
                     _store_cell(result, "req_spread", raw)
                 elif label == "坍落度/mm":
@@ -263,14 +274,35 @@ def _parse_sections(rows: list[list[Any]], result: dict[str, Any]) -> None:
             value_idx = i + 3 if i + 3 < len(rows) else None
             values = rows[value_idx] if value_idx is not None else []
             if category == "uhpc":
-                mapping = [
-                    "cement_density", "fly_ash_density", "micro_bead_density", "silica_fume_density",
-                    "sand_density", "max_particle_size", "fly_ash_peak_size", "micro_bead_peak_size",
-                ]
+                headers = rows[i + 2] if i + 2 < len(rows) else []
+                mapping = {
+                    "水泥": "cement_density",
+                    "粉煤灰": "fly_ash_density",
+                    "微珠": "micro_bead_density",
+                    "硅灰": "silica_fume_density",
+                    "细骨料": "sand_density",
+                    "体系最大粒径": "max_particle_size",
+                    "粉煤灰峰值粒径": "fly_ash_peak_size",
+                    "微珠峰值粒径": "micro_bead_peak_size",
+                }
             else:
-                mapping = ["fb", "rhoc", "rho1", "rho2", "rho3", "rho4", "rhog", "rhos", "max_aggregate_size"]
-            for c, key in enumerate(mapping):
-                if c < len(values):
+                headers = rows[i + 2] if i + 2 < len(rows) else []
+                mapping = {
+                    "水泥": "rhoc",
+                    "粉煤灰": "rho1",
+                    "矿粉": "rho2",
+                    "微珠": "rho3",
+                    "硅灰": "rho4",
+                    "粗骨料": "rhog",
+                    "细骨料": "rhos",
+                }
+                if values:
+                    _store_cell(result, "fb", values[0] if len(values) > 0 else None)
+                    _store_cell(result, "max_aggregate_size", values[9] if len(values) > 9 else None)
+
+            for c, header in enumerate(headers):
+                key = mapping.get(str(header).strip()) if header is not None else None
+                if key and c < len(values):
                     _store_cell(result, key, values[c])
 
         elif _is_section(row, "配合比关键参数") and i + 2 < len(rows):

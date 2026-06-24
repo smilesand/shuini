@@ -103,6 +103,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                   <template #suffix><span class="unit-suffix">mm</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 180~220 mm（SF0 大流动度）</div>
+                <div v-if="store.importedValueText('req_slump', ' mm', 0)" class="input-hint">{{ store.importedValueText('req_slump', ' mm', 0) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -116,6 +117,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                   <template #suffix><span class="unit-suffix">mm</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 500~800 mm（SF1~SF3）</div>
+                <div v-if="store.importedValueText('req_spread', ' mm', 0)" class="input-hint">{{ store.importedValueText('req_spread', ' mm', 0) }}</div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -172,6 +174,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                   <template #suffix><span class="unit-suffix">m³</span></template>
                 </el-input-number>
                 <div class="input-hint">参考选值 {{ vgPlaceholder }}</div>
+                <div v-if="store.importedValueText('vg', ' m³', 3)" class="input-hint">{{ store.importedValueText('vg', ' m³', 3) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -187,6 +190,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 2700 kg/m³</div>
+                <div v-if="store.importedValueText('rhog', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rhog', ' kg/m³', 0) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -202,6 +206,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 2650 kg/m³</div>
+                <div v-if="store.importedValueText('rhos', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rhos', ' kg/m³', 0) }}</div>
               </el-form-item>
             </el-col>
           </el-row>

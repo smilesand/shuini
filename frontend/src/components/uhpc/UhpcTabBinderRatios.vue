@@ -162,6 +162,7 @@ async function handleFinish() {
                   </el-input-number>
                 </el-form-item>
                 <div class="field-hint">参考值：80 μm</div>
+                <div v-if="store.importedValueText('max_particle_size', ' μm', 2)" class="field-hint">{{ store.importedValueText('max_particle_size', ' μm', 2) }}</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
@@ -171,6 +172,7 @@ async function handleFinish() {
                   </el-input-number>
                 </el-form-item>
                 <div class="field-hint">参考值：1 μm</div>
+                <div v-if="store.importedValueText('min_particle_size', ' μm', 2)" class="field-hint">{{ store.importedValueText('min_particle_size', ' μm', 2) }}</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
@@ -178,6 +180,7 @@ async function handleFinish() {
                   <el-input-number :model-value="store.distributionIndex ?? undefined" @update:model-value="value => store.distributionIndex = value ?? null" :min="0.01" :step="0.01" :precision="3" style="width:100%" />
                 </el-form-item>
                 <div class="field-hint">参考值：0.22</div>
+                <div v-if="store.importedValueText('distribution_index', '', 3)" class="field-hint">{{ store.importedValueText('distribution_index', '', 3) }}</div>
               </div>
             </div>
           </section>
@@ -193,6 +196,7 @@ async function handleFinish() {
                   </el-input-number>
                 </el-form-item>
                 <div class="field-hint">参考值：18 μm</div>
+                <div v-if="store.importedValueText('fly_ash_peak_size', ' μm', 2)" class="field-hint">{{ store.importedValueText('fly_ash_peak_size', ' μm', 2) }}</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
@@ -202,6 +206,7 @@ async function handleFinish() {
                   </el-input-number>
                 </el-form-item>
                 <div class="field-hint">参考值：8 μm</div>
+                <div v-if="store.importedValueText('fly_ash_accumulation_size', ' μm', 2)" class="field-hint">{{ store.importedValueText('fly_ash_accumulation_size', ' μm', 2) }}</div>
                 <div class="field-note">{{ flyAshAccumulationNote }}</div>
               </div>
               <div class="binder-form-field">
@@ -212,6 +217,7 @@ async function handleFinish() {
                   </el-input-number>
                 </el-form-item>
                 <div class="field-hint">参考值：4 μm</div>
+                <div v-if="store.importedValueText('micro_bead_peak_size', ' μm', 2)" class="field-hint">{{ store.importedValueText('micro_bead_peak_size', ' μm', 2) }}</div>
               </div>
             </div>
           </section>
@@ -225,6 +231,7 @@ async function handleFinish() {
                   <el-input-number :model-value="store.microBeadSilicaFumeRatio ?? undefined" @update:model-value="value => store.microBeadSilicaFumeRatio = value ?? null" :min="0.1" :max="0.9" :step="0.05" :precision="2" style="width:100%" />
                 </el-form-item>
                 <div class="field-hint">参考值：0.50</div>
+                <div v-if="store.importedValueText('micro_bead_silica_fume_ratio', '', 2)" class="field-hint">{{ store.importedValueText('micro_bead_silica_fume_ratio', '', 2) }}</div>
                 <div class="field-note">{{ microBeadRatioNote }}</div>
               </div>
               <div class="binder-form-field">
@@ -233,6 +240,7 @@ async function handleFinish() {
                   <el-input-number :model-value="store.microPowderCoefficient ?? undefined" @update:model-value="value => store.microPowderCoefficient = value ?? null" :min="0.1" :max="2" :step="0.05" :precision="2" style="width:100%" />
                 </el-form-item>
                 <div class="field-hint">参考值：0.55</div>
+                <div v-if="store.importedValueText('micro_powder_coefficient', '', 2)" class="field-hint">{{ store.importedValueText('micro_powder_coefficient', '', 2) }}</div>
                 <div class="field-note">{{ microPowderCoefficientNote }}</div>
               </div>
               <div class="binder-form-field">
@@ -243,6 +251,7 @@ async function handleFinish() {
                   </el-input-number>
                 </el-form-item>
                 <div class="field-hint">参考值：2500 kg/m³</div>
+                <div v-if="store.importedValueText('assumed_mix_mass', ' kg/m³', 0)" class="field-hint">{{ store.importedValueText('assumed_mix_mass', ' kg/m³', 0) }}</div>
               </div>
             </div>
           </section>
@@ -258,6 +267,7 @@ async function handleFinish() {
                   </el-input-number>
                 </el-form-item>
                 <div class="field-hint">参考值：3100 kg/m³</div>
+                <div v-if="store.importedValueText('cement_density', ' kg/m³', 0)" class="field-hint">{{ store.importedValueText('cement_density', ' kg/m³', 0) }}</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
@@ -267,6 +277,7 @@ async function handleFinish() {
                   </el-input-number>
                 </el-form-item>
                 <div class="field-hint">参考值：2300 kg/m³</div>
+                <div v-if="store.importedValueText('fly_ash_density', ' kg/m³', 0)" class="field-hint">{{ store.importedValueText('fly_ash_density', ' kg/m³', 0) }}</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
@@ -276,6 +287,7 @@ async function handleFinish() {
                   </el-input-number>
                 </el-form-item>
                 <div class="field-hint">参考值：2600 kg/m³</div>
+                <div v-if="store.importedValueText('micro_bead_density', ' kg/m³', 0)" class="field-hint">{{ store.importedValueText('micro_bead_density', ' kg/m³', 0) }}</div>
               </div>
               <div class="binder-form-field">
                 <el-form-item>
@@ -285,6 +297,7 @@ async function handleFinish() {
                   </el-input-number>
                 </el-form-item>
                 <div class="field-hint">参考值：2200 kg/m³</div>
+                <div v-if="store.importedValueText('silica_fume_density', ' kg/m³', 0)" class="field-hint">{{ store.importedValueText('silica_fume_density', ' kg/m³', 0) }}</div>
               </div>
             </div>
           </section>

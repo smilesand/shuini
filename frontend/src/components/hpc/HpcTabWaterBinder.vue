@@ -163,6 +163,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
                   <template #suffix><span class="unit-suffix">MPa</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 80 MPa</div>
+                <div v-if="store.importedValueText('fcuk', ' MPa', 0)" class="input-hint">{{ store.importedValueText('fcuk', ' MPa', 0) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -209,6 +210,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
                   <template #suffix><span class="unit-suffix">MPa</span></template>
                 </el-input-number>
                 <div v-if="store.fbCalcMode === 'input'" class="input-hint">参考值 48 MPa</div>
+                <div v-if="store.fbCalcMode === 'input' && store.importedValueText('fb', ' MPa', 2)" class="input-hint">{{ store.importedValueText('fb', ' MPa', 2) }}</div>
                 <el-input
                   v-else
                   :value="computedFb ? computedFb.toFixed(2) : ''"
@@ -365,24 +367,28 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
               <el-form-item class="small-label">
                 <template #label>粉煤灰 β<sub>1</sub></template>
                 <el-input-number :model-value="n(store.b1p)" @update:model-value="v => store.b1p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
+                <div v-if="store.importedValueText('b1p', ' %', 2)" class="input-hint">{{ store.importedValueText('b1p', ' %', 2) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="6">
               <el-form-item class="small-label">
                 <template #label>矿粉 β<sub>2</sub></template>
                 <el-input-number :model-value="n(store.b2p)" @update:model-value="v => store.b2p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
+                <div v-if="store.importedValueText('b2p', ' %', 2)" class="input-hint">{{ store.importedValueText('b2p', ' %', 2) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="6">
               <el-form-item class="small-label">
                 <template #label>微珠 β<sub>3</sub></template>
                 <el-input-number :model-value="n(store.b3p)" @update:model-value="v => store.b3p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
+                <div v-if="store.importedValueText('b3p', ' %', 2)" class="input-hint">{{ store.importedValueText('b3p', ' %', 2) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="6">
               <el-form-item class="small-label">
                 <template #label>硅灰 β<sub>4</sub></template>
                 <el-input-number :model-value="n(store.b4p)" @update:model-value="v => store.b4p = v ?? null" :min="0" :max="100" :step="1" :precision="1" placeholder="0" style="width:100%" />
+                <div v-if="store.importedValueText('b4p', ' %', 2)" class="input-hint">{{ store.importedValueText('b4p', ' %', 2) }}</div>
               </el-form-item>
             </el-col>
           </el-row>

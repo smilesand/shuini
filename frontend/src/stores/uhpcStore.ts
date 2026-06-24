@@ -93,11 +93,20 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function toNullableNumber(value: unknown): NullableNumber {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null
+  return parseImportedNumber(value)
 }
 
 function toNumber(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+  return parseImportedNumber(value) ?? fallback
+}
+
+function parseImportedNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value !== 'string') return null
+  const match = value.trim().match(/-?\d+(?:\.\d+)?/)
+  if (!match) return null
+  const parsed = Number(match[0])
+  return Number.isFinite(parsed) ? parsed : null
 }
 
 function toFiberStrengthGrade(value: unknown): FiberStrengthGrade {
@@ -298,6 +307,7 @@ export const useUhpcStore = defineStore('uhpc', () => {
 
   const uhpcSelectedProjectId = ref<number | null>(null)
   const uhpcShowCalculator = ref(false)
+  const importedValues = ref<Record<string, unknown>>({})
 
   const strengthGrade = ref<NullableNumber>(null)
   const waterBinderRatio = ref<NullableNumber>(null)
@@ -574,6 +584,7 @@ export const useUhpcStore = defineStore('uhpc', () => {
 
   function applyRecordData(record: Record<string, unknown>) {
     resetAll()
+    importedValues.value = {}
 
     const recordId = typeof record.id === 'number' ? record.id : null
     const recordName = typeof record.name === 'string' ? record.name : ''
@@ -597,7 +608,7 @@ export const useUhpcStore = defineStore('uhpc', () => {
       return
     }
 
-    if (recordData.fcuk != null) strengthGrade.value = Number(recordData.fcuk)
+    if (recordData.fcuk != null) strengthGrade.value = parseImportedNumber(recordData.fcuk)
     if (recordData.wb != null) waterBinderRatio.value = Number(recordData.wb)
     if (recordData.alpha != null) admixtureRatio.value = Number(recordData.alpha)
     if (recordData.sand_ratio != null) sandBinderRatio.value = Number(recordData.sand_ratio)
@@ -616,14 +627,15 @@ export const useUhpcStore = defineStore('uhpc', () => {
   /** 从 Excel 导入数据直接载入（兼容导入模板和历史字段名） */
   function importFromExcel(data: Record<string, unknown>) {
     resetAll()
+    importedValues.value = { ...data }
 
     // ── 基本信息 ──
     const name = typeof data.record_name === 'string' ? data.record_name : ''
     setCurrentRecord(null, name, null)
 
     // ── 主要参数（兼容导入模板和历史字段名） ──
-    if (data.strength_grade != null) strengthGrade.value = Number(data.strength_grade)
-    else if (data.fcuk != null) strengthGrade.value = Number(data.fcuk)
+    if (data.strength_grade != null) strengthGrade.value = parseImportedNumber(data.strength_grade)
+    else if (data.fcuk != null) strengthGrade.value = parseImportedNumber(data.fcuk)
 
     if (data.water_binder_ratio != null) waterBinderRatio.value = Number(data.water_binder_ratio)
     else if (data.wb != null) waterBinderRatio.value = Number(data.wb)
@@ -654,6 +666,18 @@ export const useUhpcStore = defineStore('uhpc', () => {
     if (data.micro_powder_coefficient != null) microPowderCoefficient.value = Number(data.micro_powder_coefficient)
     if (data.assumed_mix_mass != null) assumedMixMass.value = Number(data.assumed_mix_mass)
     if (data.steel_fiber_density != null) steelFiberDensity.value = Number(data.steel_fiber_density)
+
+    void calcMix()
+  }
+
+  function importedValueText(key: string, unit = '', precision?: number): string | null {
+    const value = importedValues.value[key]
+    if (value === null || value === undefined || value === '') return null
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      const text = precision === undefined ? String(Number(value.toFixed(4))) : value.toFixed(precision)
+      return `导入值 ${text}${unit}`
+    }
+    return `导入值 ${String(value)}${unit}`
   }
 
   function buildRecordPayload(
@@ -737,6 +761,7 @@ export const useUhpcStore = defineStore('uhpc', () => {
     currentTrialData,
     uhpcSelectedProjectId,
     uhpcShowCalculator,
+    importedValues,
     strengthGrade,
     waterBinderRatio,
     admixtureRatio,
@@ -779,6 +804,7 @@ export const useUhpcStore = defineStore('uhpc', () => {
     buildDesignSnapshot,
     applyRecordData,
     importFromExcel,
+    importedValueText,
     buildRecordPayload,
     resetAll,
   }

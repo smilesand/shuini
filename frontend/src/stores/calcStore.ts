@@ -9,6 +9,21 @@ import {
   calcBinder      as engineCalcBinder,
   calcWaterAdmixture as engineCalcWaterAdmixture,
 } from '../calc'
+import { resolveHpcWorkabilityCode } from '../utils/hpcWorkability'
+
+function parseImportedNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value !== 'string') return null
+  const match = value.trim().match(/-?\d+(?:\.\d+)?/)
+  if (!match) return null
+  const parsed = Number(match[0])
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function roundTo(value: number, digits: number): number {
+  const factor = 10 ** digits
+  return Math.round((value + Number.EPSILON) * factor) / factor
+}
 
 export const useCalcStore = defineStore('calc', () => {
   // ── Generic ─────────────────────────────────────────────────────────────
@@ -20,6 +35,7 @@ export const useCalcStore = defineStore('calc', () => {
   const currentTrialData = ref<object | null>(null) // 当前记录已保存的试配快照
   const hpcSelectedProjectId = ref<number | null>(null) // 高性能混凝土当前选中项目 ID
   const hpcShowCalculator = ref(false) // 高性能混凝土页是否显示计算卡片
+  const importedValues = ref<Record<string, unknown>>({}) // Excel 导入原始值，用于与参考值对比
 
   // ── Tab 1: 水胶比 ─────────────────────────────────────────────────────
   const fcuk = ref<number | null>(null) // 强度等级 fcu,k
@@ -122,6 +138,7 @@ export const useCalcStore = defineStore('calc', () => {
 
   function applyRecordData(record: Record<string, unknown>) {
     resetAll()
+    importedValues.value = {}
 
     const recordId = typeof record.id === 'number' ? record.id : null
     const recordName = typeof record.name === 'string' ? record.name : ''
@@ -135,7 +152,7 @@ export const useCalcStore = defineStore('calc', () => {
         : null,
     )
 
-    if (recordData.fcuk != null) fcuk.value = Number(recordData.fcuk)
+    if (recordData.fcuk != null) fcuk.value = parseImportedNumber(recordData.fcuk)
     if (recordData.fb != null) fb.value = Number(recordData.fb)
     if (recordData.fcu0 != null) fcu0.value = Number(recordData.fcu0)
     if (recordData.wb != null) wb.value = Number(recordData.wb)
@@ -192,8 +209,75 @@ export const useCalcStore = defineStore('calc', () => {
 
   /** 从 Excel 导入数据直接载入（无需 record 包装） */
   function importFromExcel(data: Record<string, unknown>) {
-    // 复用 applyRecordData，将 data 作为 record_data 传入
-    applyRecordData({ record_data: data } as Record<string, unknown>)
+    resetAll()
+    importedValues.value = { ...data }
+
+    const readNumber = (...keys: string[]) => {
+      for (const key of keys) {
+        const value = parseImportedNumber(data[key])
+        if (value !== null) return value
+      }
+      return null
+    }
+
+    const strength = readNumber('fcuk', 'strength_grade')
+    const aggregateSize = readNumber('max_aggregate_size')
+    if (strength !== null) fcuk.value = strength
+    if (data.fb != null) fb.value = Number(data.fb)
+    if (data.fbCalcMode != null) fbCalcMode.value = String(data.fbCalcMode) as 'input' | 'calc'
+    if (data.fceG != null) fceG.value = Number(data.fceG)
+    if (data.gammaC != null) gammaC.value = Number(data.gammaC)
+    if (data.gammaF != null) gammaF.value = Number(data.gammaF)
+    if (data.gammaS != null) gammaS.value = Number(data.gammaS)
+    if (data.gammaB != null) gammaB.value = Number(data.gammaB)
+    if (data.gammaSF != null) gammaSF.value = Number(data.gammaSF)
+    if (data.aa != null) aa.value = Number(data.aa)
+    if (data.ab != null) ab.value = Number(data.ab)
+    if (data.ac != null) ac.value = Number(data.ac)
+
+    const importedSandRatio = readNumber('sand_ratio')
+    if (importedSandRatio !== null) sandRatioInput.value = roundTo(importedSandRatio, 1)
+    if (aggregateSize !== null) maxAggregateSize.value = String(aggregateSize)
+    if (strength !== null) sandRatioRow.value = strength <= 80 ? 0 : strength <= 90 ? 1 : 2
+    if (aggregateSize !== null) sandRatioCol.value = aggregateSize <= 16 ? 0 : aggregateSize <= 20 ? 1 : 2
+
+    if (typeof data.vg_reference_code === 'string') {
+      vgReferenceCode.value = getHpcWorkabilityReference(data.vg_reference_code)?.code ?? null
+    }
+    if (data.req_slump != null) reqSlump.value = readNumber('req_slump')
+    if (data.req_spread != null) reqSpread.value = readNumber('req_spread')
+    vgReferenceCode.value = resolveHpcWorkabilityCode(reqSlump.value, reqSpread.value)
+    if (data.vg != null) vg.value = Number(data.vg)
+    if (data.rhog != null) rhog.value = Number(data.rhog)
+    if (data.rhos != null) rhos.value = Number(data.rhos)
+    if (data.b1p != null) b1p.value = Number(data.b1p)
+    if (data.rho1 != null) rho1.value = Number(data.rho1)
+    if (data.b2p != null) b2p.value = Number(data.b2p)
+    if (data.rho2 != null) rho2.value = Number(data.rho2)
+    if (data.b3p != null) b3p.value = Number(data.b3p)
+    if (data.rho3 != null) rho3.value = Number(data.rho3)
+    if (data.b4p != null) b4p.value = Number(data.b4p)
+    if (data.rho4 != null) rho4.value = Number(data.rho4)
+    if (data.rhoc != null) rhoc.value = Number(data.rhoc)
+    if (data.va != null) va.value = Number(data.va)
+    else if (data.air_content != null) va.value = Number(data.air_content)
+    if (data.alpha != null) alpha.value = Number(data.alpha)
+
+    calcWaterBinder()
+    confirmSandRatio()
+    calcAggregate()
+    calcBinder()
+    calcWaterAdmixture()
+  }
+
+  function importedValueText(key: string, unit = '', precision?: number): string | null {
+    const value = importedValues.value[key]
+    if (value === null || value === undefined || value === '') return null
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      const text = precision === undefined ? String(Number(value.toFixed(4))) : value.toFixed(precision)
+      return `导入值 ${text}${unit}`
+    }
+    return `导入值 ${String(value)}${unit}`
   }
 
   function buildRecordPayload(
@@ -382,6 +466,7 @@ export const useCalcStore = defineStore('calc', () => {
     currentRecordId, currentRecordName, currentRecordProjectId,
     currentTrialData,
     hpcSelectedProjectId, hpcShowCalculator,
+    importedValues,
     fcuk, fb, fbCalcMode, fceG, gammaC, gammaF, gammaS, gammaB, gammaSF, aa, ab, ac, fcu0, wb,
     sandRatioRow, sandRatioCol, sandRatioInput, sandRatioConfirmed, maxAggregateSize, vgReferenceCode,
     reqSlump, reqSpread,
@@ -397,6 +482,7 @@ export const useCalcStore = defineStore('calc', () => {
     clearHpcProjectState,
     applyRecordData,
     importFromExcel,
+    importedValueText,
     buildRecordPayload,
     calcWaterBinder,
     fitCoefficients,

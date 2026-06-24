@@ -57,6 +57,7 @@ function handleGuideSelect(grade: number) {
                   <template #suffix><span class="unit-suffix">MPa</span></template>
                 </el-input-number>
                 <div class="input-hint">参考值 {{ UHPC_INPUT_PLACEHOLDERS.strengthGrade }} MPa</div>
+                <div v-if="store.importedValueText('fcuk', ' MPa', 0) || store.importedValueText('strength_grade', ' MPa', 0)" class="input-hint">{{ store.importedValueText('fcuk', ' MPa', 0) || store.importedValueText('strength_grade', ' MPa', 0) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -107,6 +108,7 @@ function handleGuideSelect(grade: number) {
                   style="width:100%"
                 />
                 <div class="input-hint">参考值 {{ waterBinderPlaceholder }}</div>
+                <div v-if="store.importedValueText('wb', '', 3) || store.importedValueText('water_binder_ratio', '', 3)" class="input-hint">{{ store.importedValueText('wb', '', 3) || store.importedValueText('water_binder_ratio', '', 3) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -120,6 +122,7 @@ function handleGuideSelect(grade: number) {
                   <template #suffix><span class="unit-suffix">%</span></template>
                 </el-input-number>
                 <div class="input-hint">参考掺量 {{ UHPC_INPUT_PLACEHOLDERS.admixtureRatio }} %</div>
+                <div v-if="store.importedValueText('alpha', ' %', 2) || store.importedValueText('admixture_ratio', ' %', 2)" class="input-hint">{{ store.importedValueText('alpha', ' %', 2) || store.importedValueText('admixture_ratio', ' %', 2) }}</div>
               </el-form-item>
             </el-col>
           </el-row>
