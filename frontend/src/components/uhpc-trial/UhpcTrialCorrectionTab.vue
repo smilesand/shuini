@@ -220,16 +220,18 @@ const strengthEvaluation = computed(() => {
                 :min="1500" :max="3500" :step="10" :precision="0"
                 placeholder=""
                 style="width: 100%"
-              />
-              <div class="density-field__unit">kg/m³</div>
+              >
+                <template #suffix><span class="unit-suffix">kg/m³</span></template>
+              </el-input-number>
               <div class="input-hint">参考值 2510 kg/m³</div>
             </div>
           </el-col>
           <el-col :span="8">
             <div class="density-field">
               <div class="density-field__label">拌合物表观密度计算值</div>
-              <el-input :value="fmt(calcDensity)" readonly class="calc-inp" />
-              <div class="density-field__unit">kg/m³</div>
+              <el-input :value="fmt(calcDensity)" readonly class="calc-inp">
+                <template #suffix><span class="unit-suffix">kg/m³</span></template>
+              </el-input>
             </div>
           </el-col>
           <el-col :span="8">
