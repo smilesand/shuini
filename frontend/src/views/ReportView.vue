@@ -191,8 +191,14 @@ function exportReport(record: RecordItem) {
 
   const isUHPC = record.category === 'uhpc' || record.category === 'uhpc_trial'
 
-  const strengthGrade = flatData.strengthGrade || flatData.strength_grade || flatData.fcuk || '—'
-  const designStrength = flatData.fcu0 || flatData.designStrength || flatData.design_strength || flatData.sTargetStrength || '—'
+  // 强度等级：HPC 用 fcuk，UHPC 用 strengthGrade
+  const strengthGrade = isUHPC
+    ? (flatData.strengthGrade ?? flatData.strength_grade ?? '—')
+    : (flatData.fcuk ?? flatData.strengthGrade ?? flatData.strength_grade ?? '—')
+  // 配制强度：HPC 用 fcu0/designStrength，UHPC 用 designStrength/design_strength
+  const designStrength = isUHPC
+    ? (flatData.designStrength ?? flatData.design_strength ?? flatData.sTargetStrength ?? '—')
+    : (flatData.fcu0 ?? flatData.designStrength ?? flatData.design_strength ?? flatData.sTargetStrength ?? '—')
   const totalBinder = flatData.mb || flatData.total_binder || (flatData.binder && typeof flatData.binder === 'number' ? flatData.binder : null) || '—'
   const cementPct = flatData.bcp || flatData.bc || flatData.cement || flatData.cement_pct || flatData.cementRatio || '—'
   const p1 = flatData.b1p ?? flatData.flyAsh ?? flatData.fly_ash_pct ?? '—'
@@ -213,13 +219,13 @@ function exportReport(record: RecordItem) {
   const reqSpread = flatData.req_spread ?? flatData.reqSpread ?? null
   const maxAggregateSize = (flatData.max_aggregate_size ?? flatData.maxAggregateSize ?? null) as string | null
   const fb = flatData.fb ?? flatData.binderStrength28d ?? null
-  const rhoc = flatData.rhoc ?? null
-  const rho1 = flatData.rho1 ?? null
-  const rho2 = flatData.rho2 ?? null
-  const rho3 = flatData.rho3 ?? null
-  const rho4 = flatData.rho4 ?? null
-  const rhog = flatData.rhog ?? null
-  const rhos = flatData.rhos ?? null
+  const rhoc = isUHPC ? (flatData.cementDensity ?? null) : (flatData.rhoc ?? null)
+  const rho1 = isUHPC ? (flatData.flyAshDensity ?? null) : (flatData.rho1 ?? null)
+  const rho2 = isUHPC ? null : (flatData.rho2 ?? null)
+  const rho3 = isUHPC ? (flatData.microBeadDensity ?? null) : (flatData.rho3 ?? null)
+  const rho4 = isUHPC ? (flatData.silicaFumeDensity ?? null) : (flatData.rho4 ?? null)
+  const rhog = isUHPC ? null : (flatData.rhog ?? null)
+  const rhos = isUHPC ? null : (flatData.rhos ?? null)
   const tensileStrength = flatData.tensile_strength ?? flatData.tensileStrength ?? null
   const fiberStrengthGrade = flatData.fiber_strength_grade ?? flatData.fiberStrengthGrade ?? null
   const maxParticleSize = flatData.max_particle_size ?? flatData.maxParticleSize ?? null
@@ -229,8 +235,12 @@ function exportReport(record: RecordItem) {
   const vg = flatData.vg ?? null
 
   // ── Strength pass/fail: 总体均值 ≥ multiplier × 强度等级 且 组最小值 ≥ 0.95×强度等级
-  const targetForEval = sTargetStr || flatData.fcu0 || flatData.designStrength || flatData.design_strength
-  const strengthGradeNum = Number(flatData.fcuk || flatData.strengthGrade || flatData.strength_grade || NaN)
+  const targetForEval = isUHPC
+    ? (sTargetStr || flatData.designStrength || flatData.design_strength)
+    : (sTargetStr || flatData.fcu0 || flatData.designStrength || flatData.design_strength)
+  const strengthGradeNum = isUHPC
+    ? Number(flatData.strengthGrade ?? flatData.strength_grade ?? NaN)
+    : Number(flatData.fcuk ?? flatData.strengthGrade ?? flatData.strength_grade ?? NaN)
 
   if (strengthOverallAvg !== null && Number.isFinite(strengthGradeNum)) {
     const strengthMult = isUHPC ? 1.10 : 1.15

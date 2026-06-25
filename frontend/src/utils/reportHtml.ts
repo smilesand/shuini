@@ -119,11 +119,12 @@ function buildRequirementSection(d: ReportData): string {
     const tensileCell = d.fiberStrengthGrade != null
       ? `${textVal(d.fiberStrengthGrade)}${d.tensileStrength != null ? ' (≥' + fmtVal(d.tensileStrength, 1) + ' MPa)' : ''}`
       : fmtVal(d.tensileStrength, 1)
+    const spreadReq = d.evalSpreadReq != null ? fmtVal(d.evalSpreadReq, 0) + ' mm' : '—'
     return `
       <div class="section-title">二、 混凝土性能要求</div>
       <table>
         <thead><tr><th>强度等级/MPa</th><th>扩展度/mm</th><th>抗拉强度</th><th>其他</th></tr></thead>
-        <tbody><tr class="green"><td>${textVal(d.strengthGrade)}</td><td>${fmtVal(d.reqSpread, 0)}</td><td>${tensileCell}</td><td>—</td></tr></tbody>
+        <tbody><tr class="green"><td>${textVal(d.strengthGrade)}</td><td>${spreadReq}</td><td>${tensileCell}</td><td>—</td></tr></tbody>
       </table>`
   }
   return `
