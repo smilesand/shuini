@@ -252,11 +252,13 @@ ${baseStyle}
 body { background: #fff; }
 .project-pdf-page {
   width: 281mm;
-  height: 194mm;
-  overflow: hidden;
+  break-after: page;
   display: flex;
   align-items: flex-start;
   justify-content: center;
+}
+.project-pdf-page:last-child {
+  break-after: auto;
 }
 .project-pdf-page .page-container { margin: 0 auto; }
 </style>
