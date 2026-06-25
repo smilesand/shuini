@@ -22,6 +22,7 @@ const props = defineProps<{
   strengthGrade: number | null
   strengthGroups: StrengthGroup[]
   evalSpread: number | null
+  evalSpreadReq: number | null
   evalWorkabilityDesc: string
 }>()
 
@@ -30,12 +31,33 @@ const emit = defineEmits<{
   (e: 'update:measuredDensity', v: number | null): void
   (e: 'update:strengthGroups', v: StrengthGroup[]): void
   (e: 'update:evalSpread', v: number | null): void
+  (e: 'update:evalSpreadReq', v: number | null): void
   (e: 'update:evalWorkabilityDesc', v: string): void
 }>()
 
 function fmt(v: number | null | undefined, d = 1): string {
   return v != null ? v.toFixed(d) : '—'
 }
+
+// ── Spread evaluation ──────────────────────────────────────────
+const spreadEval = computed(() => {
+  const measured = props.evalSpread
+  const req = props.evalSpreadReq
+  if (measured === null || req === null) {
+    return { status: 'pending' as const, label: '待评价', tagType: 'info' as const, detail: '请填写实测扩展度和扩展度要求。' }
+  }
+  const lo = req - 50
+  const hi = req + 50
+  const pass = measured >= lo && measured <= hi
+  return {
+    status: pass ? ('pass' as const) : ('fail' as const),
+    label: pass ? '合格' : '不合格',
+    tagType: pass ? ('success' as const) : ('danger' as const),
+    detail: pass
+      ? `扩展度 ${measured} mm 在 ${req}±50 mm 范围内 (${lo}–${hi} mm)`
+      : `扩展度 ${measured} mm 不在 ${req}±50 mm 范围内 (${lo}–${hi} mm)`,
+  }
+})
 
 // ── Group-based 28d strength evaluation ─────────────────────────
 const groupResults = computed(() =>
@@ -297,38 +319,64 @@ const strengthEvaluation = computed(() => {
 
         <el-divider style="margin: 20px 0" />
 
-        <el-row :gutter="20" style="margin-bottom:12px">
-          <el-col :span="12">
-            <div class="density-field">
-              <div class="density-field__label">扩展度</div>
-              <el-input-number
-                :model-value="evalSpread ?? undefined"
-                @update:model-value="v => emit('update:evalSpread', v ?? null)"
-                :min="0" :max="900" :step="10" :precision="0"
-                placeholder=""
-                style="width: 100%"
-              />
-              <div class="density-field__unit">mm</div>
-              <div class="input-hint">参考值 650 mm</div>
-            </div>
-          </el-col>
-        </el-row>
+        <el-form label-position="top" size="default">
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item>
+                <template #label>实测扩展度</template>
+                <el-input-number
+                  :model-value="evalSpread ?? undefined"
+                  @update:model-value="v => emit('update:evalSpread', v ?? null)"
+                  :min="0" :max="900" :step="5"
+                  placeholder=""
+                  style="width: 100%"
+                >
+                  <template #suffix><span class="unit-suffix">mm</span></template>
+                </el-input-number>
+                <div class="input-hint">参考值 650 mm</div>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item>
+                <template #label>扩展度要求</template>
+                <el-input-number
+                  :model-value="evalSpreadReq ?? undefined"
+                  @update:model-value="v => emit('update:evalSpreadReq', v ?? null)"
+                  :min="0" :max="900" :step="5"
+                  placeholder=""
+                  style="width: 100%"
+                >
+                  <template #suffix><span class="unit-suffix">mm</span></template>
+                </el-input-number>
+                <div class="input-hint">评判依据：扩展度 ±50 mm</div>
+              </el-form-item>
+            </el-col>
+          </el-row>
 
-        <div class="density-field" style="margin-top: 16px">
-          <div class="density-field__label">工作性综合描述</div>
-          <el-input
-            type="textarea"
-            :rows="3"
-            :model-value="evalWorkabilityDesc"
-            @update:model-value="v => emit('update:evalWorkabilityDesc', v)"
-            placeholder=""
-          />
-        </div>
+          <el-row :gutter="20">
+            <el-col :span="24">
+              <el-form-item>
+                <template #label>工作性综合描述</template>
+                <el-input
+                  type="textarea"
+                  :rows="3"
+                  :model-value="evalWorkabilityDesc"
+                  @update:model-value="v => emit('update:evalWorkabilityDesc', v)"
+                  placeholder=""
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
 
         <div style="display:flex;align-items:center;gap:12px;margin-top:16px;">
-          <span style="font-weight:bold;color:#374151;font-size:13px;">强度评价状态：</span>
+          <span style="font-weight:bold;color:#374151;font-size:13px;">性能评价：</span>
+          <span style="font-size:12px;color:#6b7280;">强度</span>
           <el-tag :type="strengthEvaluation.tagType" size="small">{{ strengthEvaluation.label }}</el-tag>
           <span style="font-size:12px;color:#6b7280;">{{ strengthEvaluation.detail }}</span>
+          <span style="font-size:12px;color:#6b7280;margin-left:8px;">扩展度</span>
+          <el-tag :type="spreadEval.tagType" size="small">{{ spreadEval.label }}</el-tag>
+          <span style="font-size:12px;color:#6b7280;">{{ spreadEval.detail }}</span>
         </div>
       </div>
     </div>

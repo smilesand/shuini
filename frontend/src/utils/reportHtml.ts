@@ -20,7 +20,7 @@ export interface ReportData {
   bmc: unknown; bm1: unknown; bm2: unknown; bm3: unknown; bm4: unknown
   bmg: unknown; bms: unknown; bmw: unknown; bma: unknown; bmsf: unknown; bmtot: unknown
   vBatch: number
-  evalSlump: unknown; evalSpread: unknown; workDesc: unknown
+  evalSlump: unknown; evalSpread: unknown; evalSpreadReq?: unknown; workDesc: unknown
   workabilityPass: boolean | null
   strengthPass: boolean | null
   vgReferenceCode: string | null
@@ -216,13 +216,16 @@ function buildFinalMixSection(d: ReportData): string {
 function buildEvaluationSection(d: ReportData): string {
   const strengthMult = d.isUHPC ? 1.10 : 1.15
   const workabilityRef = getHpcWorkabilityReference(d.vgReferenceCode)
+  const spreadReqText = d.evalSpreadReq != null
+    ? fmtVal(d.evalSpreadReq, 0) + ' mm'
+    : (d.reqSpread != null ? fmtVal(d.reqSpread, 0) + ' mm' : (workabilityRef?.metric === 'spread' ? workabilityRef.desc : '—'))
   return `
     <div class="section-title">六、 混凝土性能评价</div>
     <table>
       <thead><tr><th colspan="2">指标</th><th>实测值</th><th>要求</th><th>评价</th></tr></thead>
       <tbody>
         <tr><td class="cat" rowspan="3">工作性能</td><td>坍落度/mm</td><td>${textVal(d.evalSlump)}</td><td>${d.reqSlump != null ? fmtVal(d.reqSlump, 0) + ' mm' : (workabilityRef?.metric === 'slump' ? workabilityRef.desc : '—')}</td><td rowspan="3">${passLabel(d.workabilityPass)}</td></tr>
-        <tr><td>扩展度/mm</td><td>${textVal(d.evalSpread)}</td><td>${d.reqSpread != null ? fmtVal(d.reqSpread, 0) + ' mm' : (workabilityRef?.metric === 'spread' ? workabilityRef.desc : '—')}</td></tr>
+        <tr><td>扩展度/mm</td><td>${textVal(d.evalSpread)}</td><td>${spreadReqText}</td></tr>
         <tr><td>综合性描述</td><td>${textVal(d.workDesc)}</td><td>和易性良好；不离析、不泌水</td></tr>
         <tr><td class="cat" rowspan="2">抗压强度</td><td>平均值/MPa</td><td>${d.strengthOverallAvg !== null ? d.strengthOverallAvg.toFixed(1) : '—'}</td><td>≥ ${strengthMult.toFixed(2)}×强度等级${Number.isFinite(d.strengthGradeNum) ? '(' + (d.strengthGradeNum * strengthMult).toFixed(1) + ' MPa)' : ''}</td><td rowspan="2">${passLabel(d.strengthPass)}</td></tr>
         <tr><td>最小值/MPa</td><td>${d.strengthMinGroupAvg !== null ? d.strengthMinGroupAvg.toFixed(1) : '—'}</td><td>≥ 0.95×强度等级${Number.isFinite(d.strengthGradeNum) ? '(' + (d.strengthGradeNum * 0.95).toFixed(1) + ' MPa)' : ''}</td></tr>

@@ -206,25 +206,55 @@ export function calcUhpcTrial(req: UhpcTrialReq): UhpcTrialRes {
     cementPct, silicaFumePct, flyAshPct, microBeadPct, -5.0, aSfMinus,
   )
 
-  // 强度推荐 – 三点线性回归
+  // 强度推荐 – 三点线性回归（配制强度在实测范围外时，选最接近的组）
   let recWb: number | null = null
   let recSf: number | null = null
   if (sWb0 !== null && sWbPlus !== null && sWbMinus !== null) {
-    recWb = truncDigits(
-      linearFit(wb, sWb0, wb + 0.01, sWbPlus, wb - 0.01, sWbMinus, designStrength), 3,
-    )
+    const wbXs = [wb + 0.01, wb, wb - 0.01]
+    const wbYs = [sWbPlus, sWb0, sWbMinus]
+    const minWy = Math.min(...wbYs)
+    const maxWy = Math.max(...wbYs)
+    if (designStrength > maxWy || designStrength < minWy) {
+      // 配制强度在实测范围之外 → 选强度最接近的组对应的水胶比
+      let closestIdx = 0
+      let closestDist = Math.abs(wbYs[0] - designStrength)
+      for (let i = 1; i < 3; i++) {
+        const dist = Math.abs(wbYs[i] - designStrength)
+        if (dist < closestDist) { closestDist = dist; closestIdx = i }
+      }
+      recWb = truncDigits(wbXs[closestIdx], 3)
+    } else {
+      recWb = truncDigits(
+        linearFit(wb, sWb0, wb + 0.01, sWbPlus, wb - 0.01, sWbMinus, designStrength), 3,
+      )
+    }
   }
   if (sWb0 !== null && sSfPlus !== null && sSfMinus !== null) {
     const baseSf = trialMix.silica_fume
-    recSf = truncDigits(
-      linearFit(
-        baseSf, sWb0,
-        variantSfPlus.silica_fume, sSfPlus,
-        variantSfMinus.silica_fume, sSfMinus,
-        designStrength,
-      ),
-      1,
-    )
+    const sfXs = [variantSfPlus.silica_fume, baseSf, variantSfMinus.silica_fume]
+    const sfYs = [sSfPlus, sWb0, sSfMinus]
+    const minSy = Math.min(...sfYs)
+    const maxSy = Math.max(...sfYs)
+    if (designStrength > maxSy || designStrength < minSy) {
+      // 配制强度在实测范围之外 → 选强度最接近的组对应的硅灰用量
+      let closestIdx = 0
+      let closestDist = Math.abs(sfYs[0] - designStrength)
+      for (let i = 1; i < 3; i++) {
+        const dist = Math.abs(sfYs[i] - designStrength)
+        if (dist < closestDist) { closestDist = dist; closestIdx = i }
+      }
+      recSf = truncDigits(sfXs[closestIdx], 1)
+    } else {
+      recSf = truncDigits(
+        linearFit(
+          baseSf, sWb0,
+          variantSfPlus.silica_fume, sSfPlus,
+          variantSfMinus.silica_fume, sSfMinus,
+          designStrength,
+        ),
+        1,
+      )
+    }
   }
 
   // ── Tab 3: 校正配合比 ──────────────────────────────────────────

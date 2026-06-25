@@ -49,6 +49,7 @@ const measuredDensity = ref<number | null>(null)
 // ─── Workability Eval ──────────────────────────────────────────────
 const strengthGroups = ref<StrengthGroup[]>(defaultUhpcStrengthGroups())
 const evalSpread = ref<number | null>(null)
+const evalSpreadReq = ref<number | null>(null)
 const evalWorkabilityDesc = ref<string>('')
 
 // ─── Project context ────────────────────────────────────────────
@@ -134,6 +135,7 @@ function buildTrialSnapshot() {
     corrBase: corrBase.value,
     strengthGroups: strengthGroups.value.map(g => ({ id: g.id, values: [...g.values] })),
     evalSpread: evalSpread.value,
+    evalSpreadReq: evalSpreadReq.value,
     evalWorkabilityDesc: evalWorkabilityDesc.value,
     // 持久化“调整适配后最终的实验室配合比”，供配合比记录表格展示最终配合比。
     lab_mix: trialResult.value?.lab_mix ?? null,
@@ -346,6 +348,7 @@ function applyTrialSnapshot(snapshot: unknown) {
     strengthGroups.value[0].values[0] = s.evalStrength28d
   }
   if (typeof s.evalSpread === 'number') evalSpread.value = s.evalSpread
+  if (typeof s.evalSpreadReq === 'number') evalSpreadReq.value = s.evalSpreadReq
   if (typeof s.evalWorkabilityDesc === 'string') evalWorkabilityDesc.value = s.evalWorkabilityDesc
 }
 
@@ -461,11 +464,13 @@ const variants = computed(() => [
                   :strength-grade="store.strengthGrade"
                   :strength-groups="strengthGroups"
                   :eval-spread="evalSpread"
+                  :eval-spread-req="evalSpreadReq"
                   :eval-workability-desc="evalWorkabilityDesc"
                   @update:corr-base="v => corrBase = v"
                   @update:measured-density="v => measuredDensity = v"
                   @update:strength-groups="v => strengthGroups = v"
                   @update:eval-spread="v => evalSpread = v"
+                  @update:eval-spread-req="v => evalSpreadReq = v"
                   @update:eval-workability-desc="v => evalWorkabilityDesc = v"
                 />
               </div>

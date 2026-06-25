@@ -161,6 +161,7 @@ function exportReport(record: RecordItem) {
 
   const evalSlump = extractEval(record, 'evalSlump') || extractEval(record, 'slumpMeasured')
   const evalSpread = extractEval(record, 'evalSpread') || extractEval(record, 'spreadMeasured')
+  const evalSpreadReq = extractEval(record, 'evalSpreadReq')
   const workDesc = extractEval(record, 'evalWorkabilityDesc') || extractEval(record, 'workabilityNote')
 
   const workabilityOk = extractEval(record, 'workabilityOk')
@@ -282,7 +283,7 @@ function exportReport(record: RecordItem) {
     mmc, mm1, mm2, mm3, mm4, mmg, mms, mmw, mma, msf, mtot,
     bmc, bm1, bm2, bm3, bm4, bmg, bms, bmw, bma, bmsf, bmtot,
     vBatch,
-    evalSlump, evalSpread, workDesc,
+    evalSlump, evalSpread, evalSpreadReq, workDesc,
     workabilityPass,
     strengthPass,
     vgReferenceCode,
