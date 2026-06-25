@@ -6158,3 +6158,6 @@
 2026-06-24 18:08:23,488 INFO [wtcmd.request] [pid=11596] [thread=MainThread] [rid=887336df4137c47d] Request completed method=POST path=/api/client-logs status=200 duration_ms=1.66 client=127.0.0.1
 2026-06-24 18:08:23,489 INFO [wtcmd.request] [pid=11596] [thread=MainThread] [rid=839b48901b959760] Request completed method=POST path=/api/client-logs status=200 duration_ms=1.66 client=127.0.0.1
 2026-06-24 18:08:44,535 INFO [wtcmd.backend] [pid=11596] [thread=MainThread] [rid=-] Application shutdown complete
+2026-06-25 13:06:24,549 INFO [wtcmd.backend] [pid=35036] [thread=MainThread] [rid=-] Starting uvicorn host=0.0.0.0 port=8000 log_level=INFO app_log=D:\Code\shuini_calculator\backend\logs\app.log error_log=D:\Code\shuini_calculator\backend\logs\error.log
+2026-06-25 13:06:24,682 INFO [wtcmd.backend] [pid=35036] [thread=MainThread] [rid=-] Application startup title=水泥配比计算 API version=1.0.0 host=0.0.0.0 port=8000 db_path=D:\Code\shuini_calculator\backend\data.db frontend_dist=- log_dir=D:\Code\shuini_calculator\backend\logs
+2026-06-25 13:06:25,090 INFO [wtcmd.backend] [pid=35036] [thread=MainThread] [rid=-] Database initialized

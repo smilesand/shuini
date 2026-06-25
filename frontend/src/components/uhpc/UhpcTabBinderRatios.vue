@@ -276,7 +276,7 @@ async function handleFinish() {
                     <template #suffix><span class="unit-suffix">kg/m³</span></template>
                   </el-input-number>
                 </el-form-item>
-                <div class="field-hint">参考值：2300 kg/m³</div>
+                <div class="field-hint">参考值：2200 kg/m³</div>
                 <div v-if="store.importedValueText('fly_ash_density', ' kg/m³', 0)" class="field-hint">{{ store.importedValueText('fly_ash_density', ' kg/m³', 0) }}</div>
               </div>
               <div class="binder-form-field">
@@ -286,7 +286,7 @@ async function handleFinish() {
                     <template #suffix><span class="unit-suffix">kg/m³</span></template>
                   </el-input-number>
                 </el-form-item>
-                <div class="field-hint">参考值：2600 kg/m³</div>
+                <div class="field-hint">参考值：2100 kg/m³</div>
                 <div v-if="store.importedValueText('micro_bead_density', ' kg/m³', 0)" class="field-hint">{{ store.importedValueText('micro_bead_density', ' kg/m³', 0) }}</div>
               </div>
               <div class="binder-form-field">
@@ -296,7 +296,7 @@ async function handleFinish() {
                     <template #suffix><span class="unit-suffix">kg/m³</span></template>
                   </el-input-number>
                 </el-form-item>
-                <div class="field-hint">参考值：2200 kg/m³</div>
+                <div class="field-hint">参考值：2400 kg/m³</div>
                 <div v-if="store.importedValueText('silica_fume_density', ' kg/m³', 0)" class="field-hint">{{ store.importedValueText('silica_fume_density', ' kg/m³', 0) }}</div>
               </div>
             </div>
