@@ -29,6 +29,7 @@ export interface ReportData {
   fb: unknown
   rhoc: unknown; rho1: unknown; rho2: unknown; rho3: unknown; rho4: unknown; rhog: unknown; rhos: unknown
   tensileStrength?: unknown
+  fiberStrengthGrade?: unknown
   maxParticleSize?: unknown
   flyAshPeakSize?: unknown
   microBeadPeakSize?: unknown
@@ -115,11 +116,14 @@ function buildInfoSection(d: ReportData): string {
 
 function buildRequirementSection(d: ReportData): string {
   if (d.isUHPC) {
+    const tensileCell = d.fiberStrengthGrade != null
+      ? `${textVal(d.fiberStrengthGrade)}${d.tensileStrength != null ? ' (≥' + fmtVal(d.tensileStrength, 1) + ' MPa)' : ''}`
+      : fmtVal(d.tensileStrength, 1)
     return `
       <div class="section-title">二、 混凝土性能要求</div>
       <table>
-        <thead><tr><th>强度等级/MPa</th><th>扩展度/mm</th><th>抗拉强度/MPa</th><th>其他</th></tr></thead>
-        <tbody><tr class="green"><td>${textVal(d.strengthGrade)}</td><td>${fmtVal(d.reqSpread, 0)}</td><td>${fmtVal(d.tensileStrength, 1)}</td><td>—</td></tr></tbody>
+        <thead><tr><th>强度等级/MPa</th><th>扩展度/mm</th><th>抗拉强度</th><th>其他</th></tr></thead>
+        <tbody><tr class="green"><td>${textVal(d.strengthGrade)}</td><td>${fmtVal(d.reqSpread, 0)}</td><td>${tensileCell}</td><td>—</td></tr></tbody>
       </table>`
   }
   return `

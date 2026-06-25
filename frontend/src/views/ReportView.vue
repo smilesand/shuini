@@ -221,6 +221,7 @@ function exportReport(record: RecordItem) {
   const rhog = flatData.rhog ?? null
   const rhos = flatData.rhos ?? null
   const tensileStrength = flatData.tensile_strength ?? flatData.tensileStrength ?? null
+  const fiberStrengthGrade = flatData.fiber_strength_grade ?? flatData.fiberStrengthGrade ?? null
   const maxParticleSize = flatData.max_particle_size ?? flatData.maxParticleSize ?? null
   const flyAshPeakSize = flatData.fly_ash_peak_size ?? flatData.flyAshPeakSize ?? null
   const microBeadPeakSize = flatData.micro_bead_peak_size ?? flatData.microBeadPeakSize ?? null
@@ -289,7 +290,7 @@ function exportReport(record: RecordItem) {
     vgReferenceCode,
     reqSlump, reqSpread, maxAggregateSize,
     fb, rhoc, rho1, rho2, rho3, rho4, rhog, rhos,
-    tensileStrength, maxParticleSize, flyAshPeakSize, microBeadPeakSize, vg, airContent,
+    tensileStrength, fiberStrengthGrade, maxParticleSize, flyAshPeakSize, microBeadPeakSize, vg, airContent,
     strengthGroups,
     groupEvals,
     strengthOverallAvg,

@@ -42,7 +42,7 @@ const steelFiberMassPreview = computed(() => {
       <div class="cs-section-body">
         <div class="guide-table">
           <div class="guide-table__header">
-            <span>钢纤维等级</span>
+            <span>抗拉强度等级</span>
             <span>体积掺量参考</span>
           </div>
           <button
