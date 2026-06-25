@@ -75,7 +75,7 @@ watch(
 )
 
 watch(
-  () => [store.fb, store.aa, store.ab, store.ac] as const,
+  () => [store.fcuk, store.fb, store.aa, store.ab, store.ac] as const,
   () => { if (store.fcuk && store.fb) debouncedCalc() },
 )
 

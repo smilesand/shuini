@@ -54,9 +54,13 @@ export const useCalcStore = defineStore('calc', () => {
   const fcu0 = ref<number | null>(null) // 配制强度 fcu,0
   const wb   = ref<number | null>(null) // 水胶比 W/B
 
-  // fcuk 变化时自动计算 fcu0（不依赖 fb）
-  watch(fcuk, (val) => {
-    fcu0.value = val !== null ? parseFloat((val * 1.15).toFixed(2)) : null
+  // fcuk 或 fb 变化时自动计算 fcu0 + wb
+  watch([fcuk, fb], ([fcukVal, fbVal]) => {
+    if (fcukVal !== null && fbVal !== null) {
+      calcWaterBinder()
+    } else if (fcukVal !== null) {
+      fcu0.value = parseFloat((fcukVal * 1.15).toFixed(2))
+    }
   })
 
   // ── Tab 2: 砂率 ──────────────────────────────────────────────────────
