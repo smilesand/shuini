@@ -26,6 +26,11 @@ const SECTIONS = props.category === 'uhpc' ? UHPC_KEYS : HPC_KEYS
 
 const LAB_MIX_KEYS = new Set(['mc', 'm1', 'm2', 'm3', 'm4', 'mg', 'ms', 'msf', 'mw', 'ma', 'total_mass'])
 
+const HIGHLIGHT_KEYS: Record<string, Set<string>> = {
+  hpc: new Set(['wb', 'sand_ratio', 'vg']),
+  uhpc: new Set(['wb', 'sand_binder_ratio', 'msf']),
+}
+
 const LABEL_MAP: Record<string, string> = {
   fcuk: '强度等级', req_spread: '扩展度', req_slump: '坍落度', tensile_strength: '抗拉强度',
   fiber_strength_grade: '钢纤维抗拉等级', fb: '胶材28d强度', max_aggregate_size: '粗骨料最大粒径',
@@ -44,11 +49,13 @@ const LABEL_MAP: Record<string, string> = {
   mg: '粗骨料', ms: '细骨料', msf: '钢纤维', mw: '水', ma: '外加剂', total_mass: '合计',
 }
 
+const highlightSet = computed(() => HIGHLIGHT_KEYS[props.category])
+
 const sections = computed(() => {
   return SECTIONS.map(s => {
     const isLab = s.section === '实验室配合比'
     const rows = s.keys
-      .map(k => ({ key: k, label: LABEL_MAP[k] || k, value: props.importedValues[k], is20L: isLab && LAB_MIX_KEYS.has(k) }))
+      .map(k => ({ key: k, label: LABEL_MAP[k] || k, value: props.importedValues[k], is20L: isLab && LAB_MIX_KEYS.has(k), highlight: highlightSet.value.has(k) }))
       .filter(r => r.value !== null && r.value !== undefined)
     return { section: s.section, rows, isLab }
   }).filter(s => s.rows.length > 0)
@@ -102,7 +109,7 @@ function fmt20L(r: { key: string; value: unknown; is20L?: boolean }): string {
   <template v-if="sections.length">
     <div v-for="s in sections" :key="s.section" class="summary-group">
       <div class="group-label">{{ s.isLab ? s.section + '（每方 → 20L）' : s.section }}</div>
-      <div v-for="r in s.rows" :key="r.key" class="summary-row">
+      <div v-for="r in s.rows" :key="r.key" class="summary-row" :class="{ 'highlight-row': r.highlight }">
         <span class="row-label">{{ r.label }}</span>
         <span class="row-val">
           {{ fmtVal(r) }}
@@ -145,5 +152,12 @@ function fmt20L(r: { key: string; value: unknown; is20L?: boolean }): string {
 }
 .row-val small {
   font-size: 10px; color: #999; font-weight: 400; margin-left: 4px;
+}
+.highlight-row {
+  background: linear-gradient(135deg, #fffef5, #fff7c0);
+  border-radius: 4px;
+}
+.highlight-row .row-label {
+  color: #2a5298;
 }
 </style>

@@ -274,14 +274,8 @@ export const useCalcStore = defineStore('calc', () => {
     calcWaterAdmixture()
   }
 
-  function importedValueText(key: string, unit = '', precision?: number): string | null {
-    const value = importedValues.value[key]
-    if (value === null || value === undefined || value === '') return null
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      const text = precision === undefined ? String(Number(value.toFixed(4))) : value.toFixed(precision)
-      return `导入值 ${text}${unit}`
-    }
-    return `导入值 ${String(value)}${unit}`
+  function importedValueText(_key: string, _unit = '', _precision?: number): null {
+    return null
   }
 
   function buildRecordPayload(
