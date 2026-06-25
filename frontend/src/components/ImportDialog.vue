@@ -258,7 +258,7 @@ function formatValue(val: number | null | undefined): string {
         </el-table-column>
         <el-table-column label="容差" width="100" align="center">
           <template #default="{ row }">
-            {{ row.tolerance }}
+            {{ row.tolerance ?? '—' }}
             <span v-if="row.tolerance_unit">{{ row.tolerance_unit }}</span>
           </template>
         </el-table-column>

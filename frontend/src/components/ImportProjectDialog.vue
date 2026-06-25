@@ -223,7 +223,7 @@ function formatDiff(item: ValidationItem): string {
               </el-table-column>
               <el-table-column label="容差" width="90" align="center">
                 <template #default="{ row: item }">
-                  {{ item.tolerance }}{{ item.tolerance_unit || '' }}
+                  {{ item.tolerance ?? '—' }}{{ item.tolerance_unit || '' }}
                 </template>
               </el-table-column>
               <el-table-column label="评价" width="80" align="center">

@@ -26,6 +26,15 @@ SAND_BINDER_RATIO_RANGE = (0.80, 1.60)   # UHPC 砂胶比
 STEEL_FIBER_RANGE = (0.0, 4.0)           # UHPC 钢纤维体积掺量 %
 
 
+def _resolve_uhpc_wb(grade: Any) -> float | None:
+    """UHPC：根据抗压强度等级推算参考水胶比。UC150→0.17，其余→0.19。"""
+    try:
+        g = float(grade)
+        return 0.17 if g == 150 else 0.19
+    except (ValueError, TypeError):
+        return None
+
+
 def _item(param: str, actual: Any, *, expected: Any = None, diff: Any = None,
           tolerance: Any = None, passed: bool = True) -> dict[str, Any]:
     """构造统一结构的校验项，确保前端所需字段齐全。"""
@@ -461,10 +470,11 @@ def validate_uhpc(data: dict[str, Any]) -> dict[str, Any]:
 
     if grade is None:
         warnings.append("缺少强度等级")
-    wb_passed = wb is not None
+    # 根据抗压强度等级推算参考水胶比：UC150→0.17，其余→0.19
+    expected_wb = _resolve_uhpc_wb(grade)
     if wb is None:
         warnings.append("缺少水胶比")
-    items.append(_item("水胶比", _round(wb, 4), expected=None, diff=None, tolerance=WB_TOLERANCE, passed=wb_passed))
+    items.append(_item("水胶比", _round(wb, 4), expected=expected_wb, diff=None, tolerance=None, passed=True))
 
     if sb is None:
         warnings.append("缺少砂胶比")
