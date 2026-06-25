@@ -173,6 +173,7 @@ async function persistRecord(name: string) {
           <span class="total-label">每立方混凝土材料合计</span>
           <span class="total-val">{{ store.totalMass ? store.totalMass.toFixed(2) + ' kg/m³' : '—' }}</span>
         </div>
+        <div v-if="store.importedValueText('total_mass', ' kg/m³', 2)" class="input-hint" style="margin-top:4px">{{ store.importedValueText('total_mass', ' kg/m³', 2) }}</div>
 
         <el-alert type="info" :closable="false" style="margin-top:12px">
           <template #title>计算公式说明</template>

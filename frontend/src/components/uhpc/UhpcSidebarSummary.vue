@@ -5,9 +5,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { deleteRecord, formatRecordNumber, listRecords, type RecordItem } from '../../api/records'
 import { useUhpcStore } from '../../stores/uhpcStore'
+import ImportDataSection from '../ImportDataSection.vue'
 
 const route = useRoute()
 const store = useUhpcStore()
+const showImport = ref(false)
 
 function parseProjectId(value: unknown): number | undefined {
   const raw = Array.isArray(value) ? value[0] : value
@@ -123,6 +125,10 @@ async function handleDeleteRecord(record: RecordItem) {
         </div>
       </template>
 
+      <ImportDataSection v-model="showImport" :imported-values="store.importedValues" category="uhpc" />
+
+      <template v-if="!showImport">
+
       <div class="summary-group">
         <div class="group-label">基础参数</div>
         <div class="summary-row">
@@ -197,6 +203,8 @@ async function handleDeleteRecord(record: RecordItem) {
       </div>
 
       <el-alert v-if="store.error" :title="store.error" type="error" show-icon :closable="false" style="margin-top: 12px" />
+
+      </template>
     </el-card>
 
     <el-dialog v-model="historyVisible" :title="historyTitle" width="950px" destroy-on-close>

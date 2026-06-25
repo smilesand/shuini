@@ -196,6 +196,7 @@ async function handleNext() {
                 <el-input :value="store.bc ? (store.bc * 100).toFixed(1) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">%</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('bc', '', 1)" class="input-hint">{{ store.importedValueText('bc', '', 1) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -204,6 +205,7 @@ async function handleNext() {
                 <el-input :value="store.rhob ? store.rhob.toFixed(1) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('rhob', ' kg/m³', 1)" class="input-hint">{{ store.importedValueText('rhob', ' kg/m³', 1) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -212,6 +214,7 @@ async function handleNext() {
                 <el-input :value="store.vp ? store.vp.toFixed(4) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">m³</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('vp', ' m³', 4)" class="input-hint">{{ store.importedValueText('vp', ' m³', 4) }}</div>
               </el-form-item>
             </el-col>
           </el-row>

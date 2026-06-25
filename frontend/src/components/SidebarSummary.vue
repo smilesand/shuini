@@ -6,8 +6,10 @@ import { Search } from '@element-plus/icons-vue'
 import { useCalcStore } from '../stores/calcStore'
 import { deleteRecord, formatRecordNumber, listRecords } from '../api/records'
 import type { RecordItem } from '../api/records'
+import ImportDataSection from './ImportDataSection.vue'
 
 const store = useCalcStore()
+const showImport = ref(false)
 const route = useRoute()
 
 function parseProjectId(value: unknown): number | undefined {
@@ -131,6 +133,10 @@ async function handleDeleteRecord(record: RecordItem) {
         </div>
       </template>
 
+      <ImportDataSection v-model="showImport" :imported-values="store.importedValues" category="hpc" />
+
+      <template v-if="!showImport">
+
       <!-- 水胶比 & 砂率 -->
       <div class="summary-group">
         <div class="summary-row">
@@ -219,6 +225,7 @@ async function handleDeleteRecord(record: RecordItem) {
         style="margin-top:10px;font-size:12px"
       />
 
+      </template>
     </el-card>
 
     <!-- 历史记录对话框 -->

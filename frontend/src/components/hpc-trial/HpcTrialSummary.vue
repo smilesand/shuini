@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useHpcTrialContext } from '../../composables/context'
 import { formatKg, formatNullableNumber } from '../../utils/format'
 import type { HpcTrialTab } from '../../composables/useHpcTrial'
+import { useCalcStore } from '../../stores/calcStore'
+import ImportDataSection from '../ImportDataSection.vue'
 
 const props = defineProps<{
   activeTab: HpcTrialTab
 }>()
+
+const calcStore = useCalcStore()
+const showImport = ref(false)
 
 const {
   hasData,
@@ -82,7 +87,11 @@ const headerTitle = computed(() => {
       <el-empty description="暂无数据，请先完成配合比计算" :image-size="80" />
     </template>
 
-    <template v-else-if="activeTab === 'workability'">
+    <template v-else>
+      <ImportDataSection v-model="showImport" :imported-values="calcStore.importedValues" category="hpc" />
+
+      <template v-if="!showImport">
+        <template v-if="activeTab === 'workability'">
       <div class="summary-group">
         <div class="group-label">试拌信息</div>
         <div class="summary-row">
@@ -249,6 +258,8 @@ const headerTitle = computed(() => {
         <span class="total-label">实验室配合比合计</span>
         <span class="total-val">{{ labMix.total ? labMix.total.toFixed(2) + ' kg/m³' : '—' }}</span>
       </div>
+      </template>
+    </template>
     </template>
   </el-card>
 </template>

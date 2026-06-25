@@ -95,6 +95,7 @@ const steelFiberMassPreview = computed(() => {
                 <el-input :model-value="steelFiberMassPreview !== null ? steelFiberMassPreview.toFixed(2) : ''" readonly class="computed-input">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('steel_fiber', ' kg/m³', 2) || store.importedValueText('msf', ' kg/m³', 2)" class="input-hint">{{ store.importedValueText('steel_fiber', ' kg/m³', 2) || store.importedValueText('msf', ' kg/m³', 2) }}</div>
               </el-form-item>
             </el-col>
           </el-row>
