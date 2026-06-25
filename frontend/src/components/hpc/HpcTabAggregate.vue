@@ -173,8 +173,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                 >
                   <template #suffix><span class="unit-suffix">m³</span></template>
                 </el-input-number>
-                <div class="input-hint">参考选值 {{ vgPlaceholder }}</div>
-                <div v-if="store.importedValueText('vg', ' m³', 3)" class="input-hint">{{ store.importedValueText('vg', ' m³', 3) }}</div>
+                <div class="input-hint">参考选值 {{ vgPlaceholder }}<template v-if="store.importedValueText('vg', ' m³', 3)">，{{ store.importedValueText('vg', ' m³', 3) }}</template></div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -189,8 +188,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                 >
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
-                <div class="input-hint">参考值 2700 kg/m³</div>
-                <div v-if="store.importedValueText('rhog', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rhog', ' kg/m³', 0) }}</div>
+                <div class="input-hint">参考值 2700 kg/m³<template v-if="store.importedValueText('rhog', ' kg/m³', 0)">，{{ store.importedValueText('rhog', ' kg/m³', 0) }}</template></div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -205,8 +203,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                 >
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
-                <div class="input-hint">参考值 2650 kg/m³</div>
-                <div v-if="store.importedValueText('rhos', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rhos', ' kg/m³', 0) }}</div>
+                <div class="input-hint">参考值 2650 kg/m³<template v-if="store.importedValueText('rhos', ' kg/m³', 0)">，{{ store.importedValueText('rhos', ' kg/m³', 0) }}</template></div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -229,6 +226,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                 <el-input :value="store.mg ? store.mg.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">kg</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('mg', ' kg', 2)" class="input-hint">{{ store.importedValueText('mg', ' kg', 2) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -237,6 +235,7 @@ function resolveWorkabilityRowClassName({ row }: { row: (typeof vgTableData)[num
                 <el-input :value="store.ms ? store.ms.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">kg</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('ms', ' kg', 2)" class="input-hint">{{ store.importedValueText('ms', ' kg', 2) }}</div>
               </el-form-item>
             </el-col>
           </el-row>

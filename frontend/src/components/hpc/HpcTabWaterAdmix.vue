@@ -130,8 +130,7 @@ async function persistRecord(name: string) {
                 >
                   <template #suffix><span class="unit-suffix">%</span></template>
                 </el-input-number>
-                <div class="input-hint">参考掺量 1.5 %</div>
-                <div v-if="store.importedValueText('alpha', ' %', 2)" class="input-hint">{{ store.importedValueText('alpha', ' %', 2) }}</div>
+                <div class="input-hint">参考掺量 1.5 %<template v-if="store.importedValueText('alpha', ' %', 2)">，{{ store.importedValueText('alpha', ' %', 2) }}</template></div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -154,6 +153,7 @@ async function persistRecord(name: string) {
                 <el-input :value="store.mw ? store.mw.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">kg</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('mw', ' kg', 2)" class="input-hint">{{ store.importedValueText('mw', ' kg', 2) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -162,6 +162,7 @@ async function persistRecord(name: string) {
                 <el-input :value="store.ma ? store.ma.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">kg</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('ma', ' kg', 2)" class="input-hint">{{ store.importedValueText('ma', ' kg', 2) }}</div>
               </el-form-item>
             </el-col>
           </el-row>

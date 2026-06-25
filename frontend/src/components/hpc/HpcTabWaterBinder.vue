@@ -162,8 +162,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
                 >
                   <template #suffix><span class="unit-suffix">MPa</span></template>
                 </el-input-number>
-                <div class="input-hint">参考值 80 MPa</div>
-                <div v-if="store.importedValueText('fcuk', ' MPa', 0)" class="input-hint">{{ store.importedValueText('fcuk', ' MPa', 0) }}</div>
+                <div class="input-hint">参考值 80 MPa<template v-if="store.importedValueText('fcuk', ' MPa', 0)">，{{ store.importedValueText('fcuk', ' MPa', 0) }}</template></div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -176,6 +175,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
                 >
                   <template #suffix><span class="unit-suffix">MPa</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('fcu0', ' MPa', 2)" class="input-hint">{{ store.importedValueText('fcu0', ' MPa', 2) }}</div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -209,8 +209,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
                 >
                   <template #suffix><span class="unit-suffix">MPa</span></template>
                 </el-input-number>
-                <div v-if="store.fbCalcMode === 'input'" class="input-hint">参考值 48 MPa</div>
-                <div v-if="store.fbCalcMode === 'input' && store.importedValueText('fb', ' MPa', 2)" class="input-hint">{{ store.importedValueText('fb', ' MPa', 2) }}</div>
+                <div v-if="store.fbCalcMode === 'input'" class="input-hint">参考值 48 MPa<template v-if="store.importedValueText('fb', ' MPa', 2)">，{{ store.importedValueText('fb', ' MPa', 2) }}</template></div>
                 <el-input
                   v-else
                   :value="computedFb ? computedFb.toFixed(2) : ''"
@@ -460,6 +459,7 @@ function isRecommendedRow(pct: number | null, rowPct: number, tableKey: string):
                   readonly placeholder="—"
                   class="computed-input wb-result"
                 />
+                <div v-if="store.importedValueText('wb', '', 4)" class="input-hint">{{ store.importedValueText('wb', '', 4) }}</div>
               </el-form-item>
             </el-col>
           </el-row>

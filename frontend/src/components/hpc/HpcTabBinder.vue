@@ -83,8 +83,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.rho1)" @update:model-value="v => store.rho1 = v ?? null" :step="50" :precision="0" placeholder="" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
-                <div class="input-hint">参考值 2200 kg/m³</div>
-                <div v-if="store.importedValueText('rho1', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rho1', ' kg/m³', 0) }}</div>
+                <div class="input-hint">参考值 2200 kg/m³<template v-if="store.importedValueText('rho1', ' kg/m³', 0)">，{{ store.importedValueText('rho1', ' kg/m³', 0) }}</template></div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -104,8 +103,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.rho2)" @update:model-value="v => store.rho2 = v ?? null" :step="50" :precision="0" placeholder="" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
-                <div class="input-hint">参考值 2900 kg/m³</div>
-                <div v-if="store.importedValueText('rho2', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rho2', ' kg/m³', 0) }}</div>
+                <div class="input-hint">参考值 2900 kg/m³<template v-if="store.importedValueText('rho2', ' kg/m³', 0)">，{{ store.importedValueText('rho2', ' kg/m³', 0) }}</template></div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -125,8 +123,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.rho3)" @update:model-value="v => store.rho3 = v ?? null" :step="50" :precision="0" placeholder="" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
-                <div class="input-hint">参考值 2100 kg/m³</div>
-                <div v-if="store.importedValueText('rho3', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rho3', ' kg/m³', 0) }}</div>
+                <div class="input-hint">参考值 2100 kg/m³<template v-if="store.importedValueText('rho3', ' kg/m³', 0)">，{{ store.importedValueText('rho3', ' kg/m³', 0) }}</template></div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -146,8 +143,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.rho4)" @update:model-value="v => store.rho4 = v ?? null" :step="50" :precision="0" placeholder="" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
-                <div class="input-hint">参考值 2400 kg/m³</div>
-                <div v-if="store.importedValueText('rho4', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rho4', ' kg/m³', 0) }}</div>
+                <div class="input-hint">参考值 2400 kg/m³<template v-if="store.importedValueText('rho4', ' kg/m³', 0)">，{{ store.importedValueText('rho4', ' kg/m³', 0) }}</template></div>
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -167,8 +163,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.rhoc)" @update:model-value="v => store.rhoc = v ?? null" :step="50" :precision="0" placeholder="" style="width:100%">
                   <template #suffix><span class="unit-suffix">kg/m³</span></template>
                 </el-input-number>
-                <div class="input-hint">参考值 3100 kg/m³</div>
-                <div v-if="store.importedValueText('rhoc', ' kg/m³', 0)" class="input-hint">{{ store.importedValueText('rhoc', ' kg/m³', 0) }}</div>
+                <div class="input-hint">参考值 3100 kg/m³<template v-if="store.importedValueText('rhoc', ' kg/m³', 0)">，{{ store.importedValueText('rhoc', ' kg/m³', 0) }}</template></div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -177,8 +172,7 @@ async function handleNext() {
                 <el-input-number :model-value="n(store.va)" @update:model-value="v => store.va = v ?? null" :min="0" :step="0.001" :precision="3" placeholder="" style="width:100%">
                   <template #suffix><span class="unit-suffix">m³</span></template>
                 </el-input-number>
-                <div class="input-hint">非引气混凝土参考 0.010</div>
-                <div v-if="store.importedValueText('va', ' m³', 3) || store.importedValueText('air_content', ' m³', 3)" class="input-hint">{{ store.importedValueText('va', ' m³', 3) || store.importedValueText('air_content', ' m³', 3) }}</div>
+                <div class="input-hint">非引气混凝土参考 0.010<template v-if="store.importedValueText('va', ' m³', 3) || store.importedValueText('air_content', ' m³', 3)">，{{ store.importedValueText('va', ' m³', 3) || store.importedValueText('air_content', ' m³', 3) }}</template></div>
               </el-form-item>
             </el-col>
           </el-row>
@@ -225,10 +219,11 @@ async function handleNext() {
           <el-row :gutter="20">
             <el-col :span="8">
               <el-form-item >
-<template #label>胶凝材料用量 m<sub>b</sub></template>
+<template #label>胶材用量 m<sub>b</sub></template>
                 <el-input :value="store.mb ? store.mb.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">kg</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('mb', ' kg', 2)" class="input-hint">{{ store.importedValueText('mb', ' kg', 2) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -237,6 +232,7 @@ async function handleNext() {
                 <el-input :value="store.m1 ? store.m1.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">kg</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('m1', ' kg', 2)" class="input-hint">{{ store.importedValueText('m1', ' kg', 2) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -245,6 +241,7 @@ async function handleNext() {
                 <el-input :value="store.m2 ? store.m2.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">kg</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('m2', ' kg', 2)" class="input-hint">{{ store.importedValueText('m2', ' kg', 2) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -253,6 +250,7 @@ async function handleNext() {
                 <el-input :value="store.m3 ? store.m3.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">kg</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('m3', ' kg', 2)" class="input-hint">{{ store.importedValueText('m3', ' kg', 2) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -261,6 +259,7 @@ async function handleNext() {
                 <el-input :value="store.m4 ? store.m4.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">kg</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('m4', ' kg', 2)" class="input-hint">{{ store.importedValueText('m4', ' kg', 2) }}</div>
               </el-form-item>
             </el-col>
             <el-col :span="8">
@@ -269,6 +268,7 @@ async function handleNext() {
                 <el-input :value="store.mc ? store.mc.toFixed(2) : ''" readonly placeholder="—" class="computed-input">
                   <template #suffix><span class="unit-suffix">kg</span></template>
                 </el-input>
+                <div v-if="store.importedValueText('mc', ' kg', 2)" class="input-hint">{{ store.importedValueText('mc', ' kg', 2) }}</div>
               </el-form-item>
             </el-col>
           </el-row>
