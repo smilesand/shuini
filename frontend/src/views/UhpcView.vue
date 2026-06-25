@@ -245,7 +245,7 @@ async function syncRouteState() {
     return
   }
 
-  if (!showCalculator.value && store.currentRecordProjectId === nextProjectId && store.currentRecordId !== null) {
+  if (!showCalculator.value && store.currentRecordProjectId === nextProjectId && (store.currentRecordId !== null || store.strengthGrade !== null)) {
     showCalculator.value = true
   }
 }
