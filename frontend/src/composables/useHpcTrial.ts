@@ -848,7 +848,9 @@ export function useHpcTrial() {
     } else if (baseBs.value !== null) {
       sandRatioAdj.value = baseBs.value
     }
-    if (baseAlpha.value !== null) {
+    if (regression.recommendMa !== null && regression.recommendMa !== undefined && mbAdj.value !== null && mbAdj.value > 0) {
+      alphaAdj.value = (regression.recommendMa / mbAdj.value) * 100
+    } else if (baseAlpha.value !== null) {
       alphaAdj.value = baseAlpha.value
     }
 
@@ -878,8 +880,25 @@ export function useHpcTrial() {
       } else if (baseBs.value !== null) {
         sandRatioAdj.value = baseBs.value
       }
-      if (baseAlpha.value !== null) {
+      const recMa = strengthRegression.value?.recommendMa ?? null
+      if (recMa !== null && recMa !== undefined && mbAdj.value !== null && mbAdj.value > 0) {
+        alphaAdj.value = (recMa / mbAdj.value) * 100
+      } else if (baseAlpha.value !== null) {
         alphaAdj.value = baseAlpha.value
+      }
+    },
+  )
+
+  // 推荐外加剂用量可能独立于水胶比变化（如调整对照组外加剂），需单独响应。
+  watch(
+    () => strengthRegression.value?.recommendMa ?? null,
+    (recMa) => {
+      if (recMa === null || recMa === undefined) return
+      if (mbAdj.value === null || mbAdj.value <= 0) {
+        mbAdj.value = workabilityResult.value.mb
+      }
+      if (mbAdj.value !== null && mbAdj.value > 0) {
+        alphaAdj.value = (recMa / mbAdj.value) * 100
       }
     },
   )
