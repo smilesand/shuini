@@ -667,6 +667,14 @@ export const useUhpcStore = defineStore('uhpc', () => {
     if (data.assumed_mix_mass != null) assumedMixMass.value = Number(data.assumed_mix_mass)
     if (data.steel_fiber_density != null) steelFiberDensity.value = Number(data.steel_fiber_density)
 
+    // 为 Excel 模板未涵盖的必填字段提供默认值，确保 calcMix 可以运行
+    if (minParticleSize.value === null) minParticleSize.value = Number(UHPC_INPUT_PLACEHOLDERS.minParticleSize)
+    if (distributionIndex.value === null) distributionIndex.value = Number(UHPC_INPUT_PLACEHOLDERS.distributionIndex)
+    if (flyAshAccumulationSize.value === null) flyAshAccumulationSize.value = Number(UHPC_INPUT_PLACEHOLDERS.flyAshAccumulationSize)
+    if (microBeadSilicaFumeRatio.value === null) microBeadSilicaFumeRatio.value = Number(UHPC_INPUT_PLACEHOLDERS.microBeadSilicaFumeRatio)
+    if (microPowderCoefficient.value === null) microPowderCoefficient.value = Number(UHPC_INPUT_PLACEHOLDERS.microPowderCoefficient)
+    if (assumedMixMass.value === null) assumedMixMass.value = Number(UHPC_INPUT_PLACEHOLDERS.assumedMixMass)
+
     void calcMix()
   }
 
