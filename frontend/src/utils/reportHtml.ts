@@ -222,7 +222,7 @@ function buildEvaluationSection(d: ReportData): string {
   const strengthMult = d.isUHPC ? 1.10 : 1.15
   const workabilityRef = getHpcWorkabilityReference(d.vgReferenceCode)
   const spreadReqText = d.evalSpreadReq != null
-    ? fmtVal(d.evalSpreadReq, 0) + ' mm'
+    ? fmtVal(d.evalSpreadReq, 0) + ' ±50 mm'
     : (d.reqSpread != null ? fmtVal(d.reqSpread, 0) + ' mm' : (workabilityRef?.metric === 'spread' ? workabilityRef.desc : '—'))
   return `
     <div class="section-title">六、 混凝土性能评价</div>

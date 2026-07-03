@@ -95,6 +95,15 @@ function extractEval(record: RecordItem, key: string) {
   return val;
 }
 
+function num(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  if (typeof v === 'string' && v.trim() !== '' && v.trim() !== '—') {
+    const parsed = Number(v)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
 function pickObject(...candidates: unknown[]): Record<string, unknown> | null {
   for (const candidate of candidates) {
     if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
@@ -191,13 +200,22 @@ function exportReport(record: RecordItem) {
 
   const isUHPC = record.category === 'uhpc' || record.category === 'uhpc_trial'
 
+  // UHPC 工作性评价：扩展度在要求 ±50mm 范围内为合格
+  if (workabilityPass === null && isUHPC) {
+    const sp = num(evalSpread)
+    const spReq = num(evalSpreadReq)
+    if (sp !== null && spReq !== null) {
+      workabilityPass = sp >= spReq - 50 && sp <= spReq + 50
+    }
+  }
+
   // 强度等级：HPC 用 fcuk，UHPC 用 strengthGrade
   const strengthGrade = isUHPC
     ? (flatData.strengthGrade ?? flatData.strength_grade ?? '—')
     : (flatData.fcuk ?? flatData.strengthGrade ?? flatData.strength_grade ?? '—')
-  // 配制强度：HPC 用 fcu0/designStrength，UHPC 用 designStrength/design_strength
+  // 配制强度：HPC 用 fcu0/designStrength，UHPC 用 fcu0/designStrength（UHPC store 将其存为 fcu0）
   const designStrength = isUHPC
-    ? (flatData.designStrength ?? flatData.design_strength ?? flatData.sTargetStrength ?? '—')
+    ? (flatData.fcu0 ?? flatData.designStrength ?? flatData.design_strength ?? flatData.sTargetStrength ?? '—')
     : (flatData.fcu0 ?? flatData.designStrength ?? flatData.design_strength ?? flatData.sTargetStrength ?? '—')
   const totalBinder = flatData.mb || flatData.total_binder || (flatData.binder && typeof flatData.binder === 'number' ? flatData.binder : null) || '—'
   const cementPct = flatData.bcp || flatData.bc || flatData.cement || flatData.cement_pct || flatData.cementRatio || '—'
