@@ -118,6 +118,11 @@ function formatDiff(item: ValidationItem): string {
   if (item.diff == null) return '—'
   return item.diff.toFixed(4)
 }
+
+function downloadProjectTemplate() {
+  const base = import.meta.env.VITE_API_BASE || '/api'
+  window.open(`${base}/exchange/project-template`, '_blank')
+}
 </script>
 
 <template>
@@ -145,6 +150,13 @@ function formatDiff(item: ValidationItem): string {
         <div class="el-upload__text">
           将项目 Excel 文件拖到此处，或<em>点击上传</em>
         </div>
+        <template #tip>
+          <div class="el-upload__tip">
+            仅支持 .xlsx 格式。可先
+            <el-link type="primary" @click.stop="downloadProjectTemplate">下载项目模板</el-link>
+            参考格式。
+          </div>
+        </template>
       </el-upload>
       <div v-if="fileName" style="margin-top: 12px">
         <el-tag type="info" closable @close="file = null">已选择: {{ fileName }}</el-tag>

@@ -79,11 +79,6 @@ async function handleExportProjectPdf(project: Project) {
   }
 }
 
-function downloadProjectTemplate() {
-  const base = import.meta.env.VITE_API_BASE || '/api'
-  window.open(`${base}/exchange/project-template`, '_blank')
-}
-
 onMounted(fetchProjects)
 </script>
 
@@ -96,9 +91,6 @@ onMounted(fetchProjects)
             <el-icon color="#2a5298"><Folder /></el-icon> 项目管理
           </span>
           <div style="display: flex; gap: 8px">
-            <el-button @click="downloadProjectTemplate">
-              <el-icon><Download /></el-icon> 下载模板
-            </el-button>
             <el-button @click="importProjectVisible = true">
               <el-icon><Upload /></el-icon> 导入项目
             </el-button>
