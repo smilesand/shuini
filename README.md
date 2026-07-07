@@ -1,31 +1,43 @@
-# 水泥配比计算器
+# 混凝土配合比设计系统
 
-基于 Vue 3 + FastAPI 的前后端分离配比计算系统。
+一套面向高性能混凝土（HPC）与超高性能混凝土（UHPC）的配合比设计、试配调整与配比记录管理系统，采用前后端分离架构，可部署为 Web 服务或打包为桌面应用。
 
-## 架构说明
+## 功能简介
 
-- 前端：`frontend/` 使用 Vue 3 + Vite + Pinia + Vue Router。
-- 后端：`backend/` 使用 FastAPI，统一对外暴露 `/api/*` 计算、认证、项目、记录、回收站接口。
-- 前后端调用：浏览器端通过 `frontend/src/utils/request.ts` 中的 Axios 实例访问接口，默认请求 `/api`。
-	- 开发模式下由 `frontend/vite.config.js` 代理到 `http://localhost:8000`。
-	- 打包后的 Web 包和桌面版都由后端直接托管 `frontend/dist`，浏览器或桌面壳访问同一个本地服务入口。
+- **配比计算**：按抗压强度等级、原材料性能等参数，计算 HPC / UHPC 的水胶比、砂率（砂胶比）、各胶凝材料占比及每方用量。
+- **试配调整**：三点强度试验 + 最小二乘线性回归，推荐最优水胶比与硅灰用量；支持工作性试拌、密度校正与实验室配合比确定。
+- **性能评价**：对坍落度 / 扩展度、28d 抗压强度、抗拉强度等指标自动判定合格与否。
+- **项目与记录管理**：按项目组织配比记录，支持历史检索、载入与回收站恢复。
+- **导入导出**：Excel 模板导入（含关键参数合理性校验）、单条记录与整项目导出，以及 PDF 配比记录报告导出。
 
-## 双版本打包设计
+## 技术栈
 
-项目仍然只维护一套前后端业务代码，打包层分为两种产物：
+| 层 | 技术 |
+| --- | --- |
+| 前端 | Vue 3 + TypeScript + Vite + Pinia + Vue Router + Element Plus |
+| 后端 | Python + FastAPI + openpyxl |
+| 桌面 | Electron（复用同一套前后端） |
 
-- Web 版：打包出 `frontend/dist` + `wtcmd-platform-backend`，后端通过 `SC_FRONTEND_DIST` 同时提供页面和 API。
-- 桌面版：产物名称统一为 `WTCMD Platform`，在同一套后端二进制外面包一层 Electron 外壳，本地启动后端并加载本地页面，不需要额外部署服务器。
-
-桌面壳代码位于 `desktop/`，统一打包脚本位于 `scripts/package.py`。
+浏览器端通过 `frontend/src/utils/request.ts` 中的 Axios 实例访问后端 `/api/*` 接口。开发模式由 Vite 代理到本地后端；打包后的 Web 包与桌面版均由后端直接托管 `frontend/dist`。
 
 ## 项目结构
 
 ```
 shuini_calculator/
-├── frontend/          # Vue 3 + Vite + Pinia + Vue Router
-└── backend/           # Python FastAPI 计算服务
+├── frontend/          # Vue 3 前端
+├── backend/           # FastAPI 后端与配比计算逻辑
+├── desktop/           # Electron 桌面外壳
+├── scripts/           # 打包脚本（package.py 等）
+├── license_admin/     # 授权管理辅助工具
+├── package-*.ps1/.sh  # 一键打包包装脚本
+└── package-source.ps1 # 源代码交付打包脚本
 ```
+
+## 环境要求
+
+- Node.js ≥ 18（建议 LTS）
+- Python ≥ 3.11
+- npm ≥ 9
 
 ## 快速启动
 
@@ -47,48 +59,37 @@ npm install   # 首次运行
 npm run dev
 ```
 
-前端地址：http://localhost:5173
+前端地址：http://localhost:5173（接口默认代理到后端 8000 端口）
 
-## 常用验证命令
-
-### 后端
-
-```bash
-cd backend
-python -m unittest tests.test_hpc_trial_service tests.test_record_trial_data
-```
+## 构建
 
 ### 前端
 
 ```bash
 cd frontend
-npm run build
-npm run build:web
-npm run build:desktop
-npm run typecheck
+npm run build          # 通用构建
+npm run build:web      # Web 部署（读取 .env.production）
+npm run build:desktop  # 桌面版（读取 .env.desktop）
+npm run typecheck      # 类型检查
 ```
 
-- `npm run build:web` 使用生产模式，读取 `frontend/.env.production`，面向 Web 部署。
-- `npm run build:desktop` 使用桌面模式，读取 `frontend/.env.desktop`，面向内置本地后端的桌面版。
-- `scripts/package.py` 会按产物类型自动选择对应前端构建：web 产物走 `build:web`，desktop 产物走 `build:desktop`。
+### 后端
+
+后端使用 PyInstaller 打包为独立可执行文件，脚本位于 `backend/build.ps1`（Windows）/ `backend/build.sh`（Linux，基于 Docker）。
 
 ## 一键打包
 
-要求：
-
-- Windows 上执行 PowerShell 包装脚本。
-- Debian 上执行 shell 包装脚本。
-- 桌面版必须在目标平台原生打包，当前脚本不做跨平台交叉编译。
+在对应平台上执行（桌面版需在目标平台原生打包，不支持跨平台交叉编译）：
 
 ### Windows
 
 ```powershell
-.\package-web.ps1
-.\package-desktop.ps1
-.\package-all.ps1
+.\package-web.ps1        # Web 版
+.\package-desktop.ps1    # 桌面版
+.\package-all.ps1        # 两者
 ```
 
-### Debian
+### Debian / Linux
 
 ```bash
 bash ./package-web.sh
@@ -96,56 +97,30 @@ bash ./package-desktop.sh
 bash ./package-all.sh
 ```
 
-### 产物目录
+产物输出到 `release/` 目录。Web 包启动后默认监听 `http://127.0.0.1:8000`。
 
-- Web 版：`release/web/windows` 或 `release/web/debian`
-- 桌面版：`release/desktop/windows` 或 `release/desktop/debian`
+## 部署提示（Nginx）
 
-Web 包启动后默认监听 `http://127.0.0.1:8000`。
-
-## Nginx 部署说明
-
-前端使用 Vue Router 的 history 模式（`createWebHistory()`）。
-如果 Nginx 没有把前端子路由回退到 `index.html`，访问或刷新诸如 `/projects`、`/calc/hpc`、`/adapt/hpc` 这样的地址时会直接返回 404。
-
-可参考 [frontend/nginx.conf.example](frontend/nginx.conf.example) 中的配置，核心规则如下：
+前端使用 Vue Router 的 history 模式（`createWebHistory()`），需将未匹配的前端路由回退到 `index.html`，并把 `/api/` 反向代理到后端，否则刷新 `/projects`、`/calc/hpc` 等地址会返回 404：
 
 ```nginx
 location / {
-	try_files $uri $uri/ /index.html;
+    try_files $uri $uri/ /index.html;
+}
+location /api/ {
+    proxy_pass http://127.0.0.1:8000;
 }
 ```
 
-如果前后端通过同域名部署，当前项目前端接口默认走 `/api`，Nginx 还需要把 `/api/` 反向代理到 FastAPI 服务。
+可参考 [frontend/nginx.conf.example](frontend/nginx.conf.example)。
 
-### 黑盒 API 回归
+## 源代码交付打包
 
-```bash
-python document/run_blackbox_tests.py
+如需将源代码打包交付（自动排除文档、依赖、编译缓存、构建产物及密钥等敏感文件，由收到方自行安装依赖），在 Windows 上执行：
+
+```powershell
+.\package-source.ps1
 ```
 
-## 功能
+生成的 zip 位于 `code-package/` 目录。收到方解压后，按上文「快速启动」安装依赖即可运行。
 
-| 标签页 | 接口 | 说明 |
-|--------|------|------|
-| 水胶比 | `POST /api/water-binder` | 鲍罗米公式计算 W/B |
-| 水胶比 | `POST /api/fit-coefficients` | 从 CSV 拟合回归系数 |
-| 骨料用量 | `POST /api/aggregate` | 计算 mg、ms |
-| 胶凝材料 | `POST /api/binder` | 计算 ρb、Vp、mb 及各组分 |
-| 水和外加剂 | `POST /api/water-admixture` | 计算 mw、ma |
-
-## CSV 导入格式
-
-回归系数拟合 CSV（无表头，每行三列）：
-
-```
-胶水比, 胶材强度fb(MPa), 混凝土强度fcu(MPa)
-2.5, 45, 60
-3.0, 48, 75
-...
-```
-
-## 状态管理（Pinia）
-
-所有计算中间值（wb、mg、ms、mb、mw、ma 等）统一存储在 `src/stores/calcStore.ts`，
-各计算步骤自动从 Store 中读取前序结果，无需手动传递。
