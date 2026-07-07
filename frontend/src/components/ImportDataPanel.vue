@@ -32,7 +32,7 @@ const HIGHLIGHT_KEYS: Record<string, Set<string>> = {
 }
 
 const LABEL_MAP: Record<string, string> = {
-  fcuk: '强度等级', req_spread: '扩展度', req_slump: '坍落度', tensile_strength: '抗拉强度',
+  fcuk: '强度等级', req_spread: '扩展度', req_slump: '坍落度', tensile_strength: '抗拉强度等级',
   fiber_strength_grade: '钢纤维抗拉等级', fb: '胶材28d强度', max_aggregate_size: '粗骨料最大粒径',
   rhoc: '水泥密度', rho1: '粉煤灰密度', rho2: '矿粉密度', rho3: '微珠密度', rho4: '硅灰密度',
   rhog: '粗骨料密度', rhos: '细骨料密度',
@@ -63,7 +63,7 @@ const sections = computed(() => {
 
 const UNIT_MAP: Record<string, string> = {
   // 性能
-  fcuk: 'MPa', req_spread: 'mm', req_slump: 'mm', tensile_strength: 'MPa',
+  fcuk: 'MPa', req_spread: 'mm', req_slump: 'mm', tensile_strength: '',
   fiber_strength_grade: '', fb: 'MPa',
   // 原材料 — 密度
   rhoc: 'kg/m³', rho1: 'kg/m³', rho2: 'kg/m³', rho3: 'kg/m³', rho4: 'kg/m³',
