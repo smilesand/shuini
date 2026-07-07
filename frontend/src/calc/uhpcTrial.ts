@@ -94,28 +94,6 @@ export function lerp(x1: number, y1: number, x2: number, y2: number, tY: number)
   return Math.max(Math.min(r, Math.max(x1, x2)), Math.min(x1, x2))
 }
 
-/** 三点最小二乘线性回归，求目标强度 tY 对应的 x（并限制在样本范围内）。 */
-function linearFit(
-  x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, tY: number,
-): number {
-  const xs = [x1, x2, x3]
-  const ys = [y1, y2, y3]
-  const n = 3
-  const sumX = xs.reduce((s, v) => s + v, 0)
-  const sumY = ys.reduce((s, v) => s + v, 0)
-  const sumXy = xs.reduce((s, v, i) => s + v * ys[i], 0)
-  const sumX2 = xs.reduce((s, v) => s + v * v, 0)
-  const denom = n * sumX2 - sumX * sumX
-  if (Math.abs(denom) < 1e-9) return (x1 + x2 + x3) / 3.0
-  const a = (n * sumXy - sumX * sumY) / denom
-  const b = (sumY - a * sumX) / n
-  if (Math.abs(a) < 1e-9) return (x1 + x2 + x3) / 3.0
-  const result = (tY - b) / a
-  const lo = Math.min(...xs)
-  const hi = Math.max(...xs)
-  return Math.max(Math.min(result, hi), lo)
-}
-
 /** 三点最小二乘线性回归，已知 x 预测 y（如预测外加剂用量）。 */
 function linearPredict(
   x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, tX: number,
@@ -132,6 +110,31 @@ function linearPredict(
   const a = (n * sumXy - sumX * sumY) / denom
   const b = (sumY - a * sumX) / n
   return a * tX + b
+}
+
+/**
+ * 三点最小二乘线性回归，求目标强度 tY 对应的 x，允许在样本范围外外推。
+ * 与 `linearFit` 不同：不将结果夹紧到样本区间，只夹紧到给定的物理上下限，
+ * 使得当配制强度低于/高于所有实测强度时，推荐值沿回归线外推而非直接取对照组数值。
+ */
+function linearFitExtrap(
+  x1: number, y1: number, x2: number, y2: number, x3: number, y3: number,
+  tY: number, loBound: number, hiBound: number,
+): number {
+  const xs = [x1, x2, x3]
+  const ys = [y1, y2, y3]
+  const n = 3
+  const sumX = xs.reduce((s, v) => s + v, 0)
+  const sumY = ys.reduce((s, v) => s + v, 0)
+  const sumXy = xs.reduce((s, v, i) => s + v * ys[i], 0)
+  const sumX2 = xs.reduce((s, v) => s + v * v, 0)
+  const denom = n * sumX2 - sumX * sumX
+  if (Math.abs(denom) < 1e-9) return (x1 + x2 + x3) / 3.0
+  const a = (n * sumXy - sumX * sumY) / denom
+  const b = (sumY - a * sumX) / n
+  if (Math.abs(a) < 1e-9) return (x1 + x2 + x3) / 3.0
+  const result = (tY - b) / a
+  return Math.max(loBound, Math.min(hiBound, result))
 }
 
 /** 表观密度校正系数与是否需要校正（偏差 > 2%）。 */
@@ -206,55 +209,47 @@ export function calcUhpcTrial(req: UhpcTrialReq): UhpcTrialRes {
     cementPct, silicaFumePct, flyAshPct, microBeadPct, -5.0, aSfMinus,
   )
 
-  // 强度推荐 – 三点线性回归（配制强度在实测范围外时，选最接近的组）
+  // 强度推荐 – 三点最小二乘线性回归（允许沿回归线外推，随强度数据平滑变化）
   let recWb: number | null = null
   let recSf: number | null = null
+  let recWbStrength: number | null = null
+  let recSfStrength: number | null = null
   if (sWb0 !== null && sWbPlus !== null && sWbMinus !== null) {
-    const wbXs = [wb + 0.01, wb, wb - 0.01]
-    const wbYs = [sWbPlus, sWb0, sWbMinus]
-    const minWy = Math.min(...wbYs)
-    const maxWy = Math.max(...wbYs)
-    if (designStrength > maxWy || designStrength < minWy) {
-      // 配制强度在实测范围之外 → 选强度最接近的组对应的水胶比
-      let closestIdx = 0
-      let closestDist = Math.abs(wbYs[0] - designStrength)
-      for (let i = 1; i < 3; i++) {
-        const dist = Math.abs(wbYs[i] - designStrength)
-        if (dist < closestDist) { closestDist = dist; closestIdx = i }
-      }
-      recWb = truncDigits(wbXs[closestIdx], 3)
-    } else {
-      recWb = truncDigits(
-        linearFit(wb, sWb0, wb + 0.01, sWbPlus, wb - 0.01, sWbMinus, designStrength), 3,
-      )
-    }
+    // 求配制强度对应的水胶比（回归线反解，物理范围 0.10~0.30）
+    recWb = truncDigits(
+      linearFitExtrap(
+        wb, sWb0, wb + 0.01, sWbPlus, wb - 0.01, sWbMinus,
+        designStrength, 0.10, 0.30,
+      ),
+      3,
+    )
+    // 推荐水胶比对应的预测强度（回归线正向预测）
+    recWbStrength = truncDigits(
+      linearPredict(wb, sWb0, wb + 0.01, sWbPlus, wb - 0.01, sWbMinus, recWb), 1,
+    )
   }
   if (sWb0 !== null && sSfPlus !== null && sSfMinus !== null) {
     const baseSf = trialMix.silica_fume
-    const sfXs = [variantSfPlus.silica_fume, baseSf, variantSfMinus.silica_fume]
-    const sfYs = [sSfPlus, sWb0, sSfMinus]
-    const minSy = Math.min(...sfYs)
-    const maxSy = Math.max(...sfYs)
-    if (designStrength > maxSy || designStrength < minSy) {
-      // 配制强度在实测范围之外 → 选强度最接近的组对应的硅灰用量
-      let closestIdx = 0
-      let closestDist = Math.abs(sfYs[0] - designStrength)
-      for (let i = 1; i < 3; i++) {
-        const dist = Math.abs(sfYs[i] - designStrength)
-        if (dist < closestDist) { closestDist = dist; closestIdx = i }
-      }
-      recSf = truncDigits(sfXs[closestIdx], 1)
-    } else {
-      recSf = truncDigits(
-        linearFit(
-          baseSf, sWb0,
-          variantSfPlus.silica_fume, sSfPlus,
-          variantSfMinus.silica_fume, sSfMinus,
-          designStrength,
-        ),
-        1,
-      )
-    }
+    // 求配制强度对应的硅灰用量（回归线反解，物理下限 0）
+    recSf = truncDigits(
+      linearFitExtrap(
+        baseSf, sWb0,
+        variantSfPlus.silica_fume, sSfPlus,
+        variantSfMinus.silica_fume, sSfMinus,
+        designStrength, 0.0, baseSf * 3,
+      ),
+      1,
+    )
+    // 推荐硅灰用量对应的预测强度
+    recSfStrength = truncDigits(
+      linearPredict(
+        baseSf, sWb0,
+        variantSfPlus.silica_fume, sSfPlus,
+        variantSfMinus.silica_fume, sSfMinus,
+        recSf,
+      ),
+      1,
+    )
   }
 
   // ── Tab 3: 校正配合比 ──────────────────────────────────────────
@@ -318,6 +313,8 @@ export function calcUhpcTrial(req: UhpcTrialReq): UhpcTrialRes {
     variant_sf_minus: variantSfMinus,
     rec_wb: recWb,
     rec_sf: recSf,
+    rec_wb_strength: recWbStrength,
+    rec_sf_strength: recSfStrength,
     corr_base: corrBase,
     corr_mix: corrMix,
     calc_density: calcDensity,

@@ -288,6 +288,8 @@ export interface UhpcTrialRes {
   variant_sf_minus: UhpcTrialMixRowRes
   rec_wb: number | null
   rec_sf: number | null
+  rec_wb_strength: number | null
+  rec_sf_strength: number | null
   corr_base: string
   corr_mix: UhpcTrialMixRowRes
   calc_density: number | null

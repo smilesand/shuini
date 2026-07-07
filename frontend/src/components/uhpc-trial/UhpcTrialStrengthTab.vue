@@ -25,6 +25,8 @@ const props = defineProps<{
   sSfMinus: number | null
   recWb: number | null
   recSf: number | null
+  recWbStrength: number | null
+  recSfStrength: number | null
 }>()
 
 const emit = defineEmits<{
@@ -236,12 +238,14 @@ function fmt(v: number | null | undefined, d = 1): string {
           <div class="rec-card">
             <div class="rec-card__label">推荐水胶比</div>
             <div class="rec-card__val">{{ recWb !== null ? recWb.toFixed(3) : '—' }}</div>
-            <div class="rec-card__sub">三点线性回归</div>
+            <div class="rec-card__sub" v-if="recWbStrength !== null">预测强度 {{ recWbStrength.toFixed(1) }} MPa</div>
+            <div class="rec-card__sub" v-else>三点线性回归</div>
           </div>
           <div class="rec-card">
             <div class="rec-card__label">推荐硅灰用量</div>
             <div class="rec-card__val">{{ recSf !== null ? recSf.toFixed(1) + ' kg' : '—' }}</div>
-            <div class="rec-card__sub">三点线性回归</div>
+            <div class="rec-card__sub" v-if="recSfStrength !== null">预测强度 {{ recSfStrength.toFixed(1) }} MPa</div>
+            <div class="rec-card__sub" v-else>三点线性回归</div>
           </div>
           <div class="rec-card rec-card--target">
             <div class="rec-card__label">配制强度目标</div>

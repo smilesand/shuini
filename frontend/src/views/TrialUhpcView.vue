@@ -273,6 +273,8 @@ const vSfPlus = computed<MixRow | null>(() => trialResult.value?.variant_sf_plus
 const vSfMinus = computed<MixRow | null>(() => trialResult.value?.variant_sf_minus ?? null)
 const recWb = computed(() => trialResult.value?.rec_wb ?? null)
 const recSf = computed(() => trialResult.value?.rec_sf ?? null)
+const recWbStrength = computed(() => trialResult.value?.rec_wb_strength ?? null)
+const recSfStrength = computed(() => trialResult.value?.rec_sf_strength ?? null)
 const corrMix = computed<MixRow | null>(() => trialResult.value?.corr_mix ?? null)
 const calcDensity = computed(() => trialResult.value?.calc_density ?? null)
 const corrFactor = computed(() => trialResult.value?.corr_factor ?? null)
@@ -440,6 +442,8 @@ const variants = computed(() => [
                   :s-sf-minus="sSfMinus"
                   :rec-wb="recWb"
                   :rec-sf="recSf"
+                  :rec-wb-strength="recWbStrength"
+                  :rec-sf-strength="recSfStrength"
                   @update:s-wb-0="v => sWb0 = v"
                 />
               </div>
