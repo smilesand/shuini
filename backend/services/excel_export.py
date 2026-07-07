@@ -227,7 +227,7 @@ def _build_uhpc_sheet(ws, name: str, flat: dict[str, Any]) -> None:
     row += 2
 
     row = _section_bar(ws, row, ncol, "二、 混凝土性能要求")
-    _write_row(ws, row, ["强度等级/MPa", "扩展度/mm", "抗拉强度/MPa", "其他"], header=True)
+    _write_row(ws, row, ["强度等级/MPa", "扩展度/mm", "抗拉强度等级/MPa", "其他"], header=True)
     row += 1
     _write_filled_row(ws, row, [grade, _num(_first(flat, "req_spread", "reqSpread"), 0), _num(_first(flat, "tensile_strength"), 1), ""], VALUE_FILL)
     row += 2

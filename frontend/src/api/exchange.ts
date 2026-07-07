@@ -11,7 +11,7 @@ export interface ValidationItem {
   actual: number | null
   diff: number | null
   passed: boolean
-  tolerance: number
+  tolerance: number | string | null
   tolerance_unit?: string
 }
 

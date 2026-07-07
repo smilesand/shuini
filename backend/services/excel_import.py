@@ -18,6 +18,9 @@ from services.water_binder import calculate_water_binder_ratio, calculate_fcu0
 
 # 校验容差
 WB_TOLERANCE = 0.02      # 水胶比容差（图三要求）
+UHPC_WB_TOLERANCE = 0.01   # UHPC 水胶比容差
+UHPC_SB_TOLERANCE = 0.15   # UHPC 砂胶比容差（半区间宽度）
+UHPC_FIBER_TOLERANCE = 0.3 # UHPC 钢纤维体积掺量容差 %
 
 # 导入合理性范围（缺省不阻断；有值则按范围评价）
 SAND_RATIO_RANGE = (35.0, 50.0)          # 砂率 %
@@ -31,6 +34,36 @@ def _resolve_uhpc_wb(grade: Any) -> float | None:
     try:
         g = float(grade)
         return 0.17 if g == 150 else 0.19
+    except (ValueError, TypeError):
+        return None
+
+
+def _resolve_uhpc_sb(grade: Any) -> float | None:
+    """UHPC：根据抗压强度等级推算参考砂胶比中值。UC150→1.15(1.0~1.3)，其余→1.25(1.1~1.4)。"""
+    try:
+        g = float(grade)
+        return 1.15 if g == 150 else 1.25
+    except (ValueError, TypeError):
+        return None
+
+
+def _resolve_uhpc_fiber(tensile: Any) -> float | None:
+    """UHPC：根据抗拉强度等级推算参考钢纤维体积掺量中值。UT07(≥7MPa)→2.0%，UT05→1.5%。
+
+    兼容两种取值：等级文本（"UT05"/"UT07"）或抗拉强度数值（MPa）。
+    """
+    if tensile is None:
+        return None
+    # 先按等级文本匹配（如 UT05 / UT07）
+    text = str(tensile).strip().upper()
+    if "UT07" in text:
+        return 2.0
+    if "UT05" in text:
+        return 1.5
+    # 再按抗拉强度数值判定
+    try:
+        t = float(text)
+        return 2.0 if t >= 7 else 1.5
     except (ValueError, TypeError):
         return None
 
@@ -159,6 +192,7 @@ def _sand_range_from_aggregate(data: dict[str, Any]) -> tuple[float, float]:
 _HEADER_MAP: dict[str, list[str]] = {
     "强度等级/mpa": ["fcuk", "strength_grade"],
     "抗拉强度/mpa": ["tensile_strength"],
+    "抗拉强度等级/mpa": ["tensile_strength"],
     "扩展度/mm": ["req_spread"],
     "坍落度/mm": ["req_slump"],
     "胶材28d强度/mpa": ["fb"],
@@ -276,7 +310,7 @@ def _parse_sections(rows: list[list[Any]], result: dict[str, Any]) -> None:
                     _store_cell(result, "req_spread", raw)
                 elif label == "坍落度/mm":
                     _store_cell(result, "req_slump", raw)
-                elif label == "抗拉强度/mpa":
+                elif label == "抗拉强度/mpa" or label == "抗拉强度等级/mpa":
                     _store_cell(result, "tensile_strength", raw)
 
         elif _is_section(row, "原材料性能"):
@@ -467,22 +501,36 @@ def validate_uhpc(data: dict[str, Any]) -> dict[str, Any]:
     sb = data.get("sand_binder_ratio")
     sf = data.get("steel_fiber_volume_ratio")
     alpha = data.get("admixture_ratio") or data.get("alpha")
+    tensile = data.get("tensile_strength")
 
     if grade is None:
         warnings.append("缺少强度等级")
-    # 根据抗压强度等级推算参考水胶比：UC150→0.17，其余→0.19
+
+    # ── 水胶比：计算值按抗压强度等级推算（UC150→0.17，其余→0.19），容差 ±0.01 ──
     expected_wb = _resolve_uhpc_wb(grade)
+    wb_val = _num_from(wb)
     if wb is None:
         warnings.append("缺少水胶比")
-    items.append(_item("水胶比", _round(wb, 4), expected=expected_wb, diff=None, tolerance=None, passed=True))
+    wb_diff = round(abs(wb_val - expected_wb), 4) if wb_val is not None and expected_wb is not None else None
+    items.append(_item("水胶比", _round(wb_val, 4), expected=expected_wb, diff=wb_diff, tolerance=UHPC_WB_TOLERANCE, passed=True))
 
+    # ── 砂胶比：计算值为抗压强度等级对应范围的中值（UC150→1.15，UC130→1.25），容差 ±0.15 ──
+    expected_sb = _resolve_uhpc_sb(grade)
+    sb_val = _num_from(sb)
     if sb is None:
         warnings.append("缺少砂胶比")
-    items.append(_range_item("砂胶比", sb, *SAND_BINDER_RATIO_RANGE))
+    sb_diff = round(abs(sb_val - expected_sb), 4) if sb_val is not None and expected_sb is not None else None
+    sb_passed = sb_diff is None or sb_diff <= UHPC_SB_TOLERANCE
+    items.append(_item("砂胶比", _round(sb_val, 4), expected=expected_sb, diff=sb_diff, tolerance="±0.15", passed=sb_passed))
 
+    # ── 钢纤维：计算值为抗拉强度等级对应体积掺量中值（UT07→2.0%，UT05→1.5%），容差 ±0.3% ──
+    expected_fiber = _resolve_uhpc_fiber(tensile)
+    sf_val = _num_from(sf)
     if sf is None:
         warnings.append("缺少钢纤维体积掺量")
-    items.append(_range_item("钢纤维/%", sf, *STEEL_FIBER_RANGE, "%"))
+    sf_diff = round(abs(sf_val - expected_fiber), 4) if sf_val is not None and expected_fiber is not None else None
+    sf_passed = sf_diff is None or sf_diff <= UHPC_FIBER_TOLERANCE
+    items.append(_item("钢纤维/%", _round(sf_val, 4), expected=expected_fiber, diff=sf_diff, tolerance="±0.3%", passed=sf_passed))
 
     if alpha is None:
         warnings.append("缺少外加剂掺量")
