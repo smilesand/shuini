@@ -198,12 +198,12 @@ function fmt(v: number | null | undefined, d = 1): string {
               <thead><tr><th>水胶比 W/B</th><th>抗压强度（MPa）</th></tr></thead>
               <tbody>
                 <tr>
-                  <td>{{ wb.toFixed(3) }}（基准）</td>
-                  <td>{{ sWb0 !== null ? fmt(sWb0) : '—' }}</td>
-                </tr>
-                <tr>
                   <td>{{ (wb + 0.01).toFixed(3) }}</td>
                   <td>{{ sWbPlus !== null ? fmt(sWbPlus) : '—' }}</td>
+                </tr>
+                <tr>
+                  <td>{{ wb.toFixed(3) }}（基准）</td>
+                  <td>{{ sWb0 !== null ? fmt(sWb0) : '—' }}</td>
                 </tr>
                 <tr>
                   <td>{{ (wb - 0.01).toFixed(3) }}</td>
@@ -217,12 +217,12 @@ function fmt(v: number | null | undefined, d = 1): string {
               <thead><tr><th>硅灰用量（kg）</th><th>抗压强度（MPa）</th></tr></thead>
               <tbody>
                 <tr>
-                  <td>{{ trialMix ? fmt(trialMix.silica_fume) : '—' }}（基准）</td>
-                  <td>{{ sWb0 !== null ? fmt(sWb0) : '—' }}</td>
-                </tr>
-                <tr>
                   <td>{{ vSfPlus ? fmt(vSfPlus.silica_fume) : '—' }}</td>
                   <td>{{ sSfPlus !== null ? fmt(sSfPlus) : '—' }}</td>
+                </tr>
+                <tr>
+                  <td>{{ trialMix ? fmt(trialMix.silica_fume) : '—' }}（基准）</td>
+                  <td>{{ sWb0 !== null ? fmt(sWb0) : '—' }}</td>
                 </tr>
                 <tr>
                   <td>{{ vSfMinus ? fmt(vSfMinus.silica_fume) : '—' }}</td>
