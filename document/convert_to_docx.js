@@ -16,13 +16,13 @@ const ROOT = path.resolve(__dirname, "..");
 const MD_PATH = path.join(
   ROOT,
   "document",
-  "软件操作说明书_v2_2026-06-02.md",
+  "软件操作说明书_v3_2026-07-07.md",
 );
 const SCREENSHOTS_DIR = path.join(ROOT, "document", "manual_screenshots");
-const OUTPUT_PATH = path.join(
+const OUTPUT_PATH = process.env.DOCX_OUT || path.join(
   ROOT,
   "document",
-  "软件操作说明书_v2_2026-06-02.docx",
+  "软件操作说明书_v3_2026-07-07.docx",
 );
 
 // ── 工具函数 ──
@@ -57,6 +57,45 @@ function p(content, options = {}) {
   });
 }
 
+// 行内 Markdown（**加粗** 与 `代码`）→ TextRun 数组
+function parseRuns(text, baseOpts = {}) {
+  const size = baseOpts.size || 22;
+  const color = baseOpts.color;
+  const clean = String(text).replace(/\\\|/g, "|");
+  const runs = [];
+  const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  let last = 0;
+  let m;
+  while ((m = regex.exec(clean)) !== null) {
+    if (m.index > last) {
+      runs.push(new TextRun({ text: clean.slice(last, m.index), font: "微软雅黑", size, color }));
+    }
+    const tok = m[0];
+    if (tok.startsWith("**")) {
+      runs.push(new TextRun({ text: tok.slice(2, -2), bold: true, font: "微软雅黑", size, color }));
+    } else {
+      runs.push(new TextRun({ text: tok.slice(1, -1), font: "Consolas", size: size - 2, color: "C7254E" }));
+    }
+    last = regex.lastIndex;
+  }
+  if (last < clean.length) {
+    runs.push(new TextRun({ text: clean.slice(last), font: "微软雅黑", size, color }));
+  }
+  if (runs.length === 0) {
+    runs.push(new TextRun({ text: "", font: "微软雅黑", size, color }));
+  }
+  return runs;
+}
+
+function richP(text, options = {}) {
+  return new Paragraph({
+    alignment: options.alignment || AlignmentType.LEFT,
+    spacing: options.spacing || { before: 60, after: 60 },
+    indent: options.indent,
+    children: parseRuns(text, options),
+  });
+}
+
 function heading(text, level) {
   const sizes = { 1: 36, 2: 30, 3: 26, 4: 24 };
   return new Paragraph({
@@ -80,16 +119,18 @@ function heading(text, level) {
 }
 
 function bullet(text, options = {}) {
-  return p(`•  ${text}`, {
+  return new Paragraph({
     indent: { left: 720, hanging: 360 },
-    ...options,
+    spacing: { before: 60, after: 60 },
+    children: [new TextRun({ text: "•  ", font: "微软雅黑", size: 22 }), ...parseRuns(text, options)],
   });
 }
 
 function numberBullet(num, text, options = {}) {
-  return p(`${num}.  ${text}`, {
+  return new Paragraph({
     indent: { left: 720, hanging: 360 },
-    ...options,
+    spacing: { before: 60, after: 60 },
+    children: [new TextRun({ text: `${num}.  `, font: "微软雅黑", size: 22 }), ...parseRuns(text, options)],
   });
 }
 
@@ -158,6 +199,33 @@ function dataCell(text, width) {
   });
 }
 
+function dataCellRich(text, width) {
+  return new TableCell({
+    borders,
+    width: { size: width, type: WidthType.DXA },
+    margins: { top: 60, bottom: 60, left: 100, right: 100 },
+    children: [
+      new Paragraph({ spacing: { before: 20, after: 20 }, children: parseRuns(text, { size: 20 }) }),
+    ],
+  });
+}
+
+function buildTable(rows) {
+  const colCount = Math.max(...rows.map((r) => r.length));
+  const totalWidth = 9000;
+  const colWidth = Math.floor(totalWidth / colCount);
+  const tableRows = rows.map((cells, ri) =>
+    new TableRow({
+      tableHeader: ri === 0,
+      children: Array.from({ length: colCount }, (_, ci) => {
+        const text = cells[ci] != null ? cells[ci] : "";
+        return ri === 0 ? headerCell(text, colWidth) : dataCellRich(text, colWidth);
+      }),
+    }),
+  );
+  return new Table({ width: { size: totalWidth, type: WidthType.DXA }, rows: tableRows });
+}
+
 // ── 封面 ──
 function buildCover() {
   return [
@@ -175,7 +243,7 @@ function buildCover() {
       color: "2A5298",
       spacing: { after: 300 },
     }),
-    p("V2 — 全功能详尽版", {
+    p("V3 — 全功能详尽版", {
       size: 22,
       alignment: AlignmentType.CENTER,
       color: "888888",
@@ -193,7 +261,7 @@ function buildCover() {
       color: "888888",
       spacing: { after: 1600 },
     }),
-    p(`文档版本：2026-06-02`, {
+    p(`文档版本：2026-07-07`, {
       size: 20,
       alignment: AlignmentType.CENTER,
       color: "AAAAAA",
@@ -249,6 +317,34 @@ function parseMarkdown(mdText) {
     // 分割线
     if (line.match(/^---+$/)) {
       i++;
+      continue;
+    }
+
+    // 表格
+    if (line.trim().startsWith("|") && line.indexOf("|", 1) !== -1) {
+      const tableLines = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        tableLines.push(lines[i].trim());
+        i++;
+      }
+      const rows = [];
+      for (const tl of tableLines) {
+        if (/^\|[\s:|-]+\|?$/.test(tl) && tl.indexOf("-") !== -1) continue; // 分隔行
+        const cells = tl.replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+        rows.push(cells);
+      }
+      if (rows.length) blocks.push({ type: "table", rows });
+      continue;
+    }
+
+    // 引用 / 截图占位
+    if (line.trim().startsWith(">")) {
+      const quoteLines = [];
+      while (i < lines.length && lines[i].trim().startsWith(">")) {
+        quoteLines.push(lines[i].trim().replace(/^>\s?/, ""));
+        i++;
+      }
+      blocks.push({ type: "quote", content: quoteLines.join(" ") });
       continue;
     }
 
@@ -320,7 +416,16 @@ function blocksToDocx(blocks) {
         break;
 
       case "paragraph":
-        result.push(p(b.content));
+        result.push(richP(b.content));
+        break;
+
+      case "table":
+        result.push(buildTable(b.rows));
+        result.push(p("", { spacing: { after: 60 } }));
+        break;
+
+      case "quote":
+        result.push(p(b.content, { size: 18, color: "888888", indent: { left: 360 } }));
         break;
 
       case "ordered_list":
