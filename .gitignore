@@ -41,4 +41,4 @@ backend/wtcmd-platform-backend
 code-package/
 
 # 交付镜像产物（Docker save 导出的离线包）
-delivery/server/*.tar
+wtcmd-web.tar

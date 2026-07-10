@@ -1,7 +1,7 @@
 # =============================================================================
-# 交付①：Web/服务端 —— 客户一键启动
+# Web/服务端 —— 客户一键启动
 #
-#   docker load -i wtcmd-web.tar        # 首次导入镜像
+#   docker load -i wtcmd-web.tar         # 首次导入镜像
 #   docker compose up -d                 # 启动（后台运行）
 #   docker compose logs -f               # 查看日志
 #   docker compose down                  # 停止
@@ -17,7 +17,7 @@ services:
     ports:
       - "8000:8000"          # 左侧为宿主机端口，可按需修改，如 "80:8000"
     volumes:
-      - wtcmd-data:/data    # 持久化数据库与日志（升级镜像不丢数据）
+      - wtcmd-data:/data     # 持久化数据库与日志（升级镜像不丢数据）
     environment:
       # 如需修改默认管理员口令，可取消注释并设置（仅首次初始化生效）
       # - SC_ADMIN_USERNAME=admin

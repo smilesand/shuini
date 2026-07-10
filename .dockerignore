@@ -1,4 +1,4 @@
-# 仅用于「根目录为构建上下文」的镜像构建（delivery/server）。
+# 用于根目录 Dockerfile 的镜像构建上下文。
 # backend/Dockerfile.build 使用 backend/ 作为上下文，不受此文件影响。
 
 .git/
@@ -6,7 +6,8 @@
 document/
 release/
 code-package/
-delivery/*/**/*.tar
+delivery/
+*.tar
 
 # 前端：容器内重新 npm ci + 构建，无需带入依赖与产物
 **/node_modules/

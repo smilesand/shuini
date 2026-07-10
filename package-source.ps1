@@ -4,15 +4,20 @@
     将项目源代码打包为 zip，交付给客户自行安装依赖并构建。
 
 .DESCRIPTION
-    仅拷贝运行/构建所必需的源代码，自动排除：
-      - 文档与设计稿（document/）
-      - 编译缓存（__pycache__ / .pytest_cache / .ruff_cache / dist / build 等）
-      - 前端依赖（node_modules）与 Python 虚拟环境（.venv / venv）
-      - 构建产物、发布目录（release/）与后端可执行文件
-      - 私钥等敏感文件（scripts/keys/、*.pem、*.key、*.bin）
-      - 数据库、日志、本地 .env 等运行期文件
+    面向“只会装 Python 和 Node.js”的客户：解压后直接运行根目录的
+    package-desktop.ps1 / package-sign-tool.ps1 即可打包桌面端与授权签发工具。
 
-    生成的 zip 位于 code-package/ 目录，客户解压后按 README.md 自行安装依赖即可。
+    仅拷贝打包所必需的源代码，并：
+      - 包含 scripts/keys/（公钥 + 私钥），使客户无需额外密钥即可自助打包签发工具；
+      - 自动排除：文档(document/)、发布目录(release/)、编译缓存、
+        前端依赖(node_modules) 与虚拟环境(.venv)、
+        Web/Docker 交付物（Dockerfile / compose / 镜像 tar / 部署说明）、
+        开发调试用脚本、数据库 / 日志 / 本地 .env 等运行期文件。
+
+    生成的 zip 位于 code-package/ 目录。
+
+    ⚠！本源码包内含授权私钥（scripts/keys/private_key.pem），属敏感交付物，
+       请仅向可信客户交付并告知其妥善保管。
 
 .EXAMPLE
     .\package-source.ps1
@@ -37,21 +42,25 @@ $excludeDirNames = @(
 
 # 按相对路径排除的目录（相对项目根）
 $excludeRelDirs = @(
-    'document', 'release', '.agents'        # 私钥 / DB 密钥，禁止交付
+    'document', 'release', '.agents', 'delivery', 'code-package',
+    'backend\tests'
 )
 
-# 按文件名 / 扩展名通配排除
+# 按文件名 / 扩展名通配排除（注意：不再排除 *.pem/*.key/*.bin，以便包含 scripts/keys）
 $excludeFilePatterns = @(
     '*.pyc', '*.pyo', '*.pyd', '*.log', '*.log.*',
     '*.db', '*.db-journal', '*.sqlite', '*.sqlite3',
-    '*.spec.bak', '*.pem', '*.key', '*.bin',
+    '*.spec.bak', '*.tar',
     '.DS_Store', 'Thumbs.db',
     'wtcmd-platform-backend', 'wtcmd-platform-backend.exe', '_t.txt'
 )
 
-# 精确排除的文件（相对路径，保留 .env.production / .env.desktop 等模板）
+# 精确排除的文件（相对路径）：Web/Docker 交付物、开发调试脚本、自身
 $excludeRelFiles = @(
-    'frontend\.env', 'backend\.env', 'desktop\.env'
+    'frontend\.env', 'backend\.env', 'desktop\.env',
+    'scripts\license_dev.py', 'scripts\expire_trial.py', 'scripts\decrypt_db.py',
+    'scripts\verify_legacy_upgrade.py', 'scripts\extract_public_key.py',
+    'frontend\find_words.py', 'frontend\fix_typo.py'
 )
 
 function Test-RelDirExcluded {
@@ -124,7 +133,7 @@ Remove-Item -Path $stageRoot -Recurse -Force
 
 $sizeMB = [Math]::Round((Get-Item $zipPath).Length / 1MB, 2)
 Write-Host ''
-Write-Host "✓ 已打包 $script:copiedCount 个文件" -ForegroundColor Green
-Write-Host "✓ 输出：$zipPath ($sizeMB MB)" -ForegroundColor Green
+Write-Host "OK 已打包 $script:copiedCount 个文件" -ForegroundColor Green
+Write-Host "OK 输出：$zipPath ($sizeMB MB)" -ForegroundColor Green
 Write-Host ''
-Write-Host '提示：交付前请确认压缩包内不含任何密钥、密码或客户数据。' -ForegroundColor Yellow
+Write-Host '提示：本源码包已按要求包含 scripts/keys（含私钥），属敏感交付物，请仅向可信客户交付。' -ForegroundColor Yellow -ForegroundColor Yellow
