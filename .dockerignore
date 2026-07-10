@@ -1,0 +1,41 @@
+# 仅用于「根目录为构建上下文」的镜像构建（delivery/server）。
+# backend/Dockerfile.build 使用 backend/ 作为上下文，不受此文件影响。
+
+.git/
+.agents/
+document/
+release/
+code-package/
+delivery/*/**/*.tar
+
+# 前端：容器内重新 npm ci + 构建，无需带入依赖与产物
+**/node_modules/
+frontend/dist/
+desktop/resources/
+desktop/dist/
+
+# Python 缓存 / 虚拟环境 / 构建产物
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.venv/
+**/venv/
+**/.pytest_cache/
+**/.ruff_cache/
+backend/build/
+backend/dist/
+backend/wtcmd-platform-backend
+backend/wtcmd-platform-backend.exe
+
+# 运行期数据与日志（不应进入镜像）
+backend/data.db
+backend/logs/
+
+# 私钥 / 密钥材料，禁止进入服务端镜像
+scripts/keys/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

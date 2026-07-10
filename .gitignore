@@ -39,3 +39,6 @@ backend/wtcmd-platform-backend
 
 # 源码交付包
 code-package/
+
+# 交付镜像产物（Docker save 导出的离线包）
+delivery/server/*.tar

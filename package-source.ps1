@@ -37,8 +37,7 @@ $excludeDirNames = @(
 
 # 按相对路径排除的目录（相对项目根）
 $excludeRelDirs = @(
-    'document', 'release', '.agents',
-    (Join-Path 'scripts' 'keys')          # 私钥 / DB 密钥，禁止交付
+    'document', 'release', '.agents'        # 私钥 / DB 密钥，禁止交付
 )
 
 # 按文件名 / 扩展名通配排除
