@@ -120,8 +120,9 @@ function formatDiff(item: ValidationItem): string {
 }
 
 function downloadProjectTemplate() {
-  const base = import.meta.env.VITE_API_BASE || '/api'
-  window.open(`${base}/exchange/project-template`, '_blank')
+  // 直接下载 public 目录下的静态项目导入模板（无需后端生成）
+  const base = import.meta.env.BASE_URL || '/'
+  window.open(`${base}project_import_template.xlsx`, '_blank')
 }
 </script>
 

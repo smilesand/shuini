@@ -18,7 +18,6 @@ from database import (
 from routers.auth import get_current_user
 from services.excel_export import (
     generate_template_bytes,
-    generate_project_template_bytes,
 )
 from services.excel_import import parse_and_validate_excel, parse_project_import_excel
 
@@ -41,22 +40,6 @@ def download_template(category: str = Query("hpc", description="配比类别: hp
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"模板生成失败: {e}")
-
-
-@router.get("/project-template", summary="下载项目导入模板")
-def download_project_template():
-    """下载项目导入模板（多 sheet：项目信息 + HPC 示例 + UHPC 示例）。"""
-    try:
-        content = generate_project_template_bytes()
-        return Response(
-            content=content,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={
-                "Content-Disposition": 'attachment; filename="project_import_template.xlsx"',
-            },
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"项目模板生成失败: {e}")
 
 
 # ── 导入校验 ──────────────────────────────────────────────────────────────────

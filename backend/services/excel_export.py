@@ -297,44 +297,6 @@ def _build_record_sheet(ws, record: dict[str, Any]) -> None:
 
 
 # ── 公开接口 ──────────────────────────────────────────────────────────────────
-def generate_project_template_bytes() -> bytes:
-    """生成项目导入模板（多 sheet：项目信息 + 示例 HPC 记录 + 示例 UHPC 记录）。"""
-    wb = Workbook()
-    # ── Sheet 1: 项目信息 ──
-    ws_info = wb.active
-    assert ws_info is not None
-    ws_info.title = "项目信息"
-    ws_info.sheet_properties.tabColor = "4472C4"
-    ws_info.column_dimensions["A"].width = 20
-    ws_info.column_dimensions["B"].width = 40
-
-    info_data = [
-        ("项目编号", "PROJ-2024-001"),
-        ("项目名称", "示例工程项目"),
-        ("技术要求", "请填写技术要求（可选）"),
-        ("创建人", ""),
-        ("创建时间", ""),
-    ]
-    for i, (label, value) in enumerate(info_data, start=1):
-        _style(ws_info.cell(row=i, column=1, value=label), font=LABEL_FONT, alignment=LEFT_ALIGN)
-        _style(ws_info.cell(row=i, column=2, value=value), font=VALUE_FONT, alignment=LEFT_ALIGN)
-
-    # ── Sheet 2: 示例 HPC 记录 ──
-    ws_hpc = wb.create_sheet(title="配比记录1-HPC示例")
-    ws_hpc.sheet_properties.tabColor = "70AD47"
-    _build_hpc_sheet(ws_hpc, "示例HPC配比", {})
-
-    # ── Sheet 3: 示例 UHPC 记录 ──
-    ws_uhpc = wb.create_sheet(title="配比记录2-UHPC示例")
-    ws_uhpc.sheet_properties.tabColor = "ED7D31"
-    _build_uhpc_sheet(ws_uhpc, "示例UHPC配比", {})
-
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-    return output.getvalue()
-
-
 def generate_template_bytes(category: str) -> bytes:
     """生成空白导入模板（横排版面，仅需填写关键参数填写区）。"""
     wb = Workbook()
