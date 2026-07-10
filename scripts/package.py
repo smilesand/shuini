@@ -86,9 +86,18 @@ def ensure_node_dependencies(package_dir: Path) -> None:
     run([npm_command(), 'install'], cwd=package_dir)
 
 
+def _rmtree_onerror(func, path, exc_info):
+    """rmtree 错误处理：清除只读属性后重试，解决 Windows 上的 PermissionError。"""
+    try:
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+    except Exception:
+        pass  # 最终仍失败时静默跳过，让 rmtree 继续处理其他文件
+
+
 def ensure_clean_dir(path: Path) -> None:
     if path.exists():
-        shutil.rmtree(path)
+        shutil.rmtree(path, onerror=_rmtree_onerror)
     path.mkdir(parents=True, exist_ok=True)
 
 
