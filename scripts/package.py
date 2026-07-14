@@ -367,10 +367,24 @@ def write_web_start_script(target_dir: Path, platform_name: str, backend_binary:
             "$DataDir = Join-Path $ScriptDir 'data'\n"
             "if (-not (Test-Path $DataDir)) { New-Item -ItemType Directory -Path $DataDir | Out-Null }\n"
             "if (-not $env:SC_HOST) { $env:SC_HOST = '0.0.0.0' }\n"
-            "if (-not $env:SC_PORT) { $env:SC_PORT = '8000' }\n"
+            "if (-not $env:SC_PORT) { $env:SC_PORT = '80' }\n"
             "$env:SC_FRONTEND_DIST = Join-Path $ScriptDir 'frontend'\n"
             "$env:SC_DB_PATH = Join-Path $DataDir 'data.db'\n"
             f"& (Join-Path $ScriptDir '{backend_binary.name}')\n",
+            encoding='utf-8',
+        )
+
+        cmd_path = target_dir / 'start-web.cmd'
+        cmd_path.write_text(
+            "@echo off\r\n"
+            "setlocal\r\n"
+            'set "SCRIPT_DIR=%~dp0"\r\n'
+            'if not defined SC_HOST set "SC_HOST=0.0.0.0"\r\n'
+            'if not defined SC_PORT set "SC_PORT=80"\r\n'
+            'set "SC_FRONTEND_DIST=%SCRIPT_DIR%frontend"\r\n'
+            'set "SC_DB_PATH=%SCRIPT_DIR%data\\data.db"\r\n'
+            'if not exist "%SCRIPT_DIR%data" mkdir "%SCRIPT_DIR%data"\r\n'
+            f'start "" /wait "%SCRIPT_DIR%{backend_binary.name}"\r\n',
             encoding='utf-8',
         )
         return
@@ -382,7 +396,7 @@ def write_web_start_script(target_dir: Path, platform_name: str, backend_binary:
         "SCRIPT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"
         "mkdir -p \"${SCRIPT_DIR}/data\"\n"
         "export SC_HOST=\"${SC_HOST:-0.0.0.0}\"\n"
-        "export SC_PORT=\"${SC_PORT:-8000}\"\n"
+        "export SC_PORT=\"${SC_PORT:-80}\"\n"
         "export SC_FRONTEND_DIST=\"${SCRIPT_DIR}/frontend\"\n"
         "export SC_DB_PATH=\"${SCRIPT_DIR}/data/data.db\"\n"
         f"exec \"${{SCRIPT_DIR}}/{backend_binary.name}\"\n",
@@ -392,7 +406,10 @@ def write_web_start_script(target_dir: Path, platform_name: str, backend_binary:
 
 
 def write_web_readme(target_dir: Path, platform_name: str) -> None:
-    launch_hint = 'start-web.ps1' if platform_name == 'windows' else './start-web.sh'
+    if platform_name == 'windows':
+        launch_hint = 'start-web.cmd  (or start-web.ps1 in PowerShell)'
+    else:
+        launch_hint = './start-web.sh'
     readme = target_dir / 'README.txt'
     readme.write_text(
         "WTCMD Platform Web Bundle\n"
@@ -402,11 +419,14 @@ def write_web_readme(target_dir: Path, platform_name: str) -> None:
         "Usage\n"
         "-----\n"
         f"1. Start the service with: {launch_hint}\n"
-        "2. Open http://127.0.0.1:8000 in a browser.\n\n"
+        "2. Open http://127.0.0.1 in a browser.\n\n"
         "You can override the default host/port before launch with SC_HOST and SC_PORT.\n\n"
         "Data\n"
         "----\n"
-        "The SQLite database is created in the local data/ directory next to the launcher script.\n",
+        "The SQLite database is created in the local data/ directory next to the launcher script.\n"
+        "桌面版下载地址："
+        "http://127.0.0.1/wtcmd-platform-desktop-1.0.0-win-x64.exe"
+        "127.0.0.1替换为实际的IP地址。",
         encoding='utf-8',
     )
 
